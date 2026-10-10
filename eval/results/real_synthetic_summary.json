@@ -1,0 +1,60 @@
+{
+  "homes": 542711,
+  "homes_with_bills": 537732,
+  "monthly_rows": 12637637,
+  "annual_elec_available_share": 0.9908,
+  "annual_gas_available_share_gas_heated": 0.9774,
+  "median_annual_kwh_by_heating": {
+    "direct_electric": {
+      "elec": 7499.0,
+      "gas": 0.0
+    },
+    "district": {
+      "elec": 1923.0,
+      "gas": 0.0
+    },
+    "gas_condensing": {
+      "elec": 2464.0,
+      "gas": 7832.0
+    },
+    "gas_non_condensing": {
+      "elec": 2474.0,
+      "gas": 9023.0
+    },
+    "heat_pump": {
+      "elec": 4935.0,
+      "gas": 0.0
+    },
+    "lpg": {
+      "elec": 2825.0,
+      "gas": 0.0
+    },
+    "oil": {
+      "elec": 3119.0,
+      "gas": 0.0
+    },
+    "storage_heaters": {
+      "elec": 8550.0,
+      "gas": 0.0
+    },
+    "unknown": {
+      "elec": null,
+      "gas": 0.0
+    }
+  },
+  "customers": 518011,
+  "multi_home_customers": 9905,
+  "homes_in_multi_home_customers": 34605,
+  "smart_controls": {
+    "programmer": 0.514,
+    "smart_thermostat": 0.2205,
+    "none": 0.1646,
+    "smart_trvs": 0.101
+  },
+  "loans": 222973,
+  "split_customers": {
+    "train": 362106,
+    "val": 78431,
+    "test": 77474
+  }
+}

@@ -117,3 +117,19 @@ loans:
   source: "Assumption for the lender view (3.12); synthetic"
   share_mortgaged: 0.70
   ltv_range: [0.25, 0.90]
+
+real_homes:
+  source: >
+    Synthetic parts for the real EPC property book (greenhome.data.synthetic_parts). Real EPC fields are never
+    altered. Bills reuse the consumption, solar and missingness blocks above; the split reuses customers.split,
+    LTV reuses loans.ltv_range and the smart-thermostat share reuses smart_controls.shares.
+  landlord_portfolios:
+    share_of_private_rented: 0.30
+    homes_per_landlord: [2, 5]
+    source: "Assumption: some private-rented homes belong to multi-property landlord customers, grouped within one local authority (VERIFY against English Private Landlord Survey 2021 portfolio sizes)"
+  mortgaged_share_by_tenure:
+    owner-occupied: 0.45
+    rented (private): 0.60
+    rented (social): 0.0
+    unknown: 0.45
+    source: "Assumption: English Housing Survey 2023-24 has ~45% of owner-occupiers buying with a mortgage; buy-to-let share assumed; social housing is not in a retail mortgage book (VERIFY)"

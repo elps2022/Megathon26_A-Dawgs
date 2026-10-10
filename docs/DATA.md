@@ -59,3 +59,20 @@ Known limitations:
 - Solar kWp is estimated from the % of roof covered × ground-floor footprint.
 - Bedrooms are estimated as habitable rooms − 1.
 - Certificates can be up to ~14 years old, and EPC homes skew towards those sold or let since 2012.
+
+### Synthetic parts for the real homes (`make real`, ~1 min, after `make epc`)
+
+`greenhome.data.synthetic_parts` adds only the fields that have no public source; it never alters real EPC fields. Seed 42 gives identical output. Outputs go to `data/processed/real/` (gitignored), and the aggregates are in `eval/results/real_synthetic_summary.json`.
+
+| File | Content |
+|---|---|
+| `properties.parquet` / `properties_share.parquet` | The 542,711 real homes plus `annual_elec_kwh` / `annual_gas_kwh` (annualised by `data/annualise.py`), `customer_id` and the final `smart_controls`. The share file has no postcode |
+| `monthly_energy/part-*.parquet` | 12,637,637 monthly readings (Oct 2024 to Sep 2026): `elec_import_kwh`, `gas_kwh`. A missing month = absent row; gas NaN = unmatched meter |
+| `loans.parquet` | 222,973 mortgages: `ltv` (balance unavailable until valuations exist) |
+| `splits.parquet` | train/val/test per customer (70/15/15) |
+| `_hidden/latents.parquet` | **Evaluation only:** occupancy, behaviour, noise, heat-pump SCOP, unmatched-meter and missing-month counts |
+
+- **Bills:** 537,732 homes get bills. The rest (unknown type, age, floor area or heating) are flagged `no_synthetic_bills_unknown_cell` and go down the "estimated from similar homes" or "unavailable" path. Typical medians: gas-boiler homes ≈ 7,832 kWh gas + 2,464 kWh electricity; heat pumps ≈ 4,935 kWh electricity.
+- **Customers:** 518,011, including 9,905 landlords holding 34,605 homes.
+- **Smart controls:** 22% smart thermostat (synthetic upgrade of programmer homes), 10% zone control, 51% programmer and 16% none.
+- **No conflicts injected into real records** (see ARCHITECTURE §3.1). Use the interim synthetic dataset for conflicting-data scenarios.

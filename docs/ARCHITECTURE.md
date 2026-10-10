@@ -89,10 +89,10 @@ What-if flow: user asks "what if I skip the heat pump and add solar?" → LLM ca
 LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S Wales, Southwark → England SE & Central S.
 
 **Synthetic, only where no public data exists** (seeded, rules in `config/` with a `source` field):
-- **Monthly bills per EPC home.** EPCs carry no metered use, and NEED isn't linked to EPC addresses. Annual gas and electricity are drawn from the NEED distribution for the home's matching cell (type × age × floor-area band × EPC band × region), scaled by a per-home noise factor. They're then split into months with the HDD-driven seasonal profile (gas strongly seasonal, electricity mildly). ~10% of homes lose some months and ~5% get conflicting fields, to exercise the scenario tests.
-- **`customer_id`**: one per EPC address (a few multi-property customers), used for splits.
-- **Smart-controls level**: not in EPC; drawn from documented market-share assumptions.
-- **LTV** for the lender view (3.12).
+- **Monthly bills per EPC home** (`greenhome.data.synthetic_parts`, `make real`). EPCs carry no metered use, and NEED isn't linked to EPC addresses. Annual gas and electricity come from the NEED log-linear model for the home's cell (type × age × floor-area band × EPC band), times hidden occupancy / behaviour latents and the smart-control multiplier. This is the same process as the interim generator's `EnergyWorld`, checked to match it exactly. Bills are split into months with real regional HDD (region enters through the weather), with electric heating via efficiency / SCOP and solar via self-consumption. ~10% of homes lose some months and ~2% of gas homes have unmatched meters. Homes the NEED model can't place (unknown type, age, floor area or heating, ~1%) get no bills, which exercises the "unavailable" path. **Conflicting fields are not injected into real EPC records:** relabelling real ratings would corrupt the value model and lender view. Real records already contain a few natural conflicts (~0.07%), and the interim synthetic dataset keeps its ~5% injected conflicts for the scenario tests.
+- **`customer_id`**: one per home, except ~30% of private-rented homes, which are grouped into landlord customers holding 2–5 homes in the same local authority. Used for splits (70/15/15 by customer).
+- **Smart-controls level**: EPC records none / programmer / zone control but has no smart-thermostat field. Programmer homes are upgraded to `smart_thermostat` until the book matches the documented 22% market share (flagged `smart_controls_synthetic`).
+- **LTV** for the lender view (3.12): mortgaged share by tenure (none for social housing), LTV uniform 0.25–0.90. The balance is LTV × current value, unavailable until valuations exist.
 
 **Leakage and join rules**
 - Only use an EPC lodged *before* the sale date as the features for that sale. `current_value_estimate` = last sale price HPI-indexed to today, kept separate from historical `price`.
