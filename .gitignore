@@ -4,3 +4,8 @@ data/generated/
 .env
 __pycache__/
 .venv/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
