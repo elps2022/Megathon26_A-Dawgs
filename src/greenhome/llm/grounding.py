@@ -16,7 +16,8 @@ def extract_numbers_from_text(text: str) -> list[tuple[float, str]]:
     Handles integers, floats, currency (£), percentages (%), and comma formatting.
     """
     # Matches patterns like: £350,000, 1,200 kWh, 25.4%, 150 mm, etc.
-    pattern = r"(?:£\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:%|kwh|kg|tonnes|tco2e|mm|m²|£))?"
+    # Excludes embedded numbers in tokens like CO2e, H2O, PROP_001
+    pattern = r"(?<![a-zA-Z0-9_])(?:£\s*)?([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)(?:\s*(?:%|kwh|kg|tonnes|tco2e|co2e|mm|m²|£))?(?![a-zA-Z0-9_])"
     matches = []
 
     for match in re.finditer(pattern, text, re.IGNORECASE):
@@ -41,7 +42,7 @@ def extract_numbers_from_json(obj: Any) -> list[float]:
     elif isinstance(obj, dict):
         for v in obj.values():
             numbers.extend(extract_numbers_from_json(v))
-    elif isinstance(obj, list):
+    elif isinstance(obj, (list, tuple, set)):
         for item in obj:
             numbers.extend(extract_numbers_from_json(item))
 
@@ -84,8 +85,8 @@ def verify_grounding(
     report_dict = report.model_dump() if isinstance(report, PropertyReport) else report
     known_numbers = extract_numbers_from_json(report_dict)
 
-    # Common non-hallucinated calendar years and metadata to ignore
-    ignore_set = {2024.0, 2025.0, 2026.0, 2030.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0}
+    # Common non-hallucinated calendar years to ignore
+    ignore_set = {2023.0, 2024.0, 2025.0, 2026.0, 2030.0}
 
     extracted = extract_numbers_from_text(llm_response)
     claims_to_check = [item for item in extracted if item[0] not in ignore_set]
@@ -112,7 +113,7 @@ def verify_grounding(
             elif known != 0.0 and abs(num - known) / abs(known) <= tolerance:
                 matched = True
                 break
-            elif abs(num - known) <= 1.0:  # Integer rounding
+            elif known > 100.0 and abs(num - known) <= 1.0:  # Integer rounding on large values (£/kWh)
                 matched = True
                 break
 

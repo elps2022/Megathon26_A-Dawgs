@@ -1,4 +1,4 @@
-.PHONY: data calibrate train test
+.PHONY: data calibrate train test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -10,6 +10,10 @@ calibrate:
 
 test:
 	@if command -v uv >/dev/null 2>&1; then uv run pytest; else PYTHONPATH="src:." PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/pytest; fi
+
+# Run comprehensive 4-tier evaluation matrix (models, grounding shield, invariants).
+eval:
+	@PYTHONPATH="src:." .venv/bin/python scripts/run_eval.py
 
 app:
 	@PYTHONPATH="src:." .venv/bin/streamlit run app/main.py

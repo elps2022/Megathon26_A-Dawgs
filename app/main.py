@@ -7,7 +7,6 @@ Multi-view interactive application:
 """
 
 from pathlib import Path
-import json
 import pandas as pd
 import streamlit as st
 
@@ -315,21 +314,40 @@ elif view_mode == "AI Grounding Inspector":
     rep = build_report(p)
 
     st.subheader("Simulated LLM Explanation Audit")
-    sample_text = st.text_area(
-        "LLM Output Text to Verify",
-        value=f"Your home received a Green Home Score of {rep.score.total}/100 ({rep.score.classification}). "
-              f"By completing recommended retrofits, you could save {rep.package_saving.total_kwh:,.0f} kWh per year "
-              f"and reduce your carbon footprint by {rep.package_carbon_kg:,.0f} kg CO2e.",
-        height=120,
+    preset_choice = st.selectbox(
+        "Select Evaluation Preset (or write custom text below)",
+        [
+            "1. Valid Engine-Grounded Report",
+            "2. Adversarial Trap: Fabricated Cost (£3,750)",
+            "3. Adversarial Trap: Fabricated Energy Saving (15,000 kWh)",
+            "4. Adversarial Trap: Heat Pump Electricity Savings (4,000 kWh)",
+            "5. Adversarial Trap: Disqualified Retrofit Claim (£2,750 Cavity Wall)",
+            "Custom Text",
+        ]
     )
 
-    if st.button("Run Grounding Verification Shield"):
+    default_texts = {
+        "1. Valid Engine-Grounded Report": f"Your home received a Green Home Score of {rep.score.total}/100 ({rep.score.classification}). By completing recommended retrofits, you could save {rep.package_saving.total_kwh:,.0f} kWh per year and reduce carbon by {rep.package_carbon_kg:,.0f} kg CO2e. Indicative value uplift ranges between £{rep.value['low']:,.0f} and £{rep.value['high']:,.0f}.",
+        "2. Adversarial Trap: Fabricated Cost (£3,750)": f"Your Green Home Score is {rep.score.total}/100. Installing insulation will cost you exactly £3,750.",
+        "3. Adversarial Trap: Fabricated Energy Saving (15,000 kWh)": f"By upgrading your heating system, you will save 15,000 kWh of energy every year.",
+        "4. Adversarial Trap: Heat Pump Electricity Savings (4,000 kWh)": f"Installing an air source heat pump will reduce your electricity consumption by 4,000 kWh.",
+        "5. Adversarial Trap: Disqualified Retrofit Claim (£2,750 Cavity Wall)": f"We recommend cavity wall insulation for your property to save 3,200 kWh of gas for £2,750.",
+    }
+
+    initial_text = default_texts.get(preset_choice, f"Your home received a Green Home Score of {rep.score.total}/100 ({rep.score.classification}).")
+    sample_text = st.text_area("LLM Output Text to Verify", value=initial_text, height=120)
+
+    if st.button("Run Grounding Verification Shield", type="primary"):
         result = verify_grounding(sample_text, rep)
         res_dict = result.to_dict()
 
         if res_dict["grounded"]:
-            st.success(f"100% Grounded — Zero Hallucinations Detected ({res_dict['total_claims']} numeric claims verified against engine JSON)")
+            st.success(f"✅ 100% Grounded — Zero Hallucinations Detected ({res_dict['total_claims']} numeric claims verified against engine JSON)")
+            if res_dict["verified_claims"]:
+                st.markdown("**Verified Claims:** " + " ".join([f"`{c}`" for c in res_dict["verified_claims"]]))
         else:
-            st.error(f"Ungrounded Claims Detected! ({len(res_dict['unsupported_claims'])} claims not found in engine output)")
+            st.error(f"🚨 Ungrounded Claims Detected! ({len(res_dict['unsupported_claims'])} claims not found in engine JSON)")
+            st.markdown("**Blocked Hallucinations:** " + " ".join([f"`{c}`" for c in res_dict["unsupported_claims"]]))
 
-        st.json(res_dict)
+        with st.expander("Inspection Payload"):
+            st.json(res_dict)
