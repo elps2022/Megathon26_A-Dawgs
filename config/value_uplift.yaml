@@ -1,0 +1,7 @@
+version: 1
+note: "Interim rating-uplift rule used until the value model (ARCHITECTURE 3.8: GBDT level + hedonic EPC-band uplift) exists."
+score_points_per_band: 12
+pct_per_band: {low: 1.5, high: 3.5}
+min_pct_if_any_retrofit: {low: 0.5, high: 1.5}
+max_pct: {low: 8.0, high: 14.0}
+source: "Moved unchanged from engine/report.py; EPC-band price premia of ~1.5-3.5% per band, VERIFY against Fuerst et al. (2015) and DECC (2013) 'An investigation of the effect of EPC ratings on house prices'"

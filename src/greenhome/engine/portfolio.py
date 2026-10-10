@@ -23,9 +23,9 @@ def build_portfolio(
     if loans_df is not None:
         loans_sub = loans_df[["property_id", "ltv", "outstanding_balance"]].drop_duplicates("property_id")
         df = df.merge(loans_sub, on="property_id", how="left")
-    else:
-        df["ltv"] = 0.65
-        df["outstanding_balance"] = df["current_value_estimate"].fillna(300000.0) * 0.65
+    else:  # no loan book: financed emissions are unavailable, not guessed
+        df["ltv"] = None
+        df["outstanding_balance"] = None
 
     summaries: list[PortfolioPropertySummary] = []
     total_carbon_kg = 0.0
@@ -33,6 +33,7 @@ def build_portfolio(
     potential_carbon_cut_kg = 0.0
     scores = []
     poor_count = 0
+    energy_unavailable = 0
 
     for _, row in df.iterrows():
         d = row.to_dict()
@@ -41,8 +42,8 @@ def build_portfolio(
         clean_d["data_flags"] = [f.strip() for f in str(flags_val).split(",") if f.strip() and f != "nan"] if flags_val else []
 
         # Remove loan merge cols before creating Property
-        ltv = clean_d.pop("ltv", 0.65) or 0.65
-        out_bal = clean_d.pop("outstanding_balance", 200000.0) or 200000.0
+        ltv = clean_d.pop("ltv", None)
+        out_bal = clean_d.pop("outstanding_balance", None)
 
         p = Property(**clean_d)
         report = build_report(p)
@@ -51,19 +52,22 @@ def build_portfolio(
         if report.is_poor:
             poor_count += 1
 
-        # Calculate annual operational carbon
-        annual_elec = p.annual_elec_kwh or 3200.0
-        annual_gas = p.annual_gas_kwh if p.annual_gas_kwh is not None else (12000.0 if p.gas_meter else 0.0)
-        home_carbon_kg = annual_elec * DEFAULT_EF_ELEC + annual_gas * DEFAULT_EF_GAS
+        # Annual operational carbon from the report's baseline energy (bills, or flagged similar-home estimate)
+        home_carbon_kg = None
+        if report.energy_before is not None:
+            home_carbon_kg = (report.energy_before.elec_kwh * DEFAULT_EF_ELEC
+                              + report.energy_before.gas_kwh * DEFAULT_EF_GAS)
+            total_carbon_kg += home_carbon_kg
+        else:
+            energy_unavailable += 1
 
-        # PCAF financed carbon = (outstanding balance / property value) * home carbon
-        prop_val = p.current_value_estimate or 300000.0
-        attribution_factor = min(max(out_bal / max(prop_val, 10000.0), 0.0), 1.0)
-        financed_carbon_kg = home_carbon_kg * attribution_factor
-
-        total_carbon_kg += home_carbon_kg
-        total_financed_carbon_kg += financed_carbon_kg
-        potential_carbon_cut_kg += report.package_carbon_kg
+        # PCAF financed carbon = (outstanding balance / property value) * home carbon; needs all three
+        financed_carbon_kg = None
+        if home_carbon_kg is not None and out_bal is not None and p.current_value_estimate:
+            attribution_factor = min(max(out_bal / p.current_value_estimate, 0.0), 1.0)
+            financed_carbon_kg = home_carbon_kg * attribution_factor
+            total_financed_carbon_kg += financed_carbon_kg
+        potential_carbon_cut_kg += report.package_carbon_kg or 0.0  # unavailable homes add no claimed cut
 
         summaries.append(
             PortfolioPropertySummary(
@@ -73,11 +77,11 @@ def build_portfolio(
                 score=report.score.total,
                 classification=report.score.classification,
                 is_poor=report.is_poor,
-                annual_carbon_kg=round(home_carbon_kg, 1),
-                financed_emissions_kg=round(financed_carbon_kg, 1),
+                annual_carbon_kg=None if home_carbon_kg is None else round(home_carbon_kg, 1),
+                financed_emissions_kg=None if financed_carbon_kg is None else round(financed_carbon_kg, 1),
                 improvement_potential_pct=report.improvement_potential_pct,
-                ltv=round(ltv, 3),
-                outstanding_balance=round(out_bal, 2),
+                ltv=None if ltv is None else round(ltv, 3),
+                outstanding_balance=None if out_bal is None else round(out_bal, 2),
             )
         )
 
@@ -97,5 +101,6 @@ def build_portfolio(
         total_emissions_tonnes=round(total_carbon_kg / 1000.0, 1),
         total_financed_emissions_tonnes=round(total_financed_carbon_kg / 1000.0, 1),
         potential_carbon_reduction_tonnes=round(potential_carbon_cut_kg / 1000.0, 1),
+        energy_unavailable_count=energy_unavailable,
         high_potential_targets=targets,
     )

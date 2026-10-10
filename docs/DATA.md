@@ -8,7 +8,7 @@ The data covers 10,000 EPC-like homes in Leeds, Cornwall and Southwark, with 24 
 
 | File | Grain | Columns / notes |
 |---|---|---|
-| `properties.csv` | 1 row per home | `Property` fields (ARCHITECTURE §4) plus `local_authority`, `wall_type` (solid/cavity), `has_own_roof`, `gas_meter`. The state is **at series start, before any retrofit event**. `annual_elec_kwh` / `annual_gas_kwh` are not included: compute them from monthly data (§3.2). `data_flags` is empty, so the pipeline fills it. |
+| `properties.csv` | 1 row per home | `Property` fields (ARCHITECTURE §4) plus `local_authority`, `wall_type` (solid/cavity), `has_own_roof`, `gas_meter`. The state is **at series start, before any retrofit event**. `annual_elec_kwh` / `annual_gas_kwh` are annualised from the monthly bills by `data/annualise.py` (§3.2). They're None when a fuel has no readings, and `data_flags` records low coverage or unavailability. For the ~12% of homes with a retrofit event, the annual figure mixes pre- and post-retrofit months. |
 | `monthly_energy.csv` | home × month | `elec_import_kwh` (grid import, already net of solar self-consumption), `gas_kwh`. **Missing month = row absent.** `gas_kwh` NaN = gas meter not matched (data missing). `gas_kwh` 0 = home has no gas supply (`gas_meter` false), a real zero. |
 | `retrofit_events.csv` | 1 per retrofitted home (~12%) | `retrofit`, `install_month`. Bills from that month onward reflect the change, so these give observed before/after pairs. |
 | `sales.csv` | sale | `sale_date`, `price` (2018-01 to 2026-07). A historical price, separate from `current_value_estimate` in properties. |

@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from greenhome.data.annualise import annualise_dataset
+
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "config"
 OUT = ROOT / "data" / "generated"
@@ -340,6 +342,8 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=OUT)
     args = ap.parse_args()
     tables = generate(args.seed)
+    # Annualise the monthly bills (ARCHITECTURE 3.2) so every consumer sees each home's own annual use + flags.
+    tables["properties"] = annualise_dataset(tables["properties"], tables["monthly_energy"])
     (args.out / "_hidden").mkdir(parents=True, exist_ok=True)
     for name, df in tables.items():
         df.to_csv(args.out / f"{name}.csv", index=False)

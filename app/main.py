@@ -57,6 +57,7 @@ def load_datasets():
 
 
 df_properties, df_loans = load_datasets()
+DEFAULT_FACTORS_YEAR = pd.read_csv(Path(__file__).resolve().parents[1] / "config" / "emission_factors.csv")["year"].iloc[0]
 memory_store = CustomerMemoryStore()
 
 # Sidebar Navigation
@@ -192,20 +193,31 @@ if view_mode == "Customer Experience":
         )
         st.caption(f"Rating: **{report.score.classification}**")
     with col2:
-        st.metric(
-            "Annual Fuel Savings",
-            f"{report.package_saving.total_kwh:,.0f} kWh/yr",
-            delta=f"Gas: {report.package_saving.gas_kwh:,.0f} | Elec: {report.package_saving.elec_kwh:,.0f}",
-        )
+        if report.package_saving is None:
+            st.metric("Annual Fuel Savings", "Unavailable")
+            st.caption("No usable bills and too little property data to estimate expected use.")
+        else:
+            st.metric(
+                "Annual Fuel Savings",
+                f"{report.package_saving.total_kwh:,.0f} kWh/yr",
+                delta=f"Gas: {report.package_saving.gas_kwh:,.0f} | Elec: {report.package_saving.elec_kwh:,.0f}",
+            )
     with col3:
-        st.metric(
-            "Carbon Reduction",
-            f"{report.package_carbon_kg / 1000.0:.2f} tCO₂e/yr",
-            delta="DESNZ 2024 factors",
-        )
+        if report.package_carbon_kg is None:
+            st.metric("Carbon Reduction", "Unavailable")
+        else:
+            st.metric(
+                "Carbon Reduction",
+                f"{report.package_carbon_kg / 1000.0:.2f} tCO₂e/yr",
+                delta=f"factors: {DEFAULT_FACTORS_YEAR}",
+            )
     with col4:
-        uplift_str = f"£{report.value['low']:,.0f} – £{report.value['high']:,.0f}"
-        st.metric("Indicative Property Value", uplift_str, delta=f"+{report.value['pct_low']}% to +{report.value['pct_high']}%")
+        if report.value.get("status") == "unavailable":
+            st.metric("Indicative Property Value", "Unavailable")
+            st.caption("No current valuation for this property.")
+        else:
+            uplift_str = f"£{report.value['low']:,.0f} – £{report.value['high']:,.0f}"
+            st.metric("Indicative Property Value", uplift_str, delta=f"+{report.value['pct_low']}% to +{report.value['pct_high']}%")
 
     st.markdown("---")
 
@@ -214,7 +226,11 @@ if view_mode == "Customer Experience":
 
     with col_house:
         st.subheader("Thermal Twin House Cross-Section")
-        render_thermal_house_svg(build_home_elements(p), report.score.total)
+        elements = build_home_elements(p)
+        if elements:
+            render_thermal_house_svg(elements, report.score.total)
+        else:
+            st.info("Heat-loss diagram unavailable: floor area is missing for this property.")
         st.caption("Elements glow in infrared spectrum based on specific heat loss ($W/K$). Toggling retrofits recolours the building envelope.")
 
     with col_waterfall:
@@ -327,7 +343,11 @@ elif view_mode == "AI Grounding Inspector":
     )
 
     default_texts = {
-        "1. Valid Engine-Grounded Report": f"Your home received a Green Home Score of {rep.score.total}/100 ({rep.score.classification}). By completing recommended retrofits, you could save {rep.package_saving.total_kwh:,.0f} kWh per year and reduce carbon by {rep.package_carbon_kg:,.0f} kg CO2e. Indicative value uplift ranges between £{rep.value['low']:,.0f} and £{rep.value['high']:,.0f}.",
+        "1. Valid Engine-Grounded Report": f"Your home received a Green Home Score of {rep.score.total}/100 ({rep.score.classification}). "
+            + (f"By completing recommended retrofits, you could save {rep.package_saving.total_kwh:,.0f} kWh per year and reduce carbon by {rep.package_carbon_kg:,.0f} kg CO2e. "
+               if rep.package_saving is not None else "Energy savings are not available for this property. ")
+            + (f"Indicative value uplift ranges between £{rep.value['low']:,.0f} and £{rep.value['high']:,.0f}."
+               if rep.value.get("status") != "unavailable" else "The property-value impact is unavailable (no current valuation)."),
         "2. Adversarial Trap: Fabricated Cost (£3,750)": f"Your Green Home Score is {rep.score.total}/100. Installing insulation will cost you exactly £3,750.",
         "3. Adversarial Trap: Fabricated Energy Saving (15,000 kWh)": f"By upgrading your heating system, you will save 15,000 kWh of energy every year.",
         "4. Adversarial Trap: Heat Pump Electricity Savings (4,000 kWh)": f"Installing an air source heat pump will reduce your electricity consumption by 4,000 kWh.",

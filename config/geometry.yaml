@@ -1,0 +1,7 @@
+version: 1
+source: "Simplified RdSAP-style envelope rules, moved unchanged from engine/savings.py. VERIFY against RdSAP 10 Appendix S (dimensions)."
+storeys: {flat: 1, house: 2}
+storey_height_m: 2.6
+glazing_ratio_of_floor_area: 0.20
+min_net_wall_area_m2: 20.0
+loft_thresholds_mm: {partial: 50, standard: 270}

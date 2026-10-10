@@ -137,11 +137,12 @@ class PropertyReport(BaseModel):
     improvement_potential_pct: float | None = None
     recommendations: list[RetrofitRec] = Field(default_factory=list)
     infeasible: list[Infeasible] = Field(default_factory=list)
-    package_saving: FuelDelta
-    package_carbon_kg: float
-    value: dict[str, Any]  # baseline, low, high, pct_low, pct_high, method, caveat
-    energy_before: EnergyBreakdown
-    energy_after: EnergyBreakdown
+    # None = unavailable (no usable bills and too little data to estimate expected use); never a silent 0.
+    package_saving: FuelDelta | None = None
+    package_carbon_kg: float | None = None
+    value: dict[str, Any]  # status, baseline, low, high, pct_low, pct_high, method, caveat (None when unavailable)
+    energy_before: EnergyBreakdown | None = None
+    energy_after: EnergyBreakdown | None = None
     assumptions: list[str] = Field(default_factory=list)
 
 
@@ -154,8 +155,8 @@ class PortfolioPropertySummary(BaseModel):
     score: int
     classification: str
     is_poor: bool
-    annual_carbon_kg: float
-    financed_emissions_kg: float
+    annual_carbon_kg: float | None = None  # None = energy unavailable
+    financed_emissions_kg: float | None = None  # None = valuation or balance unavailable
     improvement_potential_pct: float | None = None
     ltv: float | None = None
     outstanding_balance: float | None = None
@@ -171,4 +172,5 @@ class PortfolioSummary(BaseModel):
     total_emissions_tonnes: float
     total_financed_emissions_tonnes: float
     potential_carbon_reduction_tonnes: float
+    energy_unavailable_count: int = 0  # homes with no bills and too little data to estimate (excluded from totals)
     high_potential_targets: list[PortfolioPropertySummary] = Field(default_factory=list)

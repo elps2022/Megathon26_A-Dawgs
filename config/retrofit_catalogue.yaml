@@ -12,36 +12,43 @@ thresholds:
 
 retrofits:
   loft_insulation:
+    name: "Loft Insulation Top-Up (300mm)"
     stage: fabric
     cost_gbp: [300, 1500]
     typical_saving_pct_heating: [10, 25]
     source: "VERIFY: placeholder ranges; check Energy Saving Trust loft insulation page"
   cavity_wall_insulation:
+    name: "Cavity Wall Insulation"
     stage: fabric
     cost_gbp: [500, 1500]
     typical_saving_pct_heating: [10, 30]
     source: "VERIFY: placeholder ranges; check Energy Saving Trust cavity wall page"
   solid_wall_insulation:
+    name: "External/Internal Solid Wall Insulation"
     stage: fabric
     cost_gbp: [8000, 20000]
     typical_saving_pct_heating: [15, 35]
     source: "VERIFY: placeholder ranges; check Energy Saving Trust solid wall page"
   double_glazing:
+    name: "High-Performance Double Glazing (A-rated)"
     stage: fabric
     cost_gbp: [3000, 10000]
     typical_saving_pct_heating: [5, 15]
     source: "VERIFY: placeholder ranges; check Energy Saving Trust glazing page"
   smart_thermostat:
+    name: "Smart Thermostat & Heating Controls"
     stage: controls
     cost_gbp: [150, 400]
     typical_saving_pct_heating: [3, 10]
     source: "VERIFY: placeholder ranges; check Energy Saving Trust heating controls page"
   heat_pump:
+    name: "Air Source Heat Pump"
     stage: heating
     cost_gbp: [7000, 14000]
     typical_saving_pct_heating: null    # fuel switches gas -> electricity; use the simulator
     source: "VERIFY: placeholder cost range; check MCS / Ofgem; grants go in config/grants.yaml"
   solar_pv:
+    name: "Rooftop Solar PV Array (3.5 kWp)"
     stage: generation
     cost_gbp: [5000, 9000]
     typical_saving_pct_heating: null    # reduces grid import, not demand

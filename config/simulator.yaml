@@ -1,0 +1,17 @@
+version: 1
+note: "Interim savings-simulator assumptions used until the V1 grey-box energy model (ARCHITECTURE 3.5) is wired in."
+gas_heating_share:
+  value: 0.78
+  source: "Space-heating share of domestic gas; 1 - 0.22 hot water/cooking, as config/synthetic.yaml consumption.gas_base_share (BRE/EST 20-25%, VERIFY)"
+electric_heating_share:
+  value: 0.65
+  source: "VERIFY: space-heating share of electricity in electrically heated homes (moved from engine/savings.py)"
+heat_pump_hot_water_share_of_base_load:
+  value: 0.5
+  source: "VERIFY: share of gas base load that is hot water and moves to the heat pump (rest is cooking); moved from engine/savings.py"
+solar:
+  default_kwp: 3.5
+  yield_kwh_per_kwp: {Leeds: 850, Cornwall: 1000, Southwark: 950, default: 900}
+  self_consumption: 0.40
+  max_share_of_import: 0.50
+  source: "PVGIS-style regional yields and EST self-consumption, as config/synthetic.yaml solar block (VERIFY)"

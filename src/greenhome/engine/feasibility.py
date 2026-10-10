@@ -117,43 +117,22 @@ def assess(p: dict, catalogue: dict | None = None) -> dict:
 
 # --- Person B Engine Integration & Memory Support ---
 
-RETROFIT_CATALOGUE = {
-    "loft_insulation": {
-        "name": "Loft Insulation Top-Up (300mm)",
-        "indicative_cost": (500.0, 1200.0),
-        "priority": 1,  # Fabric
-    },
-    "cavity_wall_insulation": {
-        "name": "Cavity Wall Insulation",
-        "indicative_cost": (1000.0, 2500.0),
-        "priority": 1,  # Fabric
-    },
-    "solid_wall_insulation": {
-        "name": "External/Internal Solid Wall Insulation",
-        "indicative_cost": (7000.0, 14000.0),
-        "priority": 1,  # Fabric
-    },
-    "double_glazing": {
-        "name": "High-Performance Double Glazing (A-rated)",
-        "indicative_cost": (3500.0, 7500.0),
-        "priority": 1,  # Fabric
-    },
-    "smart_thermostat": {
-        "name": "Smart Thermostat & Heating Controls",
-        "indicative_cost": (200.0, 450.0),
-        "priority": 2,  # Controls
-    },
-    "heat_pump": {
-        "name": "Air Source Heat Pump",
-        "indicative_cost": (9000.0, 14000.0),
-        "priority": 3,  # Heating
-    },
-    "solar_pv": {
-        "name": "Rooftop Solar PV Array (3.5 kWp)",
-        "indicative_cost": (4500.0, 7500.0),
-        "priority": 4,  # Generation
-    },
-}
+def _engine_catalogue(cat: dict) -> dict:
+    """Name, cost range and stage priority per retrofit, read from config/retrofit_catalogue.yaml (with sources)."""
+    priority = {stage: i + 1 for i, stage in enumerate(cat["stages"])}
+    return {
+        key: {
+            "name": r.get("name", key.replace("_", " ").title()),
+            "indicative_cost": tuple(float(c) for c in r["cost_gbp"]),
+            "priority": priority[r["stage"]],
+            "saving_pct_heating": r.get("typical_saving_pct_heating"),
+            "source": r["source"],
+        }
+        for key, r in cat["retrofits"].items()
+    }
+
+
+RETROFIT_CATALOGUE = _engine_catalogue(load_catalogue())
 
 
 def check_feasibility(

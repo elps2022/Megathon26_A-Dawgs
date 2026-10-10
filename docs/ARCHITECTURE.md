@@ -390,9 +390,10 @@ class PropertyReport(BaseModel):
     property: Property; score: ScoreResult; score_after: ScoreResult
     is_poor: bool; key_issues: list[str]; improvement_potential_pct: float | None
     recommendations: list[RetrofitRec]; infeasible: list[Infeasible]
-    package_saving: FuelDelta; package_carbon_kg: float
-    value: dict  # baseline, low, high, pct_low, pct_high, method, caveat
-    energy_before: EnergyBreakdown; energy_after: EnergyBreakdown   # per-element heat loss feeds the house diagram
+    # None = unavailable: no usable bills and too little data to estimate expected use (never a silent 0)
+    package_saving: FuelDelta | None; package_carbon_kg: float | None
+    value: dict  # status ("estimated" | "unavailable"), baseline, low, high, pct_low, pct_high, method, caveat
+    energy_before: EnergyBreakdown | None; energy_after: EnergyBreakdown | None   # per-element heat loss feeds the house diagram
     assumptions: list[str]
 
 def build_report(p: Property, retrofits: list[str] | None = None, memory: dict | None = None,
@@ -408,14 +409,16 @@ def build_portfolio(reports: list[PropertyReport]) -> PortfolioSummary   # lende
 
 ```
 config/            score_mappings.yaml, retrofit_catalogue.yaml, emission_factors.csv,
-                   u_values.yaml, geometry.yaml, degree_days.csv, efficiencies.yaml, grants.yaml, synthetic.yaml, need_calibration.yaml
+                   u_values.yaml, geometry.yaml, degree_days.csv, efficiencies.yaml, grants.yaml, synthetic.yaml, need_calibration.yaml,
+                   simulator.yaml + value_uplift.yaml (interim, until V1 and the value model replace them)
 data/              generated/ (gitignored if large), splits/
 src/greenhome/
   schema.py
   data/            generate.py, annualise.py, degree_day_fit.py, split.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
-  models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py, value_model.py, artifacts/
+  models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py,
+                   expected_use.py (NEED similar-home fallback for missing bills), value_model.py, artifacts/
   llm/             agent.py, tools.py, grounding.py, prompts/
   memory/          store.py
 api/               main.py (FastAPI)
