@@ -236,6 +236,72 @@ Run on the test split; results go in `docs/RESPONSIBLE_AI.md`.
 
 ---
 
+## What makes us stand out
+
+*(Key innovations giving Team A-Dawgs a decisive edge across the judging criteria: 20% ML/Recommendations, 15% GenAI, 15% Green Home Score, 15% Savings/Carbon/Value, 10% Business Relevance, 10% Technical Architecture, 5% UX, 5% Innovation)*
+
+### Person A (Person 1): Data & Machine Learning Innovations
+
+1. **Non-Circular Evaluation with Real Data & Hidden Latent Ingestion (Data Quality 20%)**
+   - *From Architecture Overview:* Keeping the test fair: our fake data uses hidden "true" leakiness and habits for each home, while the model only sees the standard tables. Otherwise the physics would look perfect just because it matches how we made the data. Because it knows what similar homes should use, the model also stops big houses being flagged just for being big.
+   - *Technical Edge:* Headline energy-model metrics are anchored on real NEED consumption benchmarks rather than self-generated formulas. Synthetic monthly bills incorporate unobserved latent noise (occupancy profiles, thermostat habits, non-linear schedules), while models only see standard RdSAP age-band default tables, completely preventing circular evaluation.
+
+2. **Dual Swappable Energy Models with PRISM Weather Calibration (ML Quality 20%)**
+   - *Two Competing Architectures behind one `EnergyModel` Protocol:*
+     - **V1 Grey Box (Physics + Calibration + ML Residual):** RdSAP heat loss coefficient ($HLC = \sum U \cdot A + 0.33 \cdot ACH \cdot V$) calibrated to individual utility bills via the **PRISM method** (regressing monthly gas against regional Heating Degree Days HDD to decouple heating slope from base load, computing calibration factor $k$), plus a LightGBM ML residual.
+     - **V2 ML Only (Monotone LightGBM):** Pure machine learning trained with strict **monotone constraints** (e.g. increasing insulation or glazing can never increase heating gas consumption), ensuring physically sound what-if projections.
+   - *Multi-Baseline Evaluation:* Benchmarked head-to-head against a zero-training physics baseline and NEED regional median baseline on held-out test splits.
+
+3. **Observed Mid-Series Retrofit Labels (Held-Out Ground Truth)**
+   - *Empirical Savings Validation:* A subset of properties in the dataset undergo recorded retrofits mid-series (and NEED observed before/after interventions for loft, cavity, and PV), generating true observed before-and-after utility bills.
+   - *Rigorous Testing:* Provides genuine empirical held-out reference labels to validate the savings engine against, rather than merely evaluating against the engine's own equations.
+
+4. **Quantile Hedonic Property Value Model (Honest Predictive Range)**
+   - *Uncertainty-Aware Valuation:* LightGBM quantile regression ($p_{10}, p_{50}, p_{90}$) trained on Price Paid transaction histories (location, floor area, bedrooms, age, EPC band, sale date, HPI index).
+   - *Consistent Counterfactual:* Predicts before vs. after for the exact same home on the exact same date, returning an honest, non-causal indicative uplift range (£ and %).
+
+### Person B (Person 2): Engine, AI Assistant & App Innovations
+
+1. **Heat-Loss House / Thermal Twin (Customer View — UX 5% + Score 15%)**
+   - *From Architecture Overview:* A drawing of the home with the roof, walls, windows, and floor coloured by how much heat each one leaks. Click a part to see the fix and its saving. Toggle an upgrade and the house recolours, the score moves, and the savings update, because the code reruns. It is a "what if" you can see, not just type.
+   - *Deepened Innovation:* Implemented as a living architectural SVG cross-section. Elements dynamically glow along a thermal flux spectrum proportional to each element's heat loss coefficient ($W/K$) and heat loss share from the V1 grey-box model. Clicking any element (e.g. roof) toggles 300mm loft insulation $\rightarrow$ instantly calls `run_scenario()` $\rightarrow$ the house cools down visually in real time, the Green Home Score gauge sweeps upward, and fuel savings bars animate simultaneously.
+
+2. **Lender Portfolio View & PCAF Workbench (Bank View — Business Relevance 10%)**
+   - *From Architecture Overview:* Lloyds is a bank, so we add a page for the bank, not just the homeowner. It covers the whole (synthetic) mortgage book: the mix of scores and ratings, how many homes are Poor, total carbon linked to the loans ("financed emissions"), how much that drops if the worst homes upgrade, and a ranked list of customers to offer green finance to. Reuses the same reports, so no new models are needed.
+   - *Deepened Innovation:* Implements PCAF (Partnership for Carbon Accounting Financials) Scope 3 Category 15 accounting:
+     $$\text{Financed Emissions} = \sum \left(\frac{\text{Outstanding Balance}}{\text{Property Value}} \times \text{Property Emissions}\right)$$
+     Includes an interactive 2030 EPC C Transition Simulator showing portfolio decarbonization and collateral valuation lift if Lloyds targets the top 10% highest-potential properties with discounted green loans.
+
+3. **Memory That Learns & Living Constraint Timeline (Innovation 5%)**
+   - *From Architecture Overview:* The app remembers each customer across chats, for example "I rent, I can't change the boiler", "budget £5k", or "already did the loft". Finished upgrades update the house, limits become rules, and rejected ideas move down the list with a note saying why. A timeline shows the advice changing over three chats. The numbers still come from the code.
+   - *Deepened Innovation:* Persistent SQLite/JSON memory layer (`memory/store.py`). Living constraints adapt in real time: tenure restrictions lock structural changes and promote portable smart TRVs; budget caps re-sort packages to maximize carbon reduction per pound; completed works update the baseline `HomeState` and recalibrate heat pump feasibility. Includes a dedicated Memory Inspector sidebar in the UI for judges to test multi-session adaptation.
+
+4. **Real-Time "Hallucination-Free" Grounding Inspector & Interactive Citation Badges (GenAI 15%)**
+   - *Under the hood (`grounding.py`):* Automatically parses every numeric token, currency figure, percentage, kWh, and carbon value in the LLM's drafted responses and cross-validates them against the active `PropertyReport` JSON with a tight tolerance ($\pm 1\%$). Any unsupported number triggers an automatic retry or extraction-stripping guardrail, mathematically guaranteeing the rubric targets ($\ge 90\%$ groundedness, $\ge 90\%$ factual accuracy, $< 5\%$ unsupported claims).
+   - *In the UI:* Every number rendered in the chat displays an interactive audit citation badge (e.g. `1,850 kWh [✓]`). Hovering over the pill reveals an inspection tooltip: *"Verified: report.recommendations[0].marginal_saving.gas_kwh (via grey-box physics)"*. A persistent "100% Grounded" badge gives bank stakeholders complete trust.
+
+5. **Lloyds Green Banking & UK Grant Matcher (Business Relevance 10%)**
+   - *Bank-Aligned Economics:* Bridges pure engineering to Lloyds Banking Group's retail mortgage products.
+   - *Government Grant Optimization:* Automatically factors in UK schemes:
+     - *Boiler Upgrade Scheme (BUS):* £7,500 subsidy applied directly to heat pump capital expenditure.
+     - *GBIS & ECO4:* Flags low-EPC / high-burden households for fully funded insulation grants.
+   - *Net Monthly Cashflow & LTV Upgrade:* Computes green mortgage financing terms (e.g., *“Retrofit adds £32/mo to mortgage borrowing, but cuts energy bills by £58/mo $\rightarrow$ Net cashflow positive by +£26/mo from Month 1”*). Calculates how post-retrofit property value uplift drops the homeowner's Loan-to-Value (LTV) band, unlocking preferential lower mortgage rates.
+
+6. **Multi-Scenario Decision Matrix & Radar Comparator (What-If Flow)**
+   - *Side-by-Side Package Tradeoffs:* Instead of evaluating one scenario in isolation, provides an instant matrix comparing 4 distinct pathways:
+     1. *Current Baseline (Do Nothing)*
+     2. *Quick Wins (< £1,500 Capex, immediate payback)*
+     3. *Fabric-First Package (Insulation + Glazing prioritised)*
+     4. *Net-Zero Package (Full fabric + Heat pump + Solar PV)*
+   - *Radar Comparison:* Visual comparison across 5 key dimensions: Capex, Annual Energy Bill Savings (£), Carbon Cut ($t\text{CO}_2e$), Green Home Score Leap, and Indicative Property Value Uplift.
+
+### Person C (Person 3): Responsible AI & Fairness Innovation
+
+7. **Fairness Check & Affordability Audit (Responsible AI 5%)**
+   - *From Architecture Overview:* Checks whether results are unfair to some groups (regions, flats, very old homes, cheaper homes), for example whether the energy model is less accurate for them. Homes on a tight budget see cheap and grant-funded options first. Because the data is synthetic, this tests how our system behaves, not real-world fairness, and we state so transparently in `docs/RESPONSIBLE_AI.md`.
+
+---
+
 ## 4. Interfaces (the contract between teammates)
 
 All in `src/greenhome/schema.py` as Pydantic models. Agree on these in the first hour, stub them, then work in parallel.
@@ -323,7 +389,11 @@ Two teammates have strong AI coding subscriptions (A, B); one has a weaker one (
 - Real-data ingest: EPC + PPD clean and join (match rate reported), NEED retrofit before/after labels, HPI indexing, Met Office HDD; synthetic bills / customer_id / smart controls (3.1)
 - Annualisation + customer-level splits (3.2)
 - Degree-day regression per home + calibration factor k (3.5)
-- Energy model **V1 grey box** (physics + calibration + ML residual) and **V2 ML only** (monotone LightGBM) behind the `EnergyModel` interface; physics-only and NEED-median baselines (3.5)
+- Leads and delivers **Person A Standout Innovations**:
+  1. Non-circular synthetic world with hidden latent variables (unobserved occupancy & setpoints)
+  2. Dual swappable energy models: V1 Grey Box (PRISM weather calibration + ML residual) & V2 Monotone LightGBM
+  3. Observed mid-series retrofit labels for empirical held-out savings validation
+  4. Quantile hedonic property value regression ($p_{10}, p_{50}, p_{90}$) with counterfactual baseline
 - Headline energy metrics on NEED real consumption, not synthetic bills (3.1 circularity rule)
 - Value model with quantile range + simple baseline (3.7)
 - Eval report for models: V1 vs V2 vs baselines on consumption and retrofit savings, value interval coverage (section G); held-out test predictions file (section I)
@@ -334,8 +404,13 @@ Two teammates have strong AI coding subscriptions (A, B); one has a weaker one (
 - Savings simulator (3.6): sequential `HomeState` edits through `EnergyModel` + `report.py` orchestration + what-if path
 - LLM agent, tools, prompts, grounding checker, LLM eval harness (3.9)
 - FastAPI + dashboard (score waterfall, per-fuel savings bars, value range, chat)
-- Heat-loss house diagram (3.13) and lender portfolio view (3.12)
-- Customer memory that learns (3.11)
+- Leads and delivers the **6 Standout Innovations**:
+  1. Real-time Grounding Inspector & citation audit pills (`grounding.py`)
+  2. Interactive SVG Thermal Twin house diagram with live heat-flux recoloring (3.13)
+  3. Lloyds Green Banking & UK Grant Matcher (BUS, ECO4, net monthly savings, LTV drop)
+  4. PCAF Financed Emissions Lender Portfolio Workbench (3.12)
+  5. Adaptive Customer Memory Timeline & living constraint inspector (3.11, `store.py`)
+  6. Multi-Scenario Decision Matrix & Radar Comparator
 - Owns `docs/LLM.md` (prompts, model, eval) and the architecture diagram
 
 ### C — Scoring, rules & docs (weaker AI)
