@@ -1,0 +1,6 @@
+data/raw/
+data/generated/
+*.parquet
+.env
+__pycache__/
+.venv/

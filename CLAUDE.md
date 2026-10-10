@@ -6,13 +6,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Hackathon entry for Megathon X, Lloyds Problem Statement 2: a Green Home Score and Retrofit Recommendation Engine. Three-person team. `docs/ARCHITECTURE.md` is the source of truth for design, interfaces (section 4) and who owns what (section 6). Read it before making non-trivial changes. If you change an interface, update that file in the same change.
 
+## Hackathon timeline (IST)
+
+- Mid submission 1: Sun 11 Oct 2026, 22:30
+- Mid submission 2: Mon 12 Oct 2026, 04:30
+- Final submission: Mon 12 Oct 2026, 11:30
+
+Scope must fit these deadlines. Prefer cutting a feature over missing a submission. Keep something runnable at each deadline.
+
+## Data sources (public-first, minimal)
+
+Real: EPC domestic certificates (3 local authorities), NEED anonymised 50k sample, Land Registry Price Paid, UK HPI, Met Office monthly regional temperature (for heating degree days). Synthetic only where no public data exists: monthly bills per EPC home (NEED-calibrated), `customer_id`, smart-controls level. Raw downloads live in `data/raw/` and are never committed (EPC/PPD address fields are under Royal Mail terms).
+
 ## Git rules
 
 - Never commit, amend, or push without the user's explicit approval for that specific commit. Stage and show the diff, then ask.
 
-## Status
+## Status and commands
 
-Repo is at the scaffolding stage: no code, build, or test commands exist yet. Planned stack: Python 3.11, pandas, LightGBM, scikit-learn, Pydantic, FastAPI, Streamlit dashboard. Planned entry points are `make data`, `make train`, `make eval`, `make app`. Update this section with real commands once they exist.
+Early scaffolding: only the data layer exists (`src/greenhome/data/`), and `tests/` is empty. The target module layout is in `docs/ARCHITECTURE.md` section 5. Everything flows into one `PropertyReport` (section 4), built by `build_report(property, retrofits=None, ...)`. The dashboard, API, portfolio view and LLM all consume that report and never recompute it.
+
+The environment is managed with `uv` (`.venv/`, package installed editable via hatchling):
+
+- Setup: `uv sync` (the dev group adds pytest)
+- Synthetic data: `make data` → `data/generated/*.csv` (reads only `config/`, seed 42, ~6 s). File schemas and caveats are in `docs/DATA.md`. Never use `data/generated/_hidden/` as features.
+- Calibration tables: `make calibrate` rebuilds `config/need_calibration.yaml`, `degree_days.csv`, `price_calibration.yaml` and `hpi_index.csv` from `data/raw/`. Only this step reads raw data. Its outputs are aggregates and are committed.
+- All tests: `make test` / `uv run pytest`. Single test: `uv run pytest tests/test_x.py::test_name`
+
+FastAPI, Streamlit and the LLM SDK are planned but not yet in `pyproject.toml`; add them there when you first need them. `make train`, `make eval` and `make app` don't exist yet.
+
+Raw data quirks (`data/raw/`): the PPD CSVs (`pp-YYYY-filtered.csv`) have no header row, so use the standard Land Registry column order. NEED column metadata is `need/metadata.ods`, read with pandas plus `odfpy`. Met Office files are regional `Tmean_*.txt` series. EPC certificates have not been downloaded yet.
 
 ## Architecture invariants (graded by judges, do not break)
 

@@ -1,0 +1,24 @@
+source: HM Land Registry Price Paid Data, category A, 2018-2021 (https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads)
+years:
+- 2018
+- 2019
+- 2020
+- 2021
+median_price_by_type:
+  Leeds:
+    D: 350000
+    S: 205000
+    T: 155000
+    F: 137500
+  Cornwall:
+    D: 335000
+    S: 225000
+    T: 190000
+    F: 165000
+  Southwark:
+    D: 1608875
+    S: 1142500
+    T: 825000
+    F: 485000
+reference_date: 2018-2021 pooled; re-based with UK HPI by sale date
+n_sales: 102422

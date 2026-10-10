@@ -18,10 +18,10 @@ Problem statement: Lloyds PS2 (Megathon X). This doc is the shared contract. If 
 
 ```
  ┌──────────────────────┐
- │ Data layer            │  synthetic "world" calibrated to NEED / EPC / Land Registry
- │  properties, monthly  │  + hidden latent vars (occupancy, true fabric quality)
- │  energy, sales,       │  that models never see -> realistic noise for evaluation
- │  retrofit history     │
+ │ Data layer            │  real: EPC (3 LAs), NEED 50k, Price Paid, UK HPI, Met Office
+ │  properties, monthly  │  synthetic: monthly bills (NEED-calibrated), customer_id,
+ │  energy, sales,       │  smart controls, LTV
+ │  retrofit labels      │  retrofit labels: NEED observed before/after (loft, CWI, PV)
  └─────────┬────────────┘
            ▼
  ┌──────────────────────┐
@@ -72,14 +72,35 @@ What-if flow: user asks "what if I skip the heat pump and add solar?" → LLM ca
 
 ## 3. Key modelling decisions
 
-### 3.1 Data (synthetic world, calibrated to public data)
-- Generate ~10–20k properties. Distributions for type, age band, floor area, region, rating, heating, insulation, glazing taken from EPC open-data summary stats; consumption benchmarks from NEED tables; price levels from Land Registry regional medians.
-- Each property has **hidden latent variables** (occupancy factor, true U-values, behaviour). Consumption = physics-ish demand model × latents × seasonal profile + noise. Models only see observable fields, so there is genuine prediction error to evaluate.
-- **Avoid circular evaluation with the grey-box model (3.5).** The generator draws each home's *true* U-values, air-tightness and internal gains from distributions around the RdSAP defaults, and adds behaviour terms the physics model does not have (thermostat setpoint, heating hours, non-linear occupancy). The energy model only sees the age-band default tables. If the generator and model shared equations and parameters, accuracy would be meaningless.
-- Monthly energy: 12–24 months, with ~10% of properties missing some months and ~5% with missing/conflicting fields (e.g. rating A but single glazing) to exercise the scenario tests.
-- `retrofit_history`: a subset of homes get a retrofit mid-series, so we have *observed* before/after consumption = held-out reference labels for the savings model.
-- `sales_history`: sale prices generated from a hedonic formula (location, size, type, age, rating premium from literature, market index by date, noise). `current_value_estimate` is a separate field from historical `price`.
-- Everything seeded and reproducible: `python -m greenhome.data.generate --seed 42`.
+### 3.1 Data (real public data first, synthetic only where none exists)
+
+**Interim (now): fully synthetic dataset, same shape.** `make data` builds 10k homes from `config/` only (calibrated to NEED, Price Paid, UK HPI and Met Office via `make calibrate`). Teammates build against it while the real EPC book is prepared. Files and caveats: `docs/DATA.md`. Swapping in real EPC homes later changes `properties.csv` only; the bills stay synthetic either way.
+
+**Real sources** (raw files in `data/raw/`, never committed; sources and licences in `docs/DATA.md`):
+
+| Source | What it gives us | Used for |
+|---|---|---|
+| EPC domestic certificates (Leeds, Cornwall, Southwark) | Per-address property type, age band, floor area, rating/SAP, heating, insulation, glazing, PV, modelled energy | The property book: `Property` inputs, score, feasibility |
+| NEED anonymised 50k sample | Banded property features + **real annual gas and electricity 2005–2023** + loft (`LI_DATE`), cavity wall (`CWI_DATE`) and PV (`PV_DATE`) install years | Training/evaluating the energy models; **observed before/after retrofit savings**; calibrating synthetic bills |
+| Land Registry Price Paid (same 3 LAs, 2018–2022) | Real sale prices, date, type, tenure, new-build | Value model (joined to EPC by postcode + address) |
+| UK HPI | Monthly regional price index | Re-basing sale prices to a common date |
+| Met Office HadUK-Grid regional monthly Tmean | Regional monthly temperature | Heating degree days (15.5 °C base) |
+
+LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S Wales, Southwark → England SE & Central S.
+
+**Synthetic, only where no public data exists** (seeded, rules in `config/` with a `source` field):
+- **Monthly bills per EPC home.** EPCs carry no metered use, and NEED isn't linked to EPC addresses. Annual gas and electricity are drawn from the NEED distribution for the home's matching cell (type × age × floor-area band × EPC band × region), scaled by a per-home noise factor. They're then split into months with the HDD-driven seasonal profile (gas strongly seasonal, electricity mildly). ~10% of homes lose some months and ~5% get conflicting fields, to exercise the scenario tests.
+- **`customer_id`**: one per EPC address (a few multi-property customers), used for splits.
+- **Smart-controls level**: not in EPC; drawn from documented market-share assumptions.
+- **LTV** for the lender view (3.12).
+
+**Leakage and join rules**
+- Only use an EPC lodged *before* the sale date as the features for that sale. `current_value_estimate` = last sale price HPI-indexed to today, kept separate from historical `price`.
+- For NEED retrofit labels, compare consumption in the years before the install with the years after. Drop install years and homes with other interventions in the window.
+
+**Avoiding circular evaluation.** The synthetic bills come from NEED distributions, not from our physics model. Even so, accuracy on synthetic bills only checks the pipeline. **The headline energy-model metrics come from NEED's real consumption** (baseline MAE per fuel, and savings vs observed loft/cavity/PV before/after). The bills are only used to exercise annualisation, the degree-day fit and the dashboard.
+
+Reproducible: `python -m greenhome.data.build --seed 42` (clean + join real data, then generate the synthetic parts).
 
 ### 3.2 Annualisation
 `annual = Σ observed_months / Σ seasonal_share(observed_months)` using separate monthly profiles for gas (strongly seasonal) and electricity. If coverage < 6 months or share < 40%, mark `annual_estimate_quality = "low"`; if no data, `null` + "unavailable". Never fill with 0.
@@ -147,8 +168,8 @@ class EnergyModel(Protocol):
 
 **Evaluation**
 Compare V1, V2 and physics-only on two things:
-- baseline annual consumption on held-out homes (MAE/MAPE per fuel);
-- **retrofit savings on held-out homes from `retrofit_history`** (predicted vs "observed" before/after change, per fuel).
+- baseline consumption is evaluated on **NEED real annual consumption** (held-out homes);
+- **retrofit savings vs NEED observed before/after** for loft insulation, cavity wall and PV (predicted vs observed change, per fuel). Glazing, smart controls and heat pumps have no observed labels, so only the catalogue sanity bounds below apply to them.
 
 The catalogue's % ranges (PS table, Energy Saving Trust) are kept as sanity bounds: flag any prediction outside them in the eval report. A config switch (`energy_model: greybox | ml`) selects the version, and the dashboard can show both side by side.
 
@@ -190,7 +211,7 @@ JSON/SQLite per customer: completed retrofits, constraints ("renting, can't chan
 The engine reads memory as inputs, so the numbers still come from the engine. Demo: a timeline of the same property's recommendations changing across three chat sessions.
 
 ### 3.12 Lender portfolio view (business relevance)
-A bank-side page that aggregates `PropertyReport`s across all homes (the synthetic "mortgage book"):
+A bank-side page that aggregates `PropertyReport`s across all homes (the EPC homes in our 3 LAs as a notional "mortgage book"):
 - EPC / Green Home Score distribution, and the share of homes rated Poor or Very poor.
 - **Financed emissions** of the book (sum of per-home CO2e, PCAF-style attribution by loan-to-value; LTV synthetic and documented) and the reduction if the top-N homes retrofit.
 - Ranked list of customers with the highest improvement potential: who to contact about green finance.
@@ -211,7 +232,7 @@ Run on the test split; results go in `docs/RESPONSIBLE_AI.md`.
 - Check that the energy model's error is not systematically worse for some groups (e.g. pre-1919 solid-wall homes or flats).
 - Check that value uplift is not presented as large only in high-value areas, without the caveat.
 - **Affordability flag:** low-value or high-energy-burden homes see low-cost and grant-eligible options first (grant rules in config, with sources).
-- Document limitations: the data is synthetic, so the audit tests our pipeline's behaviour, not real-world fairness.
+- Document limitations: property and price data are real, but bills, `customer_id`, smart controls and LTV are synthetic, and only 3 LAs are covered. EPC homes skew towards recently sold or let homes. The audit tests our pipeline's behaviour on that sample, not national real-world fairness.
 
 ---
 
@@ -230,6 +251,9 @@ class Property(BaseModel):            # inputs, prediction-time-safe only
     current_value_estimate: float | None
     annual_elec_kwh: float | None; annual_gas_kwh: float | None
     data_flags: list[str]
+    # added for feasibility rules and the generator (see docs/DATA.md):
+    local_authority: str; wall_type: str  # solid | cavity
+    has_own_roof: bool; gas_meter: bool
 
 class Element(BaseModel): name: str; area_m2: float; u_value: float; heat_loss_w_per_k: float; share: float
 class HomeState(BaseModel):           # physical state; retrofits edit this
@@ -296,11 +320,11 @@ Stack: Python 3.11, pandas, LightGBM, scikit-learn, Pydantic, FastAPI. Dashboard
 Two teammates have strong AI coding subscriptions (A, B); one has a weaker one (C). C therefore owns the work that is **specification-heavy, deterministic, and easy to verify with unit tests** (small amounts of code, lots of careful reading and sourcing), which is also where many judging marks sit (Green Home Score 15%, documentation, Responsible AI). A and B own the parts that need large volumes of generated code.
 
 ### A — Data & ML (strong AI)
-- Synthetic data generator with latents, missingness, retrofit history, sales history (3.1)
+- Real-data ingest: EPC + PPD clean and join (match rate reported), NEED retrofit before/after labels, HPI indexing, Met Office HDD; synthetic bills / customer_id / smart controls (3.1)
 - Annualisation + customer-level splits (3.2)
 - Degree-day regression per home + calibration factor k (3.5)
 - Energy model **V1 grey box** (physics + calibration + ML residual) and **V2 ML only** (monotone LightGBM) behind the `EnergyModel` interface; physics-only and NEED-median baselines (3.5)
-- Generator kept independent of the physics model's tables (3.1 circularity rule)
+- Headline energy metrics on NEED real consumption, not synthetic bills (3.1 circularity rule)
 - Value model with quantile range + simple baseline (3.7)
 - Eval report for models: V1 vs V2 vs baselines on consumption and retrofit savings, value interval coverage (section G); held-out test predictions file (section I)
 - Owns `docs/DATA.md` (sources, licences, schema, generation rules, label rules, limitations)
@@ -329,7 +353,7 @@ Why this split works: C's pieces are pure functions with small inputs and output
 | When | What | From → To |
 |---|---|---|
 | Hour 1 | `schema.py` stubs + this contract agreed | B → all |
-| ~Hour 4 | First generated dataset (even rough) | A → B, C |
+| ~Hour 4 | First cleaned EPC book + synthetic bills (even rough) | A → B, C |
 | ~Hour 6 | Catalogue + emission factors + feasibility + physics config tables | C → A, B |
 | ~Hour 8 | `EnergyModel` V1 (physics + calibration) and V2 first cut | A → B |
 | ~Hour 8 | `score()` working | C → B (report) |

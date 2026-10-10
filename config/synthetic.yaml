@@ -1,0 +1,119 @@
+# Assumptions for the interim synthetic dataset (greenhome.data.generate).
+# Calibrated parts come from need_calibration.yaml, price_calibration.yaml, degree_days.csv and hpi_index.csv.
+# Everything here is a documented assumption. "verify" means re-check the figure against the cited source before the final submission.
+
+n_properties: 10000
+series_start: "2024-10-01"   # 24 monthly readings, Oct 2024 - Sep 2026 (real Met Office weather)
+n_months: 24
+
+local_authorities:
+  source: "Mix roughly follows Census 2021 TS044 accommodation type by LA; bungalow share assumed (verify)"
+  Leeds:
+    share: 0.45
+    property_type: {Detached: 0.13, Semi detached: 0.33, End terrace: 0.10, Mid terrace: 0.20, Flat: 0.20, Bungalow: 0.04}
+    age_band: {"1": 0.30, "2": 0.40, "3": 0.18, "4": 0.12}
+  Cornwall:
+    share: 0.30
+    property_type: {Detached: 0.28, Semi detached: 0.24, End terrace: 0.08, Mid terrace: 0.14, Flat: 0.14, Bungalow: 0.12}
+    age_band: {"1": 0.30, "2": 0.30, "3": 0.25, "4": 0.15}
+  Southwark:
+    share: 0.25
+    property_type: {Detached: 0.02, Semi detached: 0.05, End terrace: 0.06, Mid terrace: 0.12, Flat: 0.75, Bungalow: 0.0}
+    age_band: {"1": 0.40, "2": 0.35, "3": 0.12, "4": 0.13}
+
+floor_area_m2:
+  source: "English Housing Survey 2021-22 floor space by dwelling type, approximate medians (verify)"
+  median: {Flat: 60, Mid terrace: 80, End terrace: 85, Semi detached: 92, Detached: 145, Bungalow: 82}
+  log_sd: 0.25
+
+heating:
+  source: "English Housing Survey 2021-22 main heating; Cornwall off-gas share from DESNZ sub-national gas meter coverage (approximate, verify)"
+  gas_grid: {gas_condensing: 0.72, gas_non_condensing: 0.14, storage_heaters: 0.06, direct_electric: 0.03, heat_pump: 0.02, district: 0.03}
+  Cornwall: {gas_condensing: 0.45, gas_non_condensing: 0.10, oil: 0.18, lpg: 0.04, storage_heaters: 0.10, direct_electric: 0.06, heat_pump: 0.07}
+  flat_electric_uplift: 2.0   # flats are twice as likely to have storage/direct electric heating
+
+fabric:
+  source: "English Housing Survey 2021-22 insulation and glazing tables, approximate (verify)"
+  solid_wall_share_by_age: {"1": 0.85, "2": 0.10, "3": 0.0, "4": 0.0}
+  cavity_filled_share: 0.68
+  solid_insulated_share: 0.10
+  partial_share: 0.05
+  loft_mm: {values: [0, 50, 100, 150, 200, 270, 300], probs: [0.05, 0.05, 0.15, 0.15, 0.15, 0.40, 0.05]}
+  flat_with_own_roof: 0.30
+  glazing: {single: 0.05, partial: 0.03, double_old: 0.30, double_new: 0.60, triple: 0.02}
+  solar_share_houses: {Leeds: 0.05, Cornwall: 0.10, Southwark: 0.03}
+  solar_kwp_range: [2.5, 4.5]
+
+smart_controls:
+  source: "Assumed market shares; heating-demand multipliers are assumptions in the range of Energy Saving Trust guidance (verify)"
+  shares: {none: 0.25, programmer: 0.45, smart_thermostat: 0.22, smart_trvs: 0.08}
+  heating_multiplier: {none: 1.0, programmer: 0.98, smart_thermostat: 0.95, smart_trvs: 0.92}
+
+sap:
+  source: "Synthetic SAP rule (not RdSAP). Band thresholds are the official SAP bands. The energy models must not reuse these points."
+  base_by_age: {"1": 45, "2": 53, "3": 62, "4": 73}
+  wall: {none: 0, partial: 3, full: 7}
+  loft_max_points: 6
+  glazing: {single: -5, partial: -3, double_old: 0, double_new: 2, triple: 4}
+  heating: {gas_condensing: 4, gas_non_condensing: -4, oil: -6, lpg: -8, storage_heaters: -10, direct_electric: -15, heat_pump: 8, district: 2}
+  type: {Flat: 5, Mid terrace: 2, End terrace: 0, Semi detached: 0, Detached: -4, Bungalow: -3}
+  solar_points_per_kwp: 2
+  noise_sd: 4
+  bands: {A: 92, B: 81, C: 69, D: 55, E: 39, F: 21, G: 1}
+
+consumption:
+  source: "Log-linear NEED model (need_calibration.yaml). Its residual sd is split into hidden latents (assumed split)."
+  occupancy_log_sd: 0.30      # affects electricity and gas
+  behaviour_log_sd: 0.25      # affects heating only (setpoint, hours)
+  gas_base_share: 0.22        # hot water + cooking share of annual gas; BRE/EST typical 20-25% (verify)
+  boiler_efficiency_gas: 0.85
+  electric_heating_efficiency: {storage_heaters: 1.0, direct_electric: 1.0, heat_pump_scop: [2.6, 3.3]}
+  elec_seasonal_amplitude: 0.15
+  meter_noise_sd: 0.05        # month-to-month multiplicative noise
+
+solar:
+  source: "PVGIS-style UK yields and monthly shares, approximate; self-consumption per Energy Saving Trust (verify)"
+  yield_kwh_per_kwp: {Leeds: 850, Cornwall: 1000, Southwark: 950}
+  monthly_share: [0.035, 0.045, 0.08, 0.11, 0.13, 0.13, 0.13, 0.115, 0.09, 0.06, 0.035, 0.04]
+  self_consumption: 0.40
+
+retrofit_events:
+  source: "Effects for loft, cavity and solar are NEED observed DiD (need_calibration.yaml); the others are assumptions (verify against EST)"
+  share_of_homes: 0.12
+  install_month_range: [7, 18]   # index into the series, leaves 6+ months either side
+  assumed_effects:               # fractional change in heating demand
+    solid_wall_insulation: -0.15
+    glazing_upgrade: -0.06
+  effect_sd_fraction: 0.5        # per-home heterogeneity, sd = fraction * |mean| + 0.02
+
+missingness:
+  source: "Assumption to exercise annualisation and data-quality scenarios (PS section on missing data)"
+  homes_with_missing_months: 0.10
+  max_missing_months: 9
+  gas_meter_unmatched: 0.02
+  floor_area_missing: 0.03
+  no_epc: 0.04
+  loft_missing: 0.03
+  conflicting_fields: 0.05
+
+sales:
+  source: "Price levels from Price Paid (price_calibration.yaml) indexed with UK HPI. Rating premia vs D from Fuerst et al. (2015) Energy Economics, approximate (verify)."
+  share_with_sale: 0.35
+  date_range: ["2018-01-01", "2026-07-01"]
+  area_elasticity: 0.7
+  type_to_ppd: {Detached: D, Semi detached: S, End terrace: T, Mid terrace: T, Flat: F, Bungalow: S}
+  reference_area: {D: 145, S: 92, T: 82, F: 60}
+  rating_premium: {A: 0.05, B: 0.05, C: 0.018, D: 0.0, E: -0.007, F: -0.009, G: -0.068}
+  quality_log_sd: 0.12          # hidden, persistent per home
+  sale_noise_log_sd: 0.07
+  valuation_noise_log_sd: 0.05
+
+customers:
+  source: "Assumption: most customers hold one property, a few landlords hold several"
+  customers_per_property: 0.92
+  split: {train: 0.70, val: 0.15, test: 0.15}
+
+loans:
+  source: "Assumption for the lender view (3.12); synthetic"
+  share_mortgaged: 0.70
+  ltv_range: [0.25, 0.90]

@@ -1,0 +1,436 @@
+# source: Met Office HadUK-Grid regional monthly Tmean (https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-and-regional-series).
+# hdd = days_in_month * max(0, 15.5 - monthly mean); a monthly-mean approximation that
+# understates HDD in shoulder months. Swap for daily-based HDD if time allows.
+region,local_authority,year,month,tmean_c,hdd
+Yorkshire and The Humber,Leeds,2015,1,3.5,372.0
+Yorkshire and The Humber,Leeds,2015,2,3.5,336.0
+Yorkshire and The Humber,Leeds,2015,3,5.6,306.9
+Yorkshire and The Humber,Leeds,2015,4,8.0,225.0
+Yorkshire and The Humber,Leeds,2015,5,9.9,173.6
+Yorkshire and The Humber,Leeds,2015,6,12.9,78.0
+Yorkshire and The Humber,Leeds,2015,7,14.8,21.7
+Yorkshire and The Humber,Leeds,2015,8,15.4,3.1
+Yorkshire and The Humber,Leeds,2015,9,11.9,108.0
+Yorkshire and The Humber,Leeds,2015,10,10.1,167.4
+Yorkshire and The Humber,Leeds,2015,11,8.1,222.0
+Yorkshire and The Humber,Leeds,2015,12,8.0,232.5
+Yorkshire and The Humber,Leeds,2016,1,4.4,344.1
+Yorkshire and The Humber,Leeds,2016,2,3.9,336.4
+Yorkshire and The Humber,Leeds,2016,3,5.3,316.2
+Yorkshire and The Humber,Leeds,2016,4,6.4,273.0
+Yorkshire and The Humber,Leeds,2016,5,11.0,139.5
+Yorkshire and The Humber,Leeds,2016,6,13.5,60.0
+Yorkshire and The Humber,Leeds,2016,7,15.9,0.0
+Yorkshire and The Humber,Leeds,2016,8,16.0,0.0
+Yorkshire and The Humber,Leeds,2016,9,15.1,12.0
+Yorkshire and The Humber,Leeds,2016,10,10.1,167.4
+Yorkshire and The Humber,Leeds,2016,11,4.8,321.0
+Yorkshire and The Humber,Leeds,2016,12,5.6,306.9
+Yorkshire and The Humber,Leeds,2017,1,3.3,378.2
+Yorkshire and The Humber,Leeds,2017,2,5.3,285.6
+Yorkshire and The Humber,Leeds,2017,3,7.6,244.9
+Yorkshire and The Humber,Leeds,2017,4,8.1,222.0
+Yorkshire and The Humber,Leeds,2017,5,12.1,105.4
+Yorkshire and The Humber,Leeds,2017,6,15.0,15.0
+Yorkshire and The Humber,Leeds,2017,7,15.3,6.2
+Yorkshire and The Humber,Leeds,2017,8,15.0,15.5
+Yorkshire and The Humber,Leeds,2017,9,12.9,78.0
+Yorkshire and The Humber,Leeds,2017,10,11.6,120.9
+Yorkshire and The Humber,Leeds,2017,11,5.7,294.0
+Yorkshire and The Humber,Leeds,2017,12,3.8,362.7
+Yorkshire and The Humber,Leeds,2018,1,4.0,356.5
+Yorkshire and The Humber,Leeds,2018,2,2.1,375.2
+Yorkshire and The Humber,Leeds,2018,3,3.8,362.7
+Yorkshire and The Humber,Leeds,2018,4,8.6,207.0
+Yorkshire and The Humber,Leeds,2018,5,12.2,102.3
+Yorkshire and The Humber,Leeds,2018,6,14.6,27.0
+Yorkshire and The Humber,Leeds,2018,7,17.8,0.0
+Yorkshire and The Humber,Leeds,2018,8,16.1,0.0
+Yorkshire and The Humber,Leeds,2018,9,12.9,78.0
+Yorkshire and The Humber,Leeds,2018,10,9.9,173.6
+Yorkshire and The Humber,Leeds,2018,11,7.4,243.0
+Yorkshire and The Humber,Leeds,2018,12,5.3,316.2
+Yorkshire and The Humber,Leeds,2019,1,3.4,375.1
+Yorkshire and The Humber,Leeds,2019,2,6.0,266.0
+Yorkshire and The Humber,Leeds,2019,3,7.0,263.5
+Yorkshire and The Humber,Leeds,2019,4,7.8,231.0
+Yorkshire and The Humber,Leeds,2019,5,10.3,161.2
+Yorkshire and The Humber,Leeds,2019,6,13.4,63.0
+Yorkshire and The Humber,Leeds,2019,7,17.0,0.0
+Yorkshire and The Humber,Leeds,2019,8,16.5,0.0
+Yorkshire and The Humber,Leeds,2019,9,13.3,66.0
+Yorkshire and The Humber,Leeds,2019,10,8.8,207.7
+Yorkshire and The Humber,Leeds,2019,11,5.5,300.0
+Yorkshire and The Humber,Leeds,2019,12,4.9,328.6
+Yorkshire and The Humber,Leeds,2020,1,5.7,303.8
+Yorkshire and The Humber,Leeds,2020,2,5.2,298.7
+Yorkshire and The Humber,Leeds,2020,3,5.8,300.7
+Yorkshire and The Humber,Leeds,2020,4,9.1,192.0
+Yorkshire and The Humber,Leeds,2020,5,11.7,117.8
+Yorkshire and The Humber,Leeds,2020,6,14.0,45.0
+Yorkshire and The Humber,Leeds,2020,7,14.8,21.7
+Yorkshire and The Humber,Leeds,2020,8,16.0,0.0
+Yorkshire and The Humber,Leeds,2020,9,13.0,75.0
+Yorkshire and The Humber,Leeds,2020,10,9.5,186.0
+Yorkshire and The Humber,Leeds,2020,11,7.7,234.0
+Yorkshire and The Humber,Leeds,2020,12,4.0,356.5
+Yorkshire and The Humber,Leeds,2021,1,1.9,421.6
+Yorkshire and The Humber,Leeds,2021,2,4.0,322.0
+Yorkshire and The Humber,Leeds,2021,3,6.9,266.6
+Yorkshire and The Humber,Leeds,2021,4,5.5,300.0
+Yorkshire and The Humber,Leeds,2021,5,9.2,195.3
+Yorkshire and The Humber,Leeds,2021,6,14.6,27.0
+Yorkshire and The Humber,Leeds,2021,7,16.9,0.0
+Yorkshire and The Humber,Leeds,2021,8,15.4,3.1
+Yorkshire and The Humber,Leeds,2021,9,15.3,6.0
+Yorkshire and The Humber,Leeds,2021,10,11.1,136.4
+Yorkshire and The Humber,Leeds,2021,11,7.0,255.0
+Yorkshire and The Humber,Leeds,2021,12,4.8,331.7
+Yorkshire and The Humber,Leeds,2022,1,4.3,347.2
+Yorkshire and The Humber,Leeds,2022,2,5.7,274.4
+Yorkshire and The Humber,Leeds,2022,3,6.9,266.6
+Yorkshire and The Humber,Leeds,2022,4,8.2,219.0
+Yorkshire and The Humber,Leeds,2022,5,12.2,102.3
+Yorkshire and The Humber,Leeds,2022,6,14.4,33.0
+Yorkshire and The Humber,Leeds,2022,7,17.6,0.0
+Yorkshire and The Humber,Leeds,2022,8,17.2,0.0
+Yorkshire and The Humber,Leeds,2022,9,13.7,54.0
+Yorkshire and The Humber,Leeds,2022,10,11.7,117.8
+Yorkshire and The Humber,Leeds,2022,11,8.0,225.0
+Yorkshire and The Humber,Leeds,2022,12,2.9,390.6
+Yorkshire and The Humber,Leeds,2023,1,4.4,344.1
+Yorkshire and The Humber,Leeds,2023,2,6.1,263.2
+Yorkshire and The Humber,Leeds,2023,3,6.1,291.4
+Yorkshire and The Humber,Leeds,2023,4,7.7,234.0
+Yorkshire and The Humber,Leeds,2023,5,11.8,114.7
+Yorkshire and The Humber,Leeds,2023,6,15.4,3.0
+Yorkshire and The Humber,Leeds,2023,7,15.5,0.0
+Yorkshire and The Humber,Leeds,2023,8,15.7,0.0
+Yorkshire and The Humber,Leeds,2023,9,15.6,0.0
+Yorkshire and The Humber,Leeds,2023,10,10.9,142.6
+Yorkshire and The Humber,Leeds,2023,11,6.4,273.0
+Yorkshire and The Humber,Leeds,2023,12,5.7,303.8
+Yorkshire and The Humber,Leeds,2024,1,4.0,356.5
+Yorkshire and The Humber,Leeds,2024,2,6.7,255.2
+Yorkshire and The Humber,Leeds,2024,3,7.0,263.5
+Yorkshire and The Humber,Leeds,2024,4,8.4,213.0
+Yorkshire and The Humber,Leeds,2024,5,13.2,71.3
+Yorkshire and The Humber,Leeds,2024,6,13.5,60.0
+Yorkshire and The Humber,Leeds,2024,7,15.4,3.1
+Yorkshire and The Humber,Leeds,2024,8,16.1,0.0
+Yorkshire and The Humber,Leeds,2024,9,12.8,81.0
+Yorkshire and The Humber,Leeds,2024,10,10.6,151.9
+Yorkshire and The Humber,Leeds,2024,11,6.3,276.0
+Yorkshire and The Humber,Leeds,2024,12,6.5,279.0
+Yorkshire and The Humber,Leeds,2025,1,2.5,403.0
+Yorkshire and The Humber,Leeds,2025,2,4.6,305.2
+Yorkshire and The Humber,Leeds,2025,3,7.1,260.4
+Yorkshire and The Humber,Leeds,2025,4,9.5,180.0
+Yorkshire and The Humber,Leeds,2025,5,11.9,111.6
+Yorkshire and The Humber,Leeds,2025,6,16.2,0.0
+Yorkshire and The Humber,Leeds,2025,7,17.1,0.0
+Yorkshire and The Humber,Leeds,2025,8,16.8,0.0
+Yorkshire and The Humber,Leeds,2025,9,13.3,66.0
+Yorkshire and The Humber,Leeds,2025,10,10.6,151.9
+Yorkshire and The Humber,Leeds,2025,11,7.3,246.0
+Yorkshire and The Humber,Leeds,2025,12,6.1,291.4
+Yorkshire and The Humber,Leeds,2026,1,2.9,390.6
+Yorkshire and The Humber,Leeds,2026,2,5.5,280.0
+Yorkshire and The Humber,Leeds,2026,3,7.3,254.2
+Yorkshire and The Humber,Leeds,2026,4,9.0,195.0
+Yorkshire and The Humber,Leeds,2026,5,12.3,99.2
+Yorkshire and The Humber,Leeds,2026,6,16.2,0.0
+Yorkshire and The Humber,Leeds,2026,7,17.8,0.0
+Yorkshire and The Humber,Leeds,2026,8,16.9,0.0
+Yorkshire and The Humber,Leeds,2026,9,15.1,12.0
+Yorkshire and The Humber,Leeds,2026,10,4.82,331.1
+Yorkshire and The Humber,Leeds,2026,11,9.55,178.5
+Yorkshire and The Humber,Leeds,2026,12,16.97,0.0
+South West,Cornwall,2015,1,5.3,316.2
+South West,Cornwall,2015,2,4.0,322.0
+South West,Cornwall,2015,3,6.3,285.2
+South West,Cornwall,2015,4,9.2,189.0
+South West,Cornwall,2015,5,10.6,151.9
+South West,Cornwall,2015,6,13.7,54.0
+South West,Cornwall,2015,7,15.2,9.3
+South West,Cornwall,2015,8,14.9,18.6
+South West,Cornwall,2015,9,12.6,87.0
+South West,Cornwall,2015,10,10.8,145.7
+South West,Cornwall,2015,11,9.8,171.0
+South West,Cornwall,2015,12,10.0,170.5
+South West,Cornwall,2016,1,6.1,291.4
+South West,Cornwall,2016,2,5.2,298.7
+South West,Cornwall,2016,3,5.8,300.7
+South West,Cornwall,2016,4,7.5,240.0
+South West,Cornwall,2016,5,12.2,102.3
+South West,Cornwall,2016,6,14.8,21.0
+South West,Cornwall,2016,7,16.0,0.0
+South West,Cornwall,2016,8,16.2,0.0
+South West,Cornwall,2016,9,15.2,9.0
+South West,Cornwall,2016,10,10.5,155.0
+South West,Cornwall,2016,11,6.4,273.0
+South West,Cornwall,2016,12,6.6,275.9
+South West,Cornwall,2017,1,4.9,328.6
+South West,Cornwall,2017,2,6.2,260.4
+South West,Cornwall,2017,3,8.2,226.3
+South West,Cornwall,2017,4,8.7,204.0
+South West,Cornwall,2017,5,12.6,89.9
+South West,Cornwall,2017,6,15.2,9.0
+South West,Cornwall,2017,7,16.1,0.0
+South West,Cornwall,2017,8,15.1,12.4
+South West,Cornwall,2017,9,13.3,66.0
+South West,Cornwall,2017,10,12.2,102.3
+South West,Cornwall,2017,11,7.3,246.0
+South West,Cornwall,2017,12,5.7,303.8
+South West,Cornwall,2018,1,5.7,303.8
+South West,Cornwall,2018,2,3.3,341.6
+South West,Cornwall,2018,3,4.8,331.7
+South West,Cornwall,2018,4,9.4,183.0
+South West,Cornwall,2018,5,12.4,96.1
+South West,Cornwall,2018,6,16.1,0.0
+South West,Cornwall,2018,7,18.1,0.0
+South West,Cornwall,2018,8,16.0,0.0
+South West,Cornwall,2018,9,13.5,60.0
+South West,Cornwall,2018,10,10.3,161.2
+South West,Cornwall,2018,11,8.2,219.0
+South West,Cornwall,2018,12,7.6,244.9
+South West,Cornwall,2019,1,4.6,337.9
+South West,Cornwall,2019,2,6.9,240.8
+South West,Cornwall,2019,3,7.8,238.7
+South West,Cornwall,2019,4,9.2,189.0
+South West,Cornwall,2019,5,10.9,142.6
+South West,Cornwall,2019,6,13.9,48.0
+South West,Cornwall,2019,7,16.9,0.0
+South West,Cornwall,2019,8,16.4,0.0
+South West,Cornwall,2019,9,14.2,39.0
+South West,Cornwall,2019,10,10.4,158.1
+South West,Cornwall,2019,11,6.8,261.0
+South West,Cornwall,2019,12,6.3,285.2
+South West,Cornwall,2020,1,6.3,285.2
+South West,Cornwall,2020,2,6.6,258.1
+South West,Cornwall,2020,3,6.6,275.9
+South West,Cornwall,2020,4,10.6,147.0
+South West,Cornwall,2020,5,12.3,99.2
+South West,Cornwall,2020,6,14.4,33.0
+South West,Cornwall,2020,7,15.1,12.4
+South West,Cornwall,2020,8,16.8,0.0
+South West,Cornwall,2020,9,13.9,48.0
+South West,Cornwall,2020,10,10.4,158.1
+South West,Cornwall,2020,11,8.6,207.0
+South West,Cornwall,2020,12,5.7,303.8
+South West,Cornwall,2021,1,3.9,359.6
+South West,Cornwall,2021,2,5.3,285.6
+South West,Cornwall,2021,3,7.0,263.5
+South West,Cornwall,2021,4,6.8,261.0
+South West,Cornwall,2021,5,9.8,176.7
+South West,Cornwall,2021,6,14.7,24.0
+South West,Cornwall,2021,7,17.1,0.0
+South West,Cornwall,2021,8,15.3,6.2
+South West,Cornwall,2021,9,15.3,6.0
+South West,Cornwall,2021,10,12.1,105.4
+South West,Cornwall,2021,11,7.7,234.0
+South West,Cornwall,2021,12,7.4,251.1
+South West,Cornwall,2022,1,5.2,319.3
+South West,Cornwall,2022,2,7.0,238.0
+South West,Cornwall,2022,3,7.8,238.7
+South West,Cornwall,2022,4,8.9,198.0
+South West,Cornwall,2022,5,12.3,99.2
+South West,Cornwall,2022,6,14.2,39.0
+South West,Cornwall,2022,7,17.1,0.0
+South West,Cornwall,2022,8,17.9,0.0
+South West,Cornwall,2022,9,14.1,42.0
+South West,Cornwall,2022,10,12.8,83.7
+South West,Cornwall,2022,11,9.3,186.0
+South West,Cornwall,2022,12,4.2,350.3
+South West,Cornwall,2023,1,5.4,313.1
+South West,Cornwall,2023,2,6.1,263.2
+South West,Cornwall,2023,3,7.1,260.4
+South West,Cornwall,2023,4,8.7,204.0
+South West,Cornwall,2023,5,12.5,93.0
+South West,Cornwall,2023,6,16.8,0.0
+South West,Cornwall,2023,7,15.6,0.0
+South West,Cornwall,2023,8,15.9,0.0
+South West,Cornwall,2023,9,16.3,0.0
+South West,Cornwall,2023,10,12.5,93.0
+South West,Cornwall,2023,11,8.1,222.0
+South West,Cornwall,2023,12,7.8,238.7
+South West,Cornwall,2024,1,4.8,331.7
+South West,Cornwall,2024,2,7.8,223.3
+South West,Cornwall,2024,3,7.8,238.7
+South West,Cornwall,2024,4,9.3,186.0
+South West,Cornwall,2024,5,12.9,80.6
+South West,Cornwall,2024,6,13.6,57.0
+South West,Cornwall,2024,7,15.4,3.1
+South West,Cornwall,2024,8,16.2,0.0
+South West,Cornwall,2024,9,13.6,57.0
+South West,Cornwall,2024,10,11.6,120.9
+South West,Cornwall,2024,11,8.3,216.0
+South West,Cornwall,2024,12,7.1,260.4
+South West,Cornwall,2025,1,4.3,347.2
+South West,Cornwall,2025,2,5.5,280.0
+South West,Cornwall,2025,3,7.5,248.0
+South West,Cornwall,2025,4,10.4,153.0
+South West,Cornwall,2025,5,13.1,74.4
+South West,Cornwall,2025,6,16.1,0.0
+South West,Cornwall,2025,7,17.5,0.0
+South West,Cornwall,2025,8,17.0,0.0
+South West,Cornwall,2025,9,13.4,63.0
+South West,Cornwall,2025,10,11.4,127.1
+South West,Cornwall,2025,11,8.7,204.0
+South West,Cornwall,2025,12,6.8,269.7
+South West,Cornwall,2026,1,4.8,331.7
+South West,Cornwall,2026,2,7.4,226.8
+South West,Cornwall,2026,3,8.2,226.3
+South West,Cornwall,2026,4,10.1,162.0
+South West,Cornwall,2026,5,13.3,68.2
+South West,Cornwall,2026,6,16.5,0.0
+South West,Cornwall,2026,7,19.1,0.0
+South West,Cornwall,2026,8,17.9,0.0
+South West,Cornwall,2026,9,15.6,0.0
+South West,Cornwall,2026,10,6.33,284.3
+South West,Cornwall,2026,11,10.52,149.4
+South West,Cornwall,2026,12,17.86,0.0
+London,Southwark,2015,1,4.9,328.6
+London,Southwark,2015,2,4.1,319.2
+London,Southwark,2015,3,6.9,266.6
+London,Southwark,2015,4,9.6,177.0
+London,Southwark,2015,5,11.7,117.8
+London,Southwark,2015,6,14.9,18.0
+London,Southwark,2015,7,16.8,0.0
+London,Southwark,2015,8,16.5,0.0
+London,Southwark,2015,9,13.1,72.0
+London,Southwark,2015,10,11.3,130.2
+London,Southwark,2015,11,10.0,165.0
+London,Southwark,2015,12,10.5,155.0
+London,Southwark,2016,1,5.7,303.8
+London,Southwark,2016,2,5.4,292.9
+London,Southwark,2016,3,6.1,291.4
+London,Southwark,2016,4,8.1,222.0
+London,Southwark,2016,5,13.0,77.5
+London,Southwark,2016,6,15.4,3.0
+London,Southwark,2016,7,17.5,0.0
+London,Southwark,2016,8,17.8,0.0
+London,Southwark,2016,9,16.7,0.0
+London,Southwark,2016,10,11.1,136.4
+London,Southwark,2016,11,6.4,273.0
+London,Southwark,2016,12,6.1,291.4
+London,Southwark,2017,1,3.7,365.8
+London,Southwark,2017,2,6.4,254.8
+London,Southwark,2017,3,9.2,195.3
+London,Southwark,2017,4,9.4,183.0
+London,Southwark,2017,5,13.5,62.0
+London,Southwark,2017,6,16.9,0.0
+London,Southwark,2017,7,17.7,0.0
+London,Southwark,2017,8,16.4,0.0
+London,Southwark,2017,9,14.0,45.0
+London,Southwark,2017,10,12.6,89.9
+London,Southwark,2017,11,7.0,255.0
+London,Southwark,2017,12,5.2,319.3
+London,Southwark,2018,1,6.0,294.5
+London,Southwark,2018,2,2.9,352.8
+London,Southwark,2018,3,5.4,313.1
+London,Southwark,2018,4,10.5,150.0
+London,Southwark,2018,5,13.7,55.8
+London,Southwark,2018,6,16.6,0.0
+London,Southwark,2018,7,19.9,0.0
+London,Southwark,2018,8,17.5,0.0
+London,Southwark,2018,9,14.3,36.0
+London,Southwark,2018,10,11.2,133.3
+London,Southwark,2018,11,8.4,213.0
+London,Southwark,2018,12,7.2,257.3
+London,Southwark,2019,1,3.8,362.7
+London,Southwark,2019,2,6.6,249.2
+London,Southwark,2019,3,8.5,217.0
+London,Southwark,2019,4,9.5,180.0
+London,Southwark,2019,5,11.8,114.7
+London,Southwark,2019,6,15.2,9.0
+London,Southwark,2019,7,18.2,0.0
+London,Southwark,2019,8,17.6,0.0
+London,Southwark,2019,9,15.0,15.0
+London,Southwark,2019,10,11.1,136.4
+London,Southwark,2019,11,6.7,264.0
+London,Southwark,2019,12,6.3,285.2
+London,Southwark,2020,1,6.5,279.0
+London,Southwark,2020,2,7.0,246.5
+London,Southwark,2020,3,7.0,263.5
+London,Southwark,2020,4,10.9,138.0
+London,Southwark,2020,5,13.1,74.4
+London,Southwark,2020,6,15.8,0.0
+London,Southwark,2020,7,16.8,0.0
+London,Southwark,2020,8,18.8,0.0
+London,Southwark,2020,9,15.1,12.0
+London,Southwark,2020,10,11.1,136.4
+London,Southwark,2020,11,9.1,192.0
+London,Southwark,2020,12,5.5,310.0
+London,Southwark,2021,1,3.7,365.8
+London,Southwark,2021,2,5.4,282.8
+London,Southwark,2021,3,7.1,260.4
+London,Southwark,2021,4,6.6,267.0
+London,Southwark,2021,5,10.6,151.9
+London,Southwark,2021,6,16.1,0.0
+London,Southwark,2021,7,17.9,0.0
+London,Southwark,2021,8,16.3,0.0
+London,Southwark,2021,9,16.3,0.0
+London,Southwark,2021,10,12.4,96.1
+London,Southwark,2021,11,7.4,243.0
+London,Southwark,2021,12,7.1,260.4
+London,Southwark,2022,1,4.8,331.7
+London,Southwark,2022,2,7.1,235.2
+London,Southwark,2022,3,8.1,229.4
+London,Southwark,2022,4,9.5,180.0
+London,Southwark,2022,5,13.3,68.2
+London,Southwark,2022,6,15.5,0.0
+London,Southwark,2022,7,19.0,0.0
+London,Southwark,2022,8,19.5,0.0
+London,Southwark,2022,9,14.9,18.0
+London,Southwark,2022,10,13.6,58.9
+London,Southwark,2022,11,9.8,171.0
+London,Southwark,2022,12,4.1,353.4
+London,Southwark,2023,1,5.2,319.3
+London,Southwark,2023,2,6.2,260.4
+London,Southwark,2023,3,7.3,254.2
+London,Southwark,2023,4,8.9,198.0
+London,Southwark,2023,5,12.7,86.8
+London,Southwark,2023,6,17.6,0.0
+London,Southwark,2023,7,16.8,0.0
+London,Southwark,2023,8,16.9,0.0
+London,Southwark,2023,9,17.7,0.0
+London,Southwark,2023,10,13.2,71.3
+London,Southwark,2023,11,8.0,225.0
+London,Southwark,2023,12,7.7,241.8
+London,Southwark,2024,1,4.7,334.8
+London,Southwark,2024,2,8.2,211.7
+London,Southwark,2024,3,8.5,217.0
+London,Southwark,2024,4,10.0,165.0
+London,Southwark,2024,5,13.7,55.8
+London,Southwark,2024,6,14.7,24.0
+London,Southwark,2024,7,17.0,0.0
+London,Southwark,2024,8,17.9,0.0
+London,Southwark,2024,9,14.7,24.0
+London,Southwark,2024,10,12.1,105.4
+London,Southwark,2024,11,7.9,228.0
+London,Southwark,2024,12,7.0,263.5
+London,Southwark,2025,1,3.8,362.7
+London,Southwark,2025,2,5.1,291.2
+London,Southwark,2025,3,7.8,238.7
+London,Southwark,2025,4,10.9,138.0
+London,Southwark,2025,5,13.8,52.7
+London,Southwark,2025,6,17.7,0.0
+London,Southwark,2025,7,19.0,0.0
+London,Southwark,2025,8,17.9,0.0
+London,Southwark,2025,9,14.4,33.0
+London,Southwark,2025,10,11.9,111.6
+London,Southwark,2025,11,8.9,198.0
+London,Southwark,2025,12,6.9,266.6
+London,Southwark,2026,1,4.9,328.6
+London,Southwark,2026,2,7.9,212.8
+London,Southwark,2026,3,8.4,220.1
+London,Southwark,2026,4,10.7,144.0
+London,Southwark,2026,5,14.5,31.0
+London,Southwark,2026,6,18.1,0.0
+London,Southwark,2026,7,20.7,0.0
+London,Southwark,2026,8,19.7,0.0
+London,Southwark,2026,9,17.1,0.0
+London,Southwark,2026,10,6.49,279.3
+London,Southwark,2026,11,11.22,128.4
+London,Southwark,2026,12,19.5,0.0

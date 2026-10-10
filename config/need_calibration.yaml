@@ -1,0 +1,117 @@
+source: DESNZ NEED anonymised data 2025, 50k sample (https://www.gov.uk/government/statistics/national-energy-efficiency-data-framework-need-anonymised-data-2025)
+year: 2023
+bands:
+  PROP_AGE_BAND:
+    '1': before 1930
+    '2': 1930-1972
+    '3': 1973-1999
+    '4': 2000 or later
+  FLOOR_AREA_BAND:
+    '1': <=50
+    '2': 51-100
+    '3': 101-150
+    '4': 151-200
+    '5': '>200'
+gas_kwh_gas_heated:
+  intercept: 8.6321
+  effects:
+    PROP_TYPE:
+      Bungalow: 0.0
+      Detached: 0.1303
+      End terrace: -0.0314
+      Flat: -0.1829
+      Mid terrace: -0.1413
+      Semi detached: -0.0169
+    FLOOR_AREA_BAND:
+      '1': 0.0
+      '2': 0.268
+      '3': 0.532
+      '4': 0.8212
+      '5': 1.1021
+    PROP_AGE_BAND:
+      '1': 0.0
+      '2': -0.0334
+      '3': -0.1813
+      '4': -0.2153
+    EPC:
+      A/B: 0.0
+      C: 0.21
+      D: 0.3042
+      E: 0.3744
+      F/G: 0.3568
+  resid_sd: 0.5473
+  n: 23940
+elec_kwh_gas_heated:
+  intercept: 7.412
+  effects:
+    PROP_TYPE:
+      Bungalow: 0.0
+      Detached: 0.2089
+      End terrace: 0.1214
+      Flat: 0.0036
+      Mid terrace: 0.0492
+      Semi detached: 0.1564
+    FLOOR_AREA_BAND:
+      '1': 0.0
+      '2': 0.2369
+      '3': 0.4559
+      '4': 0.6815
+      '5': 0.9526
+    PROP_AGE_BAND:
+      '1': 0.0
+      '2': 0.0433
+      '3': -0.0431
+      '4': -0.0835
+    EPC:
+      A/B: 0.0
+      C: 0.0277
+      D: 0.0383
+      E: 0.0459
+      F/G: 0.1079
+  resid_sd: 0.5651
+  n: 23665
+elec_kwh_not_gas_heated:
+  intercept: 7.0894
+  effects:
+    PROP_TYPE:
+      Bungalow: 0.0
+      Detached: 0.0127
+      End terrace: -0.0017
+      Flat: 0.1687
+      Mid terrace: 0.031
+      Semi detached: 0.0371
+    FLOOR_AREA_BAND:
+      '1': 0.0
+      '2': 0.2535
+      '3': 0.3943
+      '4': 0.6013
+      '5': 0.8402
+    PROP_AGE_BAND:
+      '1': 0.0
+      '2': 0.1127
+      '3': 0.2238
+      '4': 0.3998
+    EPC:
+      A/B: 0.0
+      C: 0.331
+      D: 0.6197
+      E: 0.8287
+      F/G: 0.8425
+  resid_sd: 0.7455
+  n: 6864
+retrofit_effects:
+  loft_insulation:
+    fuel: gas
+    median_fractional_change: -0.0245
+    n_treated: 2623
+    method: DiD of median post/pre ratio (2y each side), install years 2010-2020
+  cavity_wall_insulation:
+    fuel: gas
+    median_fractional_change: -0.1015
+    n_treated: 1819
+    method: DiD of median post/pre ratio (2y each side), install years 2010-2020
+  solar_pv:
+    fuel: electricity
+    median_fractional_change: -0.124
+    n_treated: 284
+    method: DiD of median post/pre ratio (2y each side), install years 2010-2020
