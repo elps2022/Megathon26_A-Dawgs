@@ -1,0 +1,48 @@
+version: 1
+note: >
+  Stage order follows docs/ARCHITECTURE.md 3.9: fabric, then controls, then heating,
+  then generation. All cost and saving numbers below are UNVERIFIED placeholders.
+  Replace each with a sourced figure (Energy Saving Trust, Ofgem, MCS) before submission.
+
+stages: [fabric, controls, heating, generation]
+
+thresholds:
+  loft_full_mm: 270            # VERIFY: commonly quoted full-depth loft target
+  heat_pump_min_loft_mm: 100   # VERIFY: below this, insulate before a heat pump
+
+retrofits:
+  loft_insulation:
+    stage: fabric
+    cost_gbp: [300, 1500]
+    typical_saving_pct_heating: [10, 25]
+    source: "VERIFY: placeholder ranges; check Energy Saving Trust loft insulation page"
+  cavity_wall_insulation:
+    stage: fabric
+    cost_gbp: [500, 1500]
+    typical_saving_pct_heating: [10, 30]
+    source: "VERIFY: placeholder ranges; check Energy Saving Trust cavity wall page"
+  solid_wall_insulation:
+    stage: fabric
+    cost_gbp: [8000, 20000]
+    typical_saving_pct_heating: [15, 35]
+    source: "VERIFY: placeholder ranges; check Energy Saving Trust solid wall page"
+  double_glazing:
+    stage: fabric
+    cost_gbp: [3000, 10000]
+    typical_saving_pct_heating: [5, 15]
+    source: "VERIFY: placeholder ranges; check Energy Saving Trust glazing page"
+  smart_thermostat:
+    stage: controls
+    cost_gbp: [150, 400]
+    typical_saving_pct_heating: [3, 10]
+    source: "VERIFY: placeholder ranges; check Energy Saving Trust heating controls page"
+  heat_pump:
+    stage: heating
+    cost_gbp: [7000, 14000]
+    typical_saving_pct_heating: null    # fuel switches gas -> electricity; use the simulator
+    source: "VERIFY: placeholder cost range; check MCS / Ofgem; grants go in config/grants.yaml"
+  solar_pv:
+    stage: generation
+    cost_gbp: [5000, 9000]
+    typical_saving_pct_heating: null    # reduces grid import, not demand
+    source: "VERIFY: placeholder cost range; check Energy Saving Trust solar PV page"
