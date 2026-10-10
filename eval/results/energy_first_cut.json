@@ -1,0 +1,176 @@
+{
+  "gas": {
+    "n_train": 25732,
+    "n_val": 5514,
+    "cv": {
+      "global_median": {
+        "mae_kwh": 5002.74,
+        "mape_pct": 65.896,
+        "median_ape_pct": 36.56,
+        "r2_log": -0.0099,
+        "mae_kwh_sd": 29.6
+      },
+      "cell_median": {
+        "mae_kwh": 4241.04,
+        "mape_pct": 52.844,
+        "median_ape_pct": 30.936,
+        "r2_log": 0.2416,
+        "mae_kwh_sd": 17.2
+      },
+      "log_linear": {
+        "mae_kwh": 4118.18,
+        "mape_pct": 50.07,
+        "median_ape_pct": 30.158,
+        "r2_log": 0.278,
+        "mae_kwh_sd": 21.4
+      },
+      "lightgbm": {
+        "mae_kwh": 4117.42,
+        "mape_pct": 50.078,
+        "median_ape_pct": 30.21,
+        "r2_log": 0.2806,
+        "mae_kwh_sd": 27.2
+      }
+    },
+    "val": {
+      "global_median": {
+        "mae_kwh": 4929.6,
+        "mape_pct": 64.09,
+        "median_ape_pct": 35.67,
+        "r2_log": -0.0069
+      },
+      "cell_median": {
+        "mae_kwh": 4130.7,
+        "mape_pct": 50.44,
+        "median_ape_pct": 30.3,
+        "r2_log": 0.2611
+      },
+      "log_linear": {
+        "mae_kwh": 4028.7,
+        "mape_pct": 47.61,
+        "median_ape_pct": 29.65,
+        "r2_log": 0.3001
+      },
+      "lightgbm": {
+        "mae_kwh": 4015.9,
+        "mape_pct": 47.47,
+        "median_ape_pct": 29.57,
+        "r2_log": 0.3022
+      }
+    },
+    "val_with_epc": {
+      "global_median": {
+        "mae_kwh": 4720.6,
+        "mape_pct": 70.31,
+        "median_ape_pct": 36.49,
+        "r2_log": -0.0372
+      },
+      "cell_median": {
+        "mae_kwh": 3893.5,
+        "mape_pct": 52.13,
+        "median_ape_pct": 30.4,
+        "r2_log": 0.2596
+      },
+      "log_linear": {
+        "mae_kwh": 3829.3,
+        "mape_pct": 48.4,
+        "median_ape_pct": 30.28,
+        "r2_log": 0.2991
+      },
+      "lightgbm": {
+        "mae_kwh": 3819.0,
+        "mape_pct": 48.23,
+        "median_ape_pct": 30.09,
+        "r2_log": 0.3017
+      }
+    },
+    "lgb_iterations": 166
+  },
+  "elec": {
+    "n_train": 31721,
+    "n_val": 6803,
+    "cv": {
+      "global_median": {
+        "mae_kwh": 1671.82,
+        "mape_pct": 57.212,
+        "median_ape_pct": 41.172,
+        "r2_log": -0.0022,
+        "mae_kwh_sd": 26.9
+      },
+      "cell_median": {
+        "mae_kwh": 1587.42,
+        "mape_pct": 54.378,
+        "median_ape_pct": 38.4,
+        "r2_log": 0.0924,
+        "mae_kwh_sd": 25.4
+      },
+      "log_linear": {
+        "mae_kwh": 1588.94,
+        "mape_pct": 55.094,
+        "median_ape_pct": 39.296,
+        "r2_log": 0.0991,
+        "mae_kwh_sd": 25.9
+      },
+      "lightgbm": {
+        "mae_kwh": 1550.26,
+        "mape_pct": 54.136,
+        "median_ape_pct": 37.788,
+        "r2_log": 0.1489,
+        "mae_kwh_sd": 23.9
+      }
+    },
+    "val": {
+      "global_median": {
+        "mae_kwh": 1714.5,
+        "mape_pct": 57.61,
+        "median_ape_pct": 42.22,
+        "r2_log": -0.0035
+      },
+      "cell_median": {
+        "mae_kwh": 1614.2,
+        "mape_pct": 54.33,
+        "median_ape_pct": 38.62,
+        "r2_log": 0.1063
+      },
+      "log_linear": {
+        "mae_kwh": 1617.6,
+        "mape_pct": 54.84,
+        "median_ape_pct": 38.94,
+        "r2_log": 0.1107
+      },
+      "lightgbm": {
+        "mae_kwh": 1580.0,
+        "mape_pct": 54.16,
+        "median_ape_pct": 37.95,
+        "r2_log": 0.1624
+      }
+    },
+    "val_with_epc": {
+      "global_median": {
+        "mae_kwh": 1728.2,
+        "mape_pct": 58.9,
+        "median_ape_pct": 43.48,
+        "r2_log": -0.0027
+      },
+      "cell_median": {
+        "mae_kwh": 1619.6,
+        "mape_pct": 54.68,
+        "median_ape_pct": 38.89,
+        "r2_log": 0.1082
+      },
+      "log_linear": {
+        "mae_kwh": 1624.3,
+        "mape_pct": 54.95,
+        "median_ape_pct": 39.25,
+        "r2_log": 0.1119
+      },
+      "lightgbm": {
+        "mae_kwh": 1573.3,
+        "mape_pct": 53.75,
+        "median_ape_pct": 38.0,
+        "r2_log": 0.1766
+      }
+    },
+    "lgb_iterations": 171
+  }
+}
