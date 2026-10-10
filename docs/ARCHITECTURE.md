@@ -161,7 +161,7 @@ Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml`
 4. Report per retrofit the **marginal** saving in package order (these add up to the package total), plus the package's elec/gas/total and a low/high band (from U-value/SCOP ranges and model error).
 
 ### 3.7 Carbon
-`ΔC = ΔE_elec × EF_elec + ΔE_gas × EF_gas` with UK Government GHG Conversion Factors (DESNZ). Use the latest published year; the 2024 values are ~0.207 kg CO2e/kWh (electricity, generation) and ~0.183 (natural gas, gross CV). Check against the official file and store in `config/emission_factors.csv` with year + URL.
+`ΔC = ΔE_elec × EF_elec + ΔE_gas × EF_gas` with UK Government GHG Conversion Factors (DESNZ). Use the latest published year; the 2026 values are ~0.131 kg CO2e/kWh (electricity, generation) and ~0.182 (natural gas, gross CV). Check against the official file and store in `config/emission_factors.csv` with year + URL.
 
 ### 3.8 Value model
 - LightGBM on sales history (features: region, type, floor area, bedrooms, age, rating, retrofits, sale date / market index). Quantile objectives (p10/p50/p90) or a bootstrap ensemble.
