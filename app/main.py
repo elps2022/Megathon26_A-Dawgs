@@ -52,34 +52,53 @@ st.markdown(
       background: linear-gradient(135deg, #004d38 0%, #006a4e 55%, #008764 100%);
       border-radius: 14px;
       padding: 18px 24px;
-      color: #ffffff !important;
+      color: #ffffff;
       margin-bottom: 22px;
       box-shadow: 0 4px 14px rgba(0, 106, 78, 0.25);
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .app-header * {
-      color: #ffffff !important;
+
+    .badge-shield {
+      background: #ecfdf5 !important;
+      color: #065f46 !important;
+      border: 1px solid #6ee7b7 !important;
+      font-weight: 700 !important;
     }
 
-    /* Theme-Adaptive Metric Cards */
+    .sidebar-brand-name {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.4px;
+      line-height: 1.2;
+      color: inherit !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-brand-name {
+      color: var(--text-color, #fafafa) !important;
+    }
+
+    /* Metric Cards - Reverted to clean white cards as before */
     [data-testid="stMetric"] {
+      background: #ffffff !important;
+      border: 1px solid #e2e8f0 !important;
       border-radius: 12px !important;
       padding: 14px 18px !important;
-      box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.06) !important;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     [data-testid="stMetric"]:hover {
-      border-color: #006a4e !important;
-      box-shadow: 0 4px 12px -2px rgba(0, 106, 78, 0.2) !important;
+      border-color: #cbd5e1 !important;
+      box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.07) !important;
       transform: translateY(-1px) !important;
     }
 
     [data-testid="stMetricLabel"] {
       font-size: 12px !important;
       font-weight: 600 !important;
+      color: #64748b !important;
       text-transform: uppercase !important;
       letter-spacing: 0.5px !important;
     }
@@ -87,21 +106,25 @@ st.markdown(
     [data-testid="stMetricValue"] {
       font-size: 25px !important;
       font-weight: 800 !important;
+      color: #0f172a !important;
       letter-spacing: -0.5px !important;
     }
 
-    /* Shadcn Theme-Adaptive Cards */
+    /* Shadcn Cards */
     .shadcn-card {
+      background: #ffffff !important;
+      border: 1px solid #e2e8f0 !important;
       border-radius: 12px;
       padding: 18px 20px;
       margin-bottom: 14px;
-      box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
       transition: all 0.2s ease;
+      color: #0f172a !important;
     }
 
     .shadcn-card:hover {
-      border-color: #006a4e;
-      box-shadow: 0 4px 12px -2px rgba(0, 106, 78, 0.15);
+      border-color: #cbd5e1 !important;
+      box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.06);
     }
 
     .shadcn-card-header {
@@ -110,36 +133,18 @@ st.markdown(
       align-items: center;
       margin-bottom: 10px;
       padding-bottom: 10px;
-      border-bottom: 1px solid rgba(128, 128, 128, 0.16);
+      border-bottom: 1px solid #f1f5f9;
     }
 
-    /* Adaptive Theme Styling using Streamlit CSS Custom Properties */
-    .stApp [data-testid="stMetric"],
-    .stApp .shadcn-card,
-    .stApp .chat-bubble-assistant,
-    .stApp .prop-summary-box {
-      background: var(--secondary-background-color, #1e293b) !important;
-      border: 1px solid rgba(128, 128, 128, 0.22) !important;
-      color: var(--text-color, #f8fafc) !important;
-    }
-
-    .stApp [data-testid="stMetricLabel"],
-    .stApp .prop-label {
-      color: var(--text-color, #94a3b8) !important;
-      opacity: 0.85 !important;
-    }
-
-    .stApp [data-testid="stMetricValue"],
-    .stApp .prop-val {
-      color: var(--text-color, #f8fafc) !important;
-    }
-
-    /* Card text styling - light and crisp */
-    .stApp .shadcn-card div,
-    .stApp .shadcn-card span,
-    .stApp .shadcn-card p,
-    .stApp .shadcn-card b {
-      color: var(--text-color, #e2e8f0);
+    .prop-summary-box {
+      background: #ffffff !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 10px !important;
+      padding: 8px 14px !important;
+      margin-top: 5px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
     }
 
     /* Badges & Pills - High Contrast in both Light and Dark Themes */
@@ -252,7 +257,7 @@ st.sidebar.markdown(
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 4px 0;">
       <div style="background: linear-gradient(135deg, #004d38 0%, #006a4e 100%); color: white; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0, 106, 78, 0.25);">🏛️</div>
       <div>
-        <div style="font-weight: 800; font-size: 18px; color: var(--text-color, #0f172a); letter-spacing: -0.4px; line-height: 1.2;">Lloyds Bank</div>
+        <div class="sidebar-brand-name">Lloyds Bank</div>
         <div style="font-size: 11px; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;">Green Intelligence</div>
       </div>
     </div>
@@ -1085,7 +1090,7 @@ st.markdown(
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             <span class="badge" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);">● Deterministic Engine</span>
-            <span class="badge" style="background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7;">🛡️ Grounding Shield Active</span>
+            <span class="badge badge-shield" style="background: #ecfdf5 !important; color: #065f46 !important; border: 1px solid #6ee7b7 !important; font-weight: 700 !important;">🛡️ Grounding Shield Active</span>
         </div>
     </div>
     """,
@@ -1123,12 +1128,12 @@ if view_mode == "Customer Experience":
             f"""
             <div class="prop-summary-box" style="border-radius: 10px; padding: 8px 14px; margin-top: 5px; display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8;">EPC RATING</div>
+                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b;">EPC RATING</div>
                 <div style="font-size: 16px; font-weight: 800; color: {epc_color};">Band {p.energy_rating or 'N/A'} ({p.sap_score or '—'} SAP)</div>
               </div>
               <div style="text-align: right;">
-                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8;">TYPE & FUEL</div>
-                <div class="prop-val" style="font-size: 12px; font-weight: 700; color: #f8fafc;">{p.property_type.title()} • {p.heating.replace('_', ' ').title()}</div>
+                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b;">TYPE & FUEL</div>
+                <div class="prop-val" style="font-size: 12px; font-weight: 700; color: #0f172a;">{p.property_type.title()} • {p.heating.replace('_', ' ').title()}</div>
               </div>
             </div>
             """,
@@ -1285,30 +1290,30 @@ if view_mode == "Customer Experience":
                       <div class="shadcn-card-header">
                         <div style="display: flex; align-items: center; gap: 8px;">
                           <span style="font-size: 18px;">{icon}</span>
-                          <span style="font-size: 16px; font-weight: 700; color: #f8fafc;">{r.retrofit.replace('_', ' ').title()}</span>
+                          <span style="font-size: 16px; font-weight: 700; color: #0f172a;">{r.retrofit.replace('_', ' ').title()}</span>
                           <span class="{badge_class}">{r.suitability} Suitability</span>
                         </div>
                         <div style="font-size: 12px; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 8px; border-radius: 4px;">
                           Priority #{idx + 1}
                         </div>
                       </div>
-                      <p style="color: #cbd5e1; font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
-                      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: rgba(128, 128, 128, 0.08); border: 1px solid rgba(128, 128, 128, 0.16); padding: 10px 14px; border-radius: 8px;">
+                      <p style="color: #475569; font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
+                      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px;">
                         <div>
-                          <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">ELEC SAVING</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #f8fafc;">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: #94a3b8;">kWh/yr</span></div>
+                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">ELEC SAVING</div>
+                          <div style="font-size: 14px; font-weight: 700; color: #0f172a;">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: #64748b;">kWh/yr</span></div>
                         </div>
                         <div>
-                          <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">GAS SAVING</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #f8fafc;">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: #94a3b8;">kWh/yr</span></div>
+                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">GAS SAVING</div>
+                          <div style="font-size: 14px; font-weight: 700; color: #0f172a;">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: #64748b;">kWh/yr</span></div>
                         </div>
                         <div>
-                          <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">CARBON CUT</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 11px; font-weight: normal; color: #94a3b8;">kg CO₂e</span></div>
+                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">CARBON CUT</div>
+                          <div style="font-size: 14px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 11px; font-weight: normal; color: #64748b;">kg CO₂e</span></div>
                         </div>
                         <div>
-                          <div style="font-size: 11px; color: #94a3b8; font-weight: 600;">INDICATIVE COST</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #f8fafc;">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
+                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">INDICATIVE COST</div>
+                          <div style="font-size: 14px; font-weight: 700; color: #0f172a;">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
                         </div>
                       </div>
                     </div>
@@ -1331,18 +1336,18 @@ if view_mode == "Customer Experience":
                 """
                 <div class="shadcn-card">
                   <div class="shadcn-card-header">
-                    <span style="font-size: 16px; font-weight: 700; color: #f8fafc;">🇬🇧 UK Government Grant Programs</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #0f172a;">🇬🇧 UK Government Grant Programs</span>
                     <span class="badge badge-green">Verified Eligible</span>
                   </div>
-                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: #e2e8f0; line-height: 1.55;">
+                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: #334155; line-height: 1.55;">
                     <div>
-                      <b style="color: #f8fafc;">• Boiler Upgrade Scheme (BUS):</b> <b style="color: #10b981;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.
+                      <b style="color: #0f172a;">• Boiler Upgrade Scheme (BUS):</b> <b style="color: #059669;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.
                     </div>
                     <div>
-                      <b style="color: #f8fafc;">• ECO4 & Great British Insulation Scheme (GBIS):</b> Free or heavily subsidized cavity/loft insulation for homes in EPC Bands D–G.
+                      <b style="color: #0f172a;">• ECO4 & Great British Insulation Scheme (GBIS):</b> Free or heavily subsidized cavity/loft insulation for homes in EPC Bands D–G.
                     </div>
                     <div>
-                      <b style="color: #f8fafc;">• 0% VAT on Energy Saving Materials:</b> Government zero-rate VAT on heat pumps, solar PV, and insulation installations through 2027.
+                      <b style="color: #0f172a;">• 0% VAT on Energy Saving Materials:</b> Government zero-rate VAT on heat pumps, solar PV, and insulation installations through 2027.
                     </div>
                   </div>
                 </div>
@@ -1355,18 +1360,18 @@ if view_mode == "Customer Experience":
                 """
                 <div class="shadcn-card">
                   <div class="shadcn-card-header">
-                    <span style="font-size: 16px; font-weight: 700; color: #f8fafc;">🏦 Lloyds Eco Home Advantage</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #0f172a;">🏦 Lloyds Eco Home Advantage</span>
                     <span class="badge badge-blue">Preferential Terms</span>
                   </div>
-                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: #e2e8f0; line-height: 1.55;">
+                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: #334155; line-height: 1.55;">
                     <div>
-                      <b style="color: #f8fafc;">• £1,000 Cashback:</b> Cash reward paid directly into your account on qualifying clean energy improvements.
+                      <b style="color: #0f172a;">• £1,000 Cashback:</b> Cash reward paid directly into your account on qualifying clean energy improvements.
                     </div>
                     <div>
-                      <b style="color: #f8fafc;">• Green Additional Borrowing:</b> Preferential 0% / low-interest borrowing rate for retrofit capital expenditures.
+                      <b style="color: #0f172a;">• Green Additional Borrowing:</b> Preferential 0% / low-interest borrowing rate for retrofit capital expenditures.
                     </div>
                     <div>
-                      <b style="color: #f8fafc;">• Mortgage Rate Discount:</b> 0.10% – 0.25% interest discount upon reaching EPC Band C certification.
+                      <b style="color: #0f172a;">• Mortgage Rate Discount:</b> 0.10% – 0.25% interest discount upon reaching EPC Band C certification.
                     </div>
                   </div>
                 </div>
@@ -1376,11 +1381,11 @@ if view_mode == "Customer Experience":
 
         st.markdown(
             """
-            <div class="shadcn-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, var(--secondary-background-color, #1e293b) 100%); border: 1px solid rgba(16, 185, 129, 0.35);">
+            <div class="shadcn-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%); border: 1px solid rgba(16, 185, 129, 0.35);">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                   <div style="font-size: 15px; font-weight: 700; color: #10b981;">Net Monthly Household Cashflow Impact</div>
-                  <div style="font-size: 13px; color: #cbd5e1; margin-top: 2px;">Estimated monthly fuel savings exceed green loan borrowing costs.</div>
+                  <div style="font-size: 13px; color: #475569; margin-top: 2px;">Estimated monthly fuel savings exceed green loan borrowing costs.</div>
                 </div>
                 <div style="text-align: right;">
                   <span style="font-size: 24px; font-weight: 800; color: #10b981;">+£18 / mo</span>
@@ -1398,7 +1403,7 @@ if view_mode == "Customer Experience":
             """
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
               <span class="chat-shield-badge">🛡️ 100% Deterministic Grounding Shield Active</span>
-              <span style="font-size: 12px; color: #94a3b8;">Every numerical claim is verified against single-source-of-truth engine JSON.</span>
+              <span style="font-size: 12px; color: #64748b;">Every numerical claim is verified against single-source-of-truth engine JSON.</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1429,9 +1434,9 @@ if view_mode == "Customer Experience":
                     <span style="font-weight: 700; color: #10b981; font-size: 14px;">🏛️ Lloyds AI Advisor</span>
                     <span class="badge badge-green">✓ Verified Grounded</span>
                   </div>
-                  <div style="font-size: 14px; color: #f8fafc; line-height: 1.6;">{response_text}</div>
+                  <div style="font-size: 14px; color: #0f172a; line-height: 1.6;">{response_text}</div>
                   <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128, 128, 128, 0.16); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; color: #94a3b8;">Claims verified: {audit_dict['total_claims']} numeric values</span>
+                    <span style="font-size: 11px; color: #64748b;">Claims verified: {audit_dict['total_claims']} numeric values</span>
                     <span style="font-size: 11px; color: #10b981; font-weight: 600;">Grounding Score: {audit_dict.get('grounding_score_pct', 100.0):.0f}%</span>
                   </div>
                 </div>
