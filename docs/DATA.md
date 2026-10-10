@@ -51,7 +51,7 @@ Run `make epc` (`python -m greenhome.data.epc_ingest`, about 15 s). It needs `da
 - **Mapping:** free-text EPC fields map to the `Property` vocabulary with ordered rules in `config/epc_mapping.yaml`. Mapped share per field is 99.3-100% (`eval/results/epc_ingest_summary.json`). Anything assumed is listed in `data_flags`: for example `wall_insulation_assumed`, `loft_mm_assumed_from_description`, `glazing_install_date_unknown`, `gas_meter_inferred`. Fields that can't be mapped become `"unknown"` and are treated as missing (default sub-score + flag; a survey is needed before the affected retrofits).
 - **IMD:** postcode → LSOA 2011 (ONSPD Aug 2026) → IMD 2019 decile → NEED-style quintile (1 = most deprived). 100% joined.
 - **Outputs (gitignored):** `data/processed/epc_properties.parquet` (with postcode, for internal joins) and `epc_properties_share.parquet` (no postcode, safe to share on Drive). `property_id` is a hash of the UPRN.
-- **Not filled yet:** `current_value_estimate` (Price Paid + HPI step). Bills and `customer_id` come from `make real`.
+- **Filled by later steps:** bills and `customer_id` (`make real`), `current_value_estimate` (`make value`).
 
 Known limitations:
 - EPC has no smart-thermostat field, so `smart_controls` only gives none / programmer / zone control (as `smart_trvs`).
@@ -68,7 +68,7 @@ Known limitations:
 |---|---|
 | `properties.parquet` / `properties_share.parquet` | The 542,711 real homes plus `annual_elec_kwh` / `annual_gas_kwh` (annualised by `data/annualise.py`), `customer_id` and the final `smart_controls`. The share file has no postcode |
 | `monthly_energy/part-*.parquet` | 12,637,637 monthly readings (Oct 2024 to Sep 2026): `elec_import_kwh`, `gas_kwh`. A missing month = absent row; gas NaN = unmatched meter |
-| `loans.parquet` | 222,973 mortgages: `ltv` (balance unavailable until valuations exist) |
+| `loans.parquet` | 222,973 mortgages: `ltv`, plus `outstanding_balance` = LTV × value once `make value` has run (unavailable for homes with no value) |
 | `splits.parquet` | train/val/test per customer (70/15/15) |
 | `_hidden/latents.parquet` | **Evaluation only:** occupancy, behaviour, noise, heat-pump SCOP, unmatched-meter and missing-month counts |
 
@@ -88,3 +88,12 @@ Known limitations:
 - **Leakage rule:** each sale gets the features of the latest certificate lodged **on or before** the sale date, never a later one. 168,351 sales (96%) have one (median 308 days before the sale). The rest keep the price but have `has_pre_sale_epc = False` and empty features.
 - **Coverage:** 153,511 homes (28% of the book) sold at least once since 2018. The other homes have no recent price, so their value stays unavailable until the value model predicts it.
 - `price` is the historical sale price. It is kept separate from `current_value_estimate`.
+
+### Current value estimate (`make value`, ~4 s, after `make real` and `make sales`)
+
+`greenhome.data.valuation` sets `current_value_estimate` = last matched sale price × HPI(now) / HPI(sale month). It uses the UK HPI index for the sale's property type (detached, semi, terraced or flat) in its local authority, up to **July 2026**, the latest HPI month. It updates `properties.parquet`, `properties_share.parquet` and `loans.parquet` in `data/processed/real/` (recomputed from scratch each run) and writes `valuations.parquet` (last sale date, price and both index values). Aggregates are in `eval/results/valuation_summary.json`.
+
+- **153,511 homes valued (28%)**, each flagged `value_hpi_indexed_last_sale`. Medians: Leeds £262k, Cornwall £288k, Southwark £553k. The median index change since the sale is +8.3%.
+- **The other 72% stay unavailable** (no sale since 2018). Nothing is imputed; the value model (ARCHITECTURE 3.8) is what predicts them.
+- **Loans:** 71,491 of 222,973 mortgages now have an `outstanding_balance`, so the lender view's financed emissions work for them.
+- Limitations: works done since the sale aren't reflected, and 14,676 values come from new-build sales, which carry a new-build premium that fades over time.

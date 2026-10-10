@@ -1,0 +1,17 @@
+{
+  "source": "UK House Price Index July 2026, local-authority index by property type (https://www.gov.uk/government/statistical-data-sets/uk-house-price-index-data-downloads-july-2026)",
+  "valuation_month": "2026-07-01",
+  "method": "last matched Price Paid sale (2018-2025) x HPI(type, LA, valuation month) / HPI(type, LA, sale month)",
+  "homes": 542711,
+  "homes_valued": 153511,
+  "share_valued": 0.2829,
+  "median_value_by_local_authority": {
+    "Cornwall": 288000.0,
+    "Leeds": 262000.0,
+    "Southwark": 553000.0
+  },
+  "median_index_ratio": 1.083,
+  "valued_from_new_build_sale": 14676,
+  "loans_with_balance": 71491,
+  "loans": 222973
+}

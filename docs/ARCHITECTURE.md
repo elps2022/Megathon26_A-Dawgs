@@ -95,7 +95,7 @@ LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S 
 - **LTV** for the lender view (3.12): mortgaged share by tenure (none for social housing), LTV uniform 0.25–0.90. The balance is LTV × current value, unavailable until valuations exist.
 
 **Leakage and join rules**
-- Only use an EPC lodged *before* the sale date as the features for that sale. `current_value_estimate` = last sale price HPI-indexed to today, kept separate from historical `price`.
+- Only use an EPC lodged *before* the sale date as the features for that sale. `current_value_estimate` = last sale price HPI-indexed to today (UK HPI for the sale's property type in its local authority, `greenhome.data.valuation`), kept separate from historical `price`. Homes with no sale since 2018 stay unavailable until the value model predicts them.
 - For NEED retrofit labels, compare consumption in the years before the install with the years after. Drop install years and homes with other interventions in the window.
 
 **Avoiding circular evaluation.** The synthetic bills are generated from NEED-fitted distributions, so a model scored on them would partly be scored on our own assumptions. **The headline energy-model metrics come only from NEED's real consumption on a held-out NEED test set** (3.5). The synthetic bills are used to exercise annualisation, data-quality flags and the dashboard, never to report accuracy.
@@ -415,7 +415,7 @@ data/              generated/ (gitignored if large), splits/
 src/greenhome/
   schema.py
   data/            generate.py, annualise.py, degree_day_fit.py, split.py, epc_ingest.py, synthetic_parts.py,
-                   sales_join.py, calibrate.py
+                   sales_join.py, valuation.py, calibrate.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
   models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py,
