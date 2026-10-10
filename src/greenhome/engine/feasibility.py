@@ -8,6 +8,8 @@ Unknown data is flagged, never guessed.
 from pathlib import Path
 import yaml
 
+from greenhome.schema import Infeasible, Property
+
 _CFG = Path(__file__).resolve().parents[3] / "config" / "retrofit_catalogue.yaml"
 
 
@@ -55,7 +57,7 @@ def _solid(p, t):
 
 def _glazing(p, t):
     g = _norm(p.get("glazing"))
-    if g in ("double_older", "double_post_2002", "triple"):
+    if g in ("double_older", "double_post_2002", "triple", "double_new"):
         return "Windows are already double or triple glazed.", []
     return None, ([] if g else ["unknown_glazing"])
 
@@ -111,3 +113,77 @@ def assess(p: dict, catalogue: dict | None = None) -> dict:
             feasible.append(name)
     feasible.sort(key=lambda n: stages.index(cat["retrofits"][n]["stage"]))  # stable sort
     return {"feasible": feasible, "infeasible": infeasible, "flags": flags}
+
+
+# --- Person B Engine Integration & Memory Support ---
+
+RETROFIT_CATALOGUE = {
+    "loft_insulation": {
+        "name": "Loft Insulation Top-Up (300mm)",
+        "indicative_cost": (500.0, 1200.0),
+        "priority": 1,  # Fabric
+    },
+    "cavity_wall_insulation": {
+        "name": "Cavity Wall Insulation",
+        "indicative_cost": (1000.0, 2500.0),
+        "priority": 1,  # Fabric
+    },
+    "solid_wall_insulation": {
+        "name": "External/Internal Solid Wall Insulation",
+        "indicative_cost": (7000.0, 14000.0),
+        "priority": 1,  # Fabric
+    },
+    "double_glazing": {
+        "name": "High-Performance Double Glazing (A-rated)",
+        "indicative_cost": (3500.0, 7500.0),
+        "priority": 1,  # Fabric
+    },
+    "smart_thermostat": {
+        "name": "Smart Thermostat & Heating Controls",
+        "indicative_cost": (200.0, 450.0),
+        "priority": 2,  # Controls
+    },
+    "heat_pump": {
+        "name": "Air Source Heat Pump",
+        "indicative_cost": (9000.0, 14000.0),
+        "priority": 3,  # Heating
+    },
+    "solar_pv": {
+        "name": "Rooftop Solar PV Array (3.5 kWp)",
+        "indicative_cost": (4500.0, 7500.0),
+        "priority": 4,  # Generation
+    },
+}
+
+
+def check_feasibility(
+    p: Property,
+    memory_constraints: list[str] | None = None,
+) -> tuple[list[str], list[Infeasible]]:
+    """Determine feasible and infeasible retrofits for a Property object, respecting customer memory."""
+    p_dict = p.model_dump() if hasattr(p, "model_dump") else (dict(p) if isinstance(p, dict) else p.__dict__)
+    
+    # Assess via official catalogue rules
+    res = assess(p_dict)
+    feasible = list(res["feasible"])
+    infeasible = [Infeasible(retrofit=item["retrofit"], rule=item["rule"]) for item in res["infeasible"]]
+    constraints = set(memory_constraints or [])
+
+    # Filter by tenure or budget constraints from customer memory
+    if "tenant" in constraints:
+        for r in ("solid_wall_insulation", "heat_pump"):
+            if r in feasible:
+                feasible.remove(r)
+                infeasible.append(Infeasible(retrofit=r, rule="Structural works restricted by tenancy agreement."))
+
+    # Filter out retrofits explicitly declined by customer
+    final_feasible = []
+    for r in feasible:
+        if f"reject_{r}" in constraints:
+            infeasible.append(Infeasible(retrofit=r, rule="Previously declined by customer preference."))
+        else:
+            final_feasible.append(r)
+
+    # Sort feasible by priority order (Fabric -> Controls -> Heating -> Generation)
+    final_feasible.sort(key=lambda x: RETROFIT_CATALOGUE.get(x, {}).get("priority", 99))
+    return final_feasible, infeasible

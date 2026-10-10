@@ -128,3 +128,17 @@ def score_home(p: dict, mappings: dict | None = None) -> dict:
         total += w * s
     total_int = int(round(total))
     return {"total": total_int, "classification": classify(total_int, m), "components": components}
+
+
+def calculate_green_home_score(p, mappings: dict | None = None):
+    """Calculate Green Home Score and return typed ScoreResult for Person B engine."""
+    from greenhome.schema import ScoreResult, SubScore
+    data = p.model_dump() if hasattr(p, "model_dump") else (dict(p) if isinstance(p, dict) else p.__dict__)
+    res = score_home(data, mappings)
+    components = [SubScore(**c) for c in res["components"]]
+    return ScoreResult(
+        total=res["total"],
+        classification=res["classification"],
+        components=components,
+    )
+
