@@ -1,0 +1,35 @@
+{
+  "source": "HM Land Registry Price Paid 2018-2025 joined to EPC certificates by postcode + address numbers",
+  "sales_filtering": {
+    "ppd_rows": 232033,
+    "in_local_authorities": 230384,
+    "category_a": 190406,
+    "residential": 190406,
+    "with_postcode": 190371
+  },
+  "matched_sales": 175457,
+  "match_rate": 0.9217,
+  "match_rate_by_local_authority": {
+    "Cornwall": 0.8957,
+    "Leeds": 0.9509,
+    "Southwark": 0.8987
+  },
+  "matched_by_tier": {
+    "numbers_ordered": 160798,
+    "numbers_any": 8,
+    "name": 14652
+  },
+  "unmatched": {
+    "no_epc_in_postcode": 346,
+    "ambiguous": 3390,
+    "no_address_fit": 11178
+  },
+  "with_pre_sale_epc": 168351,
+  "type_agreement_by_tier": {
+    "name": 0.9152,
+    "numbers_any": 1.0,
+    "numbers_ordered": 0.9315
+  },
+  "homes_with_a_sale": 153511,
+  "share_of_book_with_a_sale": 0.2829
+}

@@ -51,7 +51,7 @@ Run `make epc` (`python -m greenhome.data.epc_ingest`, about 15 s). It needs `da
 - **Mapping:** free-text EPC fields map to the `Property` vocabulary with ordered rules in `config/epc_mapping.yaml`. Mapped share per field is 99.3-100% (`eval/results/epc_ingest_summary.json`). Anything assumed is listed in `data_flags`: for example `wall_insulation_assumed`, `loft_mm_assumed_from_description`, `glazing_install_date_unknown`, `gas_meter_inferred`. Fields that can't be mapped become `"unknown"` and are treated as missing (default sub-score + flag; a survey is needed before the affected retrofits).
 - **IMD:** postcode → LSOA 2011 (ONSPD Aug 2026) → IMD 2019 decile → NEED-style quintile (1 = most deprived). 100% joined.
 - **Outputs (gitignored):** `data/processed/epc_properties.parquet` (with postcode, for internal joins) and `epc_properties_share.parquet` (no postcode, safe to share on Drive). `property_id` is a hash of the UPRN.
-- **Not filled yet:** `annual_elec_kwh` / `annual_gas_kwh` (synthetic bills step), `current_value_estimate` (Price Paid + HPI step), and `customer_id` (synthetic).
+- **Not filled yet:** `current_value_estimate` (Price Paid + HPI step). Bills and `customer_id` come from `make real`.
 
 Known limitations:
 - EPC has no smart-thermostat field, so `smart_controls` only gives none / programmer / zone control (as `smart_trvs`).
@@ -76,3 +76,15 @@ Known limitations:
 - **Customers:** 518,011, including 9,905 landlords holding 34,605 homes.
 - **Smart controls:** 22% smart thermostat (synthetic upgrade of programmer homes), 10% zone control, 51% programmer and 16% none.
 - **No conflicts injected into real records** (see ARCHITECTURE §3.1). Use the interim synthetic dataset for conflicting-data scenarios.
+
+### Price Paid sales joined to EPC homes (`make sales`, ~45 s, after `make epc`)
+
+`greenhome.data.sales_join` matches Land Registry Price Paid sales (2018-2025) to EPC homes. Output: `data/processed/real/sales.parquet` (gitignored, no address or postcode). Aggregates are in `eval/results/sales_join_summary.json`.
+
+- **Sales kept:** category A (standard market sales; B = repossessions, bulk and company sales) and residential types only. That leaves 190,371 sales in the three local authorities.
+- **Matching:** within the same postcode, a sale matches an EPC home when its flat and house numbers (SAON then PAON) equal the numbers in the EPC address, in the same order. Fallbacks: the same numbers in any order, or, for sales with no numbers, the house name appearing in the EPC address. A sale matches only when exactly one UPRN fits. Unit words (Flat, Apartment) and punctuation are ignored, and "21 A" counts as "21A".
+- **Match rate: 92.2%** (175,457 sales). By local authority: Leeds 95.1%, Cornwall 89.6%, Southwark 89.9%. Unmatched: 3,390 ambiguous, 346 with no EPC in the postcode, and 11,178 with no address fit.
+- **Precision proxy:** the Price Paid property type agrees with the EPC type for 93% of matches. Most disagreements are neighbouring built forms (semi-detached vs end-terrace, terrace vs semi), which the two sources record differently. Flats agree in 97% of cases.
+- **Leakage rule:** each sale gets the features of the latest certificate lodged **on or before** the sale date, never a later one. 168,351 sales (96%) have one (median 308 days before the sale). The rest keep the price but have `has_pre_sale_epc = False` and empty features.
+- **Coverage:** 153,511 homes (28% of the book) sold at least once since 2018. The other homes have no recent price, so their value stays unavailable until the value model predicts it.
+- `price` is the historical sale price. It is kept separate from `current_value_estimate`.

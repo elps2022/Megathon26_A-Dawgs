@@ -82,7 +82,7 @@ What-if flow: user asks "what if I skip the heat pump and add solar?" → LLM ca
 |---|---|---|
 | EPC domestic certificates (Leeds, Cornwall, Southwark) | Per-address property type, age band, floor area, rating/SAP, heating, insulation, glazing, PV, modelled energy | The property book: `Property` inputs, score, feasibility |
 | NEED anonymised 50k sample | Banded property features + **real annual gas and electricity 2005–2023** + loft (`LI_DATE`), cavity wall (`CWI_DATE`) and PV (`PV_DATE`) install years | Training/evaluating the energy models; **observed before/after retrofit savings**; calibrating synthetic bills |
-| Land Registry Price Paid (same 3 LAs, 2018–2022) | Real sale prices, date, type, tenure, new-build | Value model (joined to EPC by postcode + address) |
+| Land Registry Price Paid (same 3 LAs, 2018–2025) | Real sale prices, date, type, tenure, new-build | Value model (joined to EPC by postcode + address numbers, `greenhome.data.sales_join`) |
 | UK HPI | Monthly regional price index | Re-basing sale prices to a common date |
 | Met Office HadUK-Grid regional monthly Tmean | Regional monthly temperature | Heating degree days (15.5 °C base) |
 
@@ -414,7 +414,8 @@ config/            score_mappings.yaml, retrofit_catalogue.yaml, emission_factor
 data/              generated/ (gitignored if large), splits/
 src/greenhome/
   schema.py
-  data/            generate.py, annualise.py, degree_day_fit.py, split.py
+  data/            generate.py, annualise.py, degree_day_fit.py, split.py, epc_ingest.py, synthetic_parts.py,
+                   sales_join.py, calibrate.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
   models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py,

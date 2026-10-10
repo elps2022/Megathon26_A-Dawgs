@@ -1,4 +1,4 @@
-.PHONY: data calibrate epc real train test eval app api
+.PHONY: data calibrate epc real sales train test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -33,3 +33,7 @@ epc:
 # Synthetic parts for the real EPC homes (bills, customer_id, smart controls, LTV). Run after `make epc`.
 real:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.synthetic_parts --seed 42
+
+# Price Paid sales matched to the real EPC homes, with pre-sale EPC features. Run after `make epc`.
+sales:
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.sales_join
