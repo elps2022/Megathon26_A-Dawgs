@@ -26,14 +26,14 @@ Problem statement: Lloyds PS2 (Megathon X). This doc is the shared contract. If 
            ▼
  ┌──────────────────────┐
  │ Feature engineering   │  annualise (seasonal-weighted), kWh/m², data-quality flags,
- │                       │  degree-day regression per home (heating slope + base load)
+ │                       │  weather-normalise annual use, map EPC fields -> NEED bands
  └─────────┬────────────┘
            ▼
  ┌──────────────────────┐   ┌──────────────────────────────────────┐
- │ Green Home Score      │   │ Energy model (two swappable versions) │
- │ 7 sub-scores, fixed w │   │  V1 grey box: heat-loss physics,      │
- │                       │   │     calibrated to bills, + ML residual│
- │                       │   │  V2 ML only: LightGBM                 │
+ │ Green Home Score      │   │ Energy model (accuracy is the focus)  │
+ │ 7 sub-scores, fixed w │   │  tuned LightGBM per fuel, trained on  │
+ │                       │   │  NEED real consumption, + documented  │
+ │                       │   │  rule layer for unlearnable retrofits │
  └─────────┬────────────┘   └────────────┬─────────────────────────┘
            ▼                              ▼  expected use -> "worse than similar homes?"
  ┌─────────────────────────────────────────────┐
@@ -48,7 +48,7 @@ Problem statement: Lloyds PS2 (Megathon X). This doc is the shared contract. If 
            ▼
  ┌──────────────────────┐  ┌──────────────┐  ┌───────────────────────────┐
  │ Savings simulator     │─▶│ Carbon (det.) │  │ Value model (LightGBM      │
- │ edits home state, re- │  │ DESNZ factors │  │ quantile, before vs after) │
+ │ edits features, re-   │  │ DESNZ factors │  │ quantile, before vs after) │
  │ runs energy model     │  │              │  │                            │
  └─────────┬────────────┘  └──────┬───────┘  └────────────┬──────────────┘
            └──────────────┬───────┴────────────────────────┘
@@ -98,7 +98,7 @@ LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S 
 - Only use an EPC lodged *before* the sale date as the features for that sale. `current_value_estimate` = last sale price HPI-indexed to today, kept separate from historical `price`.
 - For NEED retrofit labels, compare consumption in the years before the install with the years after. Drop install years and homes with other interventions in the window.
 
-**Avoiding circular evaluation.** The synthetic bills come from NEED distributions, not from our physics model. Even so, accuracy on synthetic bills only checks the pipeline. **The headline energy-model metrics come from NEED's real consumption** (baseline MAE per fuel, and savings vs observed loft/cavity/PV before/after). The bills are only used to exercise annualisation, the degree-day fit and the dashboard.
+**Avoiding circular evaluation.** The synthetic bills are generated from NEED-fitted distributions, so a model scored on them would partly be scored on our own assumptions. **The headline energy-model metrics come only from NEED's real consumption on a held-out NEED test set** (3.5). The synthetic bills are used to exercise annualisation, data-quality flags and the dashboard, never to report accuracy.
 
 Reproducible: `python -m greenhome.data.build --seed 42` (clean + join real data, then generate the synthetic parts).
 
@@ -125,68 +125,68 @@ Unit tests: weights sum to 1, each mapping monotonic, P10001-style example gives
 - "Inefficient" uses intensity **relative to expected for similar homes** (energy-model residual, 3.5), so a big house is not flagged just for being big.
 - Key issues = sub-scores below threshold + intensity residual > X%.
 
-### 3.5 Energy model: two versions behind one interface
-Both versions implement the same interface, so the savings simulator, detector and dashboard do not care which one runs:
+### 3.5 Energy model: tuned ML, accuracy first
+
+Model accuracy is the main judging criterion, so the energy model is a single, heavily tuned ML model with no physics model. One interface keeps the savings simulator, detector and dashboard independent of its internals:
 
 ```python
 class EnergyModel(Protocol):
-    def predict(self, state: HomeState) -> EnergyBreakdown   # elec_kwh, gas_kwh, heat_demand_kwh, base_load_kwh, per-element heat loss
+    def predict(self, x: HomeFeatures) -> EnergyBreakdown   # elec_kwh, gas_kwh, p10/p90 per fuel
 ```
 
-`HomeState` is the property's physical state (fabric, heating system, controls, solar). A retrofit edits the state, and the model predicts again. The rest of this section describes what goes on inside `predict`.
+`HomeFeatures` is the model-visible description of the home. A retrofit edits these features, and the model predicts again.
 
-**V1, grey box (physics + ML): primary version**
-1. *Physics.* Heat loss coefficient HLC (W/K) = Σ U_element × area_element + 0.33 × air_changes × volume.
-   - Element areas (walls, roof, floor, windows) are estimated from floor area, property type and storeys (RdSAP-style geometry rules).
-   - U-values come from age band + insulation level + glazing type (RdSAP default tables).
-   - Space-heating demand (kWh) = HLC × HDD_region × 24 / 1000 − useful gains. HDD = heating degree days.
-   - Fuel = demand / heating efficiency (boiler ~0.85, heat pump SCOP ~2.8–3.2, direct electric 1.0).
-2. *Calibration to the home's bills (PRISM method).* Regress monthly gas (or electricity, for electrically heated homes) on monthly regional HDD: slope = actual heating response, intercept = base load (hot water, cooking).
-   - Calibration factor k = actual slope / physics slope. It captures occupancy, setpoint and hidden draughts.
-   - Fewer than 6 usable months, or a poor fit → k = 1 and flag `uncalibrated`.
-   - k is clipped to a documented range so a single bad bill cannot dominate.
-3. *ML residual.* LightGBM predicts what physics misses (electric base load, hot water, residual error) from observable features + k.
-4. *Retrofit effect* = change the state and predict again:
+**Training data: NEED (real metered consumption).**
+- Targets, one model per fuel: `log(Gcons)` for gas-heated homes, and `log(Econs)` for all homes, split by `MAIN_HEAT_FUEL`. Keep only valid readings (`*ValFlag == "V"`).
+- Default target year: 2023. A candidate variant uses the mean of valid 2021–2023 years, which is less noisy. Pick it in CV, and report the test metric on whichever target definition is used.
+- **Feature parity rule:** only use features we can also derive for an EPC home at prediction time. These are property type, age band, floor-area band, EPC band, region, main heating fuel, conservatory, and loft / cavity / PV flags with years since install. IMD band can be added if we download the ONS postcode → IMD lookup. `COUNCIL_TAX_BAND` is not available for EPC homes, so it is excluded from the shipped model. Report it only as an "upper bound" experiment.
+- **No lagged consumption** (e.g. Gcons2022 to predict 2023) in the shipped model. The model must estimate "expected use for similar homes" (3.4). A lagged-use variant can be reported separately and labelled as such.
 
-   | Retrofit | State change |
-   |---|---|
-   | Loft insulation | roof U-value |
-   | Wall insulation | wall U-value |
-   | Glazing | window U-value + air changes |
-   | Smart thermostat | effective setpoint, so effective HDD |
-   | Heat pump | heating efficiency, fuel switches gas → electricity |
+**Split.** NEED rows are distinct properties. Use a fixed 70/15/15 train/val/test split, stratified by region × fuel, seed 42. **The test set is touched once**, for the final numbers. All tuning uses 5-fold CV on train, with val for early stopping.
 
-   Diminishing returns (topping up existing loft insulation saves less) and retrofit interactions fall out of the physics automatically.
+**Tuning procedure (where the effort goes):**
+1. **Baselines first:** the NEED cell median (type × area × age × EPC), the log-linear model (as in `need_calibration.yaml`), and untuned LightGBM. Every later step must beat the previous one on CV.
+2. **Objective:** compare L2 on log kWh, Huber on log kWh, and Tweedie/Gamma on raw kWh. Pick on CV MAE in kWh, which is what users see.
+3. **Hyperparameter search:** Optuna TPE, ~100–200 trials, over `num_leaves`, `max_depth`, `min_child_samples`, `learning_rate`, `feature_fraction`, `bagging_fraction/freq`, `lambda_l1/l2` and `min_split_gain`, with early stopping on the fold's val part.
+4. **Monotone constraints:** worse EPC band → higher use, larger area → higher use, insulation flags → lower gas. Measure their CV cost. Keep them if the cost is small (< ~1% MAE), because they make what-ifs physically sensible.
+5. **Feature work:** ordinal encodings of bands, interactions (type × area, EPC × age) and years since install. Keep a feature only if it improves CV.
+6. **Library bake-off:** LightGBM vs CatBoost, on the same CV folds and with the same Optuna trial budget. XGBoost joins only if time allows. Ship the winner on CV MAE, or an average of the top two if that is better. Then average across seeds. See 3.15 for why these candidates.
+7. **Uncertainty:** conformalised quantile regression, i.e. quantile models (p10/p90) widened by a split-conformal correction computed on val. Report coverage on test, target ~80%.
 
-**V2, ML only (required ML baseline + comparison)**
-- LightGBM predicts annual elec and gas from observable features, including retrofit-state features.
-- Retrofit effect = predict(after features) − predict(before features).
-- Use LightGBM **monotone constraints** (e.g. more insulation can never increase predicted gas), so what-ifs stay physically sensible.
-- Optional per-home scaling by actual / predicted baseline, mirroring k in V1.
+**Metrics (reported in `docs/EVALUATION.md`):**
+- MAE, MAPE, median APE and R² on log, per fuel, on test, against all baselines.
+- Error by subgroup (region, type, age band, EPC band) for the fairness audit (3.14).
+- **Savings validity:** predicted change from toggling loft / cavity / PV flags vs the observed NEED difference-in-differences effects (`need_calibration.yaml`).
 
-**Physics only** (V1 without step 3) is reported as a third, zero-training baseline.
+**Rule layer, for retrofits NEED cannot teach.** NEED has no glazing, smart-controls, solid-wall or heating-system detail. Those what-ifs apply documented multipliers to the model's prediction:
 
-**Evaluation**
-Compare V1, V2 and physics-only on two things:
-- baseline consumption is evaluated on **NEED real annual consumption** (held-out homes);
-- **retrofit savings vs NEED observed before/after** for loft insulation, cavity wall and PV (predicted vs observed change, per fuel). Glazing, smart controls and heat pumps have no observed labels, so only the catalogue sanity bounds below apply to them.
+| Retrofit | Effect | Source |
+|---|---|---|
+| Loft insulation, cavity wall | **Learned** (NEED flags), checked against DiD | NEED |
+| Solar PV | Learned flag, or kWp × regional yield × self-consumption on grid import | NEED / PVGIS |
+| Solid wall insulation, glazing | Fractional cut to heating gas | Catalogue range (EST) |
+| Smart thermostat / TRVs | Fractional cut to heating gas | Catalogue range (EST) |
+| Heat pump | Gas heating share × boiler eff / SCOP moves to electricity | `config/efficiencies.yaml` |
 
-The catalogue's % ranges (PS table, Energy Saving Trust) are kept as sanity bounds: flag any prediction outside them in the eval report. A config switch (`energy_model: greybox | ml`) selects the version, and the dashboard can show both side by side.
+These are labelled "rule-based" in the report, so judges can see which numbers are learned and which are assumed.
 
-Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml` (area rules), `config/degree_days.csv` (regional monthly HDD), `config/efficiencies.yaml` (boiler/heat-pump), each with a source.
+**Using bills for EPC homes.** When a home has annualised bills, report actual vs predicted (the residual drives "worse than similar homes"). Optionally rescale what-if predictions by a shrunk actual/predicted ratio, validated on NEED by holding out the target year.
+
+Config owned by C: `config/efficiencies.yaml` (boiler efficiency, heat-pump SCOP range) and the rule-layer effect ranges in `retrofit_catalogue.yaml`, each with a source. `config/degree_days.csv` already exists (weather normalisation).
 
 ### 3.6 Savings simulator (per fuel, sequential)
-1. Start from the baseline `HomeState`. Apply retrofits **in priority order** (fabric → controls → heating → generation). Each one edits the state, and `EnergyModel.predict` runs again, so every step acts on what the previous steps left.
+1. Start from the baseline `HomeFeatures`. Apply retrofits **in priority order** (fabric → controls → heating → generation). Each one edits the features, or applies its rule multiplier, and `EnergyModel.predict` runs again, so every step acts on what the previous steps left.
 2. Solar is applied after the energy model: kWp × regional yield (~850–1000 kWh/kWp) × self-consumption ratio → reduces grid import only, not demand.
 3. A heat pump lowers gas and **raises electricity**; this shows as a negative electricity saving.
-4. Report per retrofit the **marginal** saving in package order (these add up to the package total), plus the package's elec/gas/total and a low/high band (from U-value/SCOP ranges and model error).
+4. Report per retrofit the **marginal** saving in package order (these add up to the package total), plus the package's elec/gas/total and a low/high band (from the model's p10/p90 and the rule-layer ranges).
 
 ### 3.7 Carbon
 `ΔC = ΔE_elec × EF_elec + ΔE_gas × EF_gas` with UK Government GHG Conversion Factors (DESNZ). Use the latest published year; the 2024 values are ~0.207 kg CO2e/kWh (electricity, generation) and ~0.183 (natural gas, gross CV). Check against the official file and store in `config/emission_factors.csv` with year + URL.
 
 ### 3.8 Value model
-- LightGBM on sales history (features: region, type, floor area, bedrooms, age, rating, retrofits, sale date / market index). Quantile objectives (p10/p50/p90) or a bootstrap ensemble.
-- Uplift = predict(after-scenario rating + features) − predict(baseline), **same property, same date, everything else fixed**. Return a range (% and £).
+- **Value level:** GBDT quantile model (p10/p50/p90, conformalised as in 3.5) on sales history. Features: LA, type, floor area, bedrooms, age, rating, sale date / HPI. Monotone constraint: better rating → value not lower.
+- **Rating uplift:** a hedonic log-linear model (log price on LA × type, log area, age band, EPC band, sale-month HPI). The EPC band coefficients give the % premium with a confidence interval. Uplift = premium(after band) − premium(before band) applied to the p50 level: **same property, same date, everything else fixed**. Return a range (% and £). Tree models are not used for the uplift, because their before/after difference is step-shaped and can be exactly 0 (see 3.15).
+- On synthetic sales the premium is the generator's input (`synthetic.yaml`), so the uplift only becomes evidence once real Price Paid sales are joined to real EPCs.
 - Rating after retrofit comes from a simple documented SAP-delta rule per retrofit.
 - Always labelled "indicative estimate based on associations in our dataset, not a causal guarantee".
 - Baseline for comparison: regional median × fixed rating premium lookup.
@@ -204,7 +204,7 @@ Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml`
 
 ### 3.11 Customer memory that learns (optional extension)
 JSON/SQLite per customer: completed retrofits, constraints ("renting, can't change heating", "budget £5k"), accepted/rejected recs.
-- Completed retrofits update the `HomeState`.
+- Completed retrofits update the `HomeFeatures`.
 - Stated constraints become extra feasibility rules.
 - Rejected recs are down-ranked in suitability (with a reason shown: "you declined solar on 12 Oct").
 
@@ -220,7 +220,7 @@ A bank-side page that aggregates `PropertyReport`s across all homes (the EPC hom
 Computed by batch-running `build_report`, cached as a table. No new models.
 
 ### 3.13 Heat-loss house diagram (UX)
-An SVG house on the customer dashboard. Roof, walls, windows and floor are coloured by their share of heat loss (from V1's per-element W/K; for V2 or uncalibrated homes, sub-scores are used and labelled as such).
+An SVG house on the customer dashboard. Roof, walls, windows and floor are coloured by typical heat-loss shares for the property type (Energy Saving Trust figures, in config with a source), scaled by the home's insulation and glazing sub-scores. Labelled "typical, not measured".
 - Clicking a part shows its retrofit, saving and suitability.
 - Toggling a retrofit reruns `run_scenario` and recolours the house.
 
@@ -233,6 +233,38 @@ Run on the test split; results go in `docs/RESPONSIBLE_AI.md`.
 - Check that value uplift is not presented as large only in high-value areas, without the caveat.
 - **Affordability flag:** low-value or high-energy-burden homes see low-cost and grant-eligible options first (grant rules in config, with sources).
 - Document limitations: property and price data are real, but bills, `customer_id`, smart controls and LTV are synthetic, and only 3 LAs are covered. EPC homes skew towards recently sold or let homes. The audit tests our pipeline's behaviour on that sample, not national real-world fairness.
+
+### 3.15 Model choices and alternatives
+
+Each part of the system needs a different kind of model. Only the energy model and the value level are learned tabular regressions.
+
+| Part | Choice | Why not ML / why this |
+|---|---|---|
+| Energy model (3.5) | GBDT, LightGBM vs CatBoost bake-off | See below |
+| Uncertainty bands | Conformalised quantile regression | Guarantees the stated coverage on held-out data; cheap |
+| Value level (3.8) | GBDT quantile, monotone in rating | Non-linear in area × location |
+| Value uplift (3.8) | Hedonic log-linear EPC-band effects | Smooth, interpretable, matches the literature; a tree's uplift is step-shaped and can be 0 |
+| "Worse than similar homes" (3.4) | Energy-model residual (actual / predicted) | More explainable than an isolation forest or autoencoder |
+| Annualisation (3.2) | Seasonal weights | The PS forbids silently filling gaps; auditable |
+| Green Home Score (3.3) | Fixed weights | Weights are fixed by the PS |
+| Recommendation ranking (3.9) | Rules + saving per £ | No ranking labels for learning-to-rank |
+| LLM (3.10) | Cheapest reliable tool-calling model (e.g. Claude Haiku 5.5) | Cost is graded; the LLM does no maths |
+
+**Energy model alternatives** (NEED: ~40k rows, ~10 banded categorical features):
+
+| Option | For | Against | Verdict |
+|---|---|---|---|
+| **LightGBM** | Fastest, so the most Optuna trials; monotone + quantile + native NaN | Overfits small/noisy data unless regularised | Default; in bake-off |
+| **CatBoost** | Built for categorical features (all NEED fields are); strong defaults; less overfitting | ~2–5× slower to train; more limited monotone support | Most likely rival; in bake-off |
+| XGBoost | Mature monotone/interaction constraints; accuracy ≈ LightGBM | Slower; categorical support less proven | Only if time allows |
+| Log-linear GLM | Interpretable; smooth what-ifs; can't overfit; already fitted (`need_calibration.yaml`) | Needs hand-made interactions | Baseline to beat |
+| Random forest | Robust, little tuning | Usually less accurate; no monotone constraints; weak quantiles | Not used |
+| EBM / GAM (InterpretML) | Near-GBDT accuracy at low dimension; plots per feature; easy monotonicity | Fewer interactions; unfamiliar to the team | Optional explainable comparison |
+| MLP / TabNet / FT-Transformer | Smooth outputs; multi-task | Lose to GBDTs on mid-size tabular data (Grinsztajn et al., 2022); heavy tuning; hard to make monotone | Not used |
+| TabPFN | No tuning; strong on small tables | Designed for ≤ ~10k rows; slow on CPU; no monotone or quantile output | Benchmark at most |
+| Bayesian hierarchical (PyMC) | Honest uncertainty; partial pooling of sparse band cells | Slow to fit and iterate | Not used (time) |
+
+**What decides it.** The features set the accuracy ceiling, not the algorithm. NEED bands describe a few thousand distinct cells, and the log-linear fit leaves a residual sd of ≈ 0.55 (occupancy and behaviour). So the strong options will land within a few % of each other. We also need monotone constraints and quantiles, which excludes RF, NNs and TabPFN as the shipped model. And tuning speed matters under the deadline, which favours LightGBM, then CatBoost. The biggest remaining accuracy lever is extra parity-safe features (e.g. IMD from postcode), not a different algorithm.
 
 ---
 
@@ -255,13 +287,15 @@ class Property(BaseModel):            # inputs, prediction-time-safe only
     local_authority: str; wall_type: str  # solid | cavity
     has_own_roof: bool; gas_meter: bool
 
-class Element(BaseModel): name: str; area_m2: float; u_value: float; heat_loss_w_per_k: float; share: float
-class HomeState(BaseModel):           # physical state; retrofits edit this
-    elements: list[Element]; air_changes_per_hr: float; heating_system: str; heating_efficiency: float
-    smart_controls: str; solar_kwp: float; region: str
+class HomeFeatures(BaseModel):        # model-visible state (NEED-compatible bands); retrofits edit this
+    property_type: str; age_band: str; floor_area_band: int; epc_band: str; region: str
+    main_heat_fuel: Literal["gas","other"]; conservatory: bool | None
+    loft_insulated: bool; cavity_insulated: bool; solar_kwp: float
+    # rule-layer only (not model inputs):
+    wall_type: str; wall_insulation: str; glazing: str; smart_controls: str; heating: str
 class EnergyBreakdown(BaseModel):
-    elec_kwh: float; gas_kwh: float; heat_demand_kwh: float; base_load_kwh: float
-    hlc_w_per_k: float | None; calibration_k: float | None; calibrated: bool; model_version: str
+    elec_kwh: float; gas_kwh: float; elec_p10: float; elec_p90: float; gas_p10: float; gas_p90: float
+    rules_applied: list[str]; model_version: str
 
 class SubScore(BaseModel):  component: str; weight: float; score: float; contribution: float; inputs_used: dict; flags: list[str]
 class ScoreResult(BaseModel): total: int; classification: str; components: list[SubScore]
@@ -278,11 +312,10 @@ class PropertyReport(BaseModel):
     recommendations: list[RetrofitRec]; infeasible: list[Infeasible]
     package_saving: FuelDelta; package_carbon_kg: float
     value: dict  # baseline, low, high, pct_low, pct_high, method, caveat
-    energy_before: EnergyBreakdown; energy_after: EnergyBreakdown   # per-element heat loss feeds the house diagram
+    energy_before: EnergyBreakdown; energy_after: EnergyBreakdown
     assumptions: list[str]
 
-def build_report(p: Property, retrofits: list[str] | None = None, memory: dict | None = None,
-                 energy_model: str = "greybox") -> PropertyReport
+def build_report(p: Property, retrofits: list[str] | None = None, memory: dict | None = None) -> PropertyReport
 def build_portfolio(reports: list[PropertyReport]) -> PortfolioSummary   # lender view (3.12)
 ```
 
@@ -294,24 +327,24 @@ def build_portfolio(reports: list[PropertyReport]) -> PortfolioSummary   # lende
 
 ```
 config/            score_mappings.yaml, retrofit_catalogue.yaml, emission_factors.csv,
-                   u_values.yaml, geometry.yaml, degree_days.csv, efficiencies.yaml, grants.yaml
+                   degree_days.csv, efficiencies.yaml, grants.yaml, synthetic.yaml, need_calibration.yaml
 data/              generated/ (gitignored if large), splits/
 src/greenhome/
   schema.py
   data/            generate.py, annualise.py, degree_day_fit.py, split.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
-  models/          physics.py, energy_greybox.py, energy_ml.py, value_model.py, artifacts/
+  models/          energy_ml.py (train + tune), energy_rules.py, value_model.py, artifacts/
   llm/             agent.py, tools.py, grounding.py, prompts/
   memory/          store.py
 api/               main.py (FastAPI)
 app/               customer dashboard + lender portfolio page
-eval/              eval_energy.py (V1 vs V2 vs physics-only), eval_value.py, eval_recs.py, eval_llm.py, fairness.py, scenarios/
+eval/              eval_energy.py (tuned model vs baselines, NEED test set), eval_value.py, eval_recs.py, eval_llm.py, fairness.py, scenarios/
 tests/
 docs/              ARCHITECTURE.md, SCORING.md, DATA.md, EVALUATION.md, RESPONSIBLE_AI.md, diagram
 ```
 
-Stack: Python 3.11, pandas, LightGBM, scikit-learn, Pydantic, FastAPI. Dashboard: Streamlit for speed (or React + Vite if time allows).
+Stack: Python 3.11, pandas, LightGBM + CatBoost (bake-off, 3.15), Optuna, scikit-learn, Pydantic, FastAPI. Dashboard: Streamlit for speed (or React + Vite if time allows).
 
 ---
 
@@ -322,16 +355,15 @@ Two teammates have strong AI coding subscriptions (A, B); one has a weaker one (
 ### A — Data & ML (strong AI)
 - Real-data ingest: EPC + PPD clean and join (match rate reported), NEED retrofit before/after labels, HPI indexing, Met Office HDD; synthetic bills / customer_id / smart controls (3.1)
 - Annualisation + customer-level splits (3.2)
-- Degree-day regression per home + calibration factor k (3.5)
-- Energy model **V1 grey box** (physics + calibration + ML residual) and **V2 ML only** (monotone LightGBM) behind the `EnergyModel` interface; physics-only and NEED-median baselines (3.5)
-- Headline energy metrics on NEED real consumption, not synthetic bills (3.1 circularity rule)
+- **Energy model (main focus):** LightGBM per fuel on NEED, baselines → objective → Optuna search → monotone constraints → features → ensemble → quantiles, all on CV, test touched once (3.5)
+- Headline energy metrics on the NEED test set, not synthetic bills (3.1 circularity rule)
 - Value model with quantile range + simple baseline (3.7)
-- Eval report for models: V1 vs V2 vs baselines on consumption and retrofit savings, value interval coverage (section G); held-out test predictions file (section I)
+- Eval report for models: tuned model vs baselines on consumption and retrofit savings, value interval coverage (section G); held-out test predictions file (section I)
 - Owns `docs/DATA.md` (sources, licences, schema, generation rules, label rules, limitations)
 
 ### B — Engine integration, LLM, API, dashboard (strong AI)
 - `schema.py` stubs on day 1 so everyone can code against them
-- Savings simulator (3.6): sequential `HomeState` edits through `EnergyModel` + `report.py` orchestration + what-if path
+- Savings simulator (3.6): sequential `HomeFeatures` edits + rule layer through `EnergyModel` + `report.py` orchestration + what-if path
 - LLM agent, tools, prompts, grounding checker, LLM eval harness (3.9)
 - FastAPI + dashboard (score waterfall, per-fuel savings bars, value range, chat)
 - Heat-loss house diagram (3.13) and lender portfolio view (3.12)
@@ -342,7 +374,7 @@ Two teammates have strong AI coding subscriptions (A, B); one has a weaker one (
 - `config/score_mappings.yaml` + `score/score.py` + monotonicity / weight tests (3.3)
 - `config/retrofit_catalogue.yaml`: applicability rules, cost ranges, impact ranges, with sources (e.g. Energy Saving Trust, EPC recommendations, illustrative PS table)
 - `config/emission_factors.csv` from DESNZ (3.7); `engine/carbon.py`; `engine/feasibility.py` + suitability rules (3.9)
-- Physics config tables with sources: `u_values.yaml`, `geometry.yaml`, `degree_days.csv`, `efficiencies.yaml`; `grants.yaml` for the affordability flag (3.5, 3.14)
+- `efficiencies.yaml` and rule-layer effect ranges with sources (3.5); `grants.yaml` for the affordability flag (3.14)
 - Fairness audit script + write-up (3.14)
 - Writes the ~50 LLM evaluation scenarios with expected behaviour (B runs them)
 - Owns `docs/SCORING.md` (deliverable D) and `docs/RESPONSIBLE_AI.md` (deliverable H); assembles the final submission checklist
@@ -354,13 +386,13 @@ Why this split works: C's pieces are pure functions with small inputs and output
 |---|---|---|
 | Hour 1 | `schema.py` stubs + this contract agreed | B → all |
 | ~Hour 4 | First cleaned EPC book + synthetic bills (even rough) | A → B, C |
-| ~Hour 6 | Catalogue + emission factors + feasibility + physics config tables | C → A, B |
-| ~Hour 8 | `EnergyModel` V1 (physics + calibration) and V2 first cut | A → B |
+| ~Hour 6 | Catalogue (incl. rule-layer ranges) + emission factors + feasibility + efficiencies | C → A, B |
+| ~Hour 8 | `EnergyModel` first cut (untuned LightGBM + baselines); tuning continues after | A → B |
 | ~Hour 8 | `score()` working | C → B (report) |
 | ~Hour 12 | Value model `predict_range()` | A → B |
 | ~Hour 14 | End-to-end `build_report` on one property | B |
 | ~Hour 18 | Heat-loss house, portfolio view, memory | B |
-| Then | LLM eval on C's scenarios, V1 vs V2 eval, fairness audit, metrics into EVALUATION.md | A + B + C |
+| Then | LLM eval on C's scenarios, energy-model tuning report, fairness audit, metrics into EVALUATION.md | A + B + C |
 
 ---
 

@@ -36,7 +36,7 @@ All constants are in `config/synthetic.yaml`, each block with a `source`. The ca
 | `config/price_calibration.yaml` | Price Paid 2018–2021 | Median price by LA × type |
 | `config/hpi_index.csv` | UK HPI Jul 2026 | Monthly index per LA |
 
-Consumption = the NEED model × hidden occupancy × behaviour × idiosyncratic noise (the NEED residual variance split across these), times smart-control and retrofit multipliers. This is then spread over months with real HDD. Electric heating converts gas-equivalent heat demand via efficiency (heat pump SCOP 2.6–3.3). Solar reduces grid import through a self-consumption share. The generator **does not use the grey-box physics tables**, so evaluating V1 against it is not circular. SAP points come from a separate synthetic rule.
+Consumption = the NEED model × hidden occupancy × behaviour × idiosyncratic noise (the NEED residual variance split across these), times smart-control and retrofit multipliers. This is then spread over months with real HDD. Electric heating converts gas-equivalent heat demand via efficiency (heat pump SCOP 2.6–3.3). Solar reduces grid import through a self-consumption share. Because the bills are built from the NEED-fitted model, **never report energy-model accuracy on them**: headline accuracy comes from the held-out NEED test set (ARCHITECTURE §3.5). SAP points come from a separate synthetic rule.
 
 Prices = Price Paid median for LA × type × (area / reference area)^0.7 × EPC premium × hidden quality × HPI(date) / HPI(2018–21 mean) × noise.
 
