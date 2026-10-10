@@ -3,10 +3,9 @@ data/generated/
 *.parquet
 .env
 __pycache__/
+.venv
 .venv/
-.venv/
-__pycache__/
 .pytest_cache/
 *.pyc
-
 CLAUDE.md
+.vscode/

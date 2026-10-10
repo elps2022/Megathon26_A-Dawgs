@@ -9,8 +9,15 @@ calibrate:
 	uv run python -m greenhome.data.calibrate
 
 test:
-	uv run pytest
+	@if command -v uv >/dev/null 2>&1; then uv run pytest; else PYTHONPATH="src:." PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/pytest; fi
+
+app:
+	@PYTHONPATH="src:." .venv/bin/streamlit run app/main.py
+
+api:
+	@PYTHONPATH="src:." .venv/bin/uvicorn api.main:app --reload --port 8000
 
 # Energy model first cut on NEED: baselines vs LightGBM, 5-fold CV + val (test split untouched).
 train:
-	uv run python -m greenhome.models.energy_ml
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_ml
+

@@ -13,6 +13,7 @@ import streamlit as st
 
 from greenhome.engine.portfolio import build_portfolio
 from greenhome.engine.report import build_report
+from greenhome.engine.savings import build_home_elements
 from greenhome.llm.grounding import verify_grounding
 from greenhome.memory.store import CustomerMemoryStore
 from greenhome.schema import Property
@@ -84,10 +85,15 @@ def render_thermal_house_svg(elements: list, score: int):
             return "#eab308"  # Moderate yellow
         return "#14b8a6"      # Insulated teal
 
-    c_roof = color_for_loss(elem_dict.get("roof").share if elem_dict.get("roof") else 0.15)
-    c_wall = color_for_loss(elem_dict.get("wall").share if elem_dict.get("wall") else 0.25)
-    c_win = color_for_loss(elem_dict.get("window").share if elem_dict.get("window") else 0.15)
-    c_flr = color_for_loss(elem_dict.get("floor").share if elem_dict.get("floor") else 0.10)
+    roof_share = elem_dict["roof"].share if "roof" in elem_dict else 0.15
+    wall_share = elem_dict["wall"].share if "wall" in elem_dict else 0.25
+    win_share = elem_dict["window"].share if "window" in elem_dict else 0.15
+    flr_share = elem_dict["floor"].share if "floor" in elem_dict else 0.10
+
+    c_roof = color_for_loss(roof_share)
+    c_wall = color_for_loss(wall_share)
+    c_win = color_for_loss(win_share)
+    c_flr = color_for_loss(flr_share)
 
     svg = f"""
     <svg width="100%" height="240" viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">
@@ -103,13 +109,13 @@ def render_thermal_house_svg(elements: list, score: int):
       <polygon points="200,30 70,110 330,110" fill="{c_roof}" opacity="0.85" filter="url(#glow)"/>
       <polygon points="200,30 70,110 330,110" fill="none" stroke="#f8fafc" stroke-width="2"/>
       <text x="200" y="85" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="bold">
-        Roof ({elem_dict.get('roof').share * 100:.0f}% Loss)
+        Roof ({roof_share * 100:.0f}% Loss)
       </text>
       <!-- House Body (Walls) -->
       <rect x="90" y="110" width="220" height="95" fill="{c_wall}" opacity="0.8" filter="url(#glow)"/>
       <rect x="90" y="110" width="220" height="95" fill="none" stroke="#f8fafc" stroke-width="2"/>
       <text x="140" y="190" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="bold">
-        Walls ({elem_dict.get('wall').share * 100:.0f}% Loss)
+        Walls ({wall_share * 100:.0f}% Loss)
       </text>
       <!-- Windows -->
       <rect x="110" y="125" width="45" height="35" rx="3" fill="{c_win}" filter="url(#glow)"/>
@@ -120,7 +126,7 @@ def render_thermal_house_svg(elements: list, score: int):
       <!-- Floor Slab -->
       <rect x="75" y="205" width="250" height="15" rx="2" fill="{c_flr}"/>
       <text x="200" y="217" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="bold">
-        Ground Floor ({elem_dict.get('floor').share * 100:.0f}%)
+        Ground Floor ({flr_share * 100:.0f}%)
       </text>
     </svg>
     """
@@ -209,7 +215,7 @@ if view_mode == "Customer Experience":
 
     with col_house:
         st.subheader("Thermal Twin House Cross-Section")
-        render_thermal_house_svg(report.energy_before.elements if hasattr(report.energy_before, "elements") else [], report.score.total)
+        render_thermal_house_svg(build_home_elements(p), report.score.total)
         st.caption("Elements glow in infrared spectrum based on specific heat loss ($W/K$). Toggling retrofits recolours the building envelope.")
 
     with col_waterfall:
