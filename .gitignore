@@ -9,3 +9,5 @@ __pycache__/
 *.pyc
 CLAUDE.md
 .vscode/
+.agents/
+skills-lock.json

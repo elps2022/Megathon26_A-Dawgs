@@ -7,12 +7,14 @@ Multi-view interactive application:
 """
 
 from pathlib import Path
+import json
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from greenhome.engine.portfolio import build_portfolio
 from greenhome.engine.report import build_report
-from greenhome.engine.savings import build_home_elements
+from greenhome.engine.savings import apply_retrofits_to_property, build_home_elements
 from greenhome.llm.grounding import verify_grounding
 from greenhome.memory.store import CustomerMemoryStore
 from greenhome.schema import Property
@@ -70,6 +72,694 @@ view_mode = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Megathon X | Lloyds PS2 | Team A-Dawgs")
+
+
+def render_thermal_house_3d(elements: list, score: int, p: Property):
+    """Render interactive 3D WebGL Three.js thermal twin model with OrbitControls."""
+    elem_dict = {
+        e.name: {
+            "name": e.name,
+            "area_m2": round(e.area_m2, 1),
+            "u_value": round(e.u_value, 2),
+            "heat_loss_w_per_k": round(e.heat_loss_w_per_k, 1),
+            "share": round(e.share, 3),
+            "pct": round(e.share * 100, 1),
+        }
+        for e in elements
+    }
+    prop_info = {
+        "property_id": p.property_id,
+        "property_type": p.property_type,
+        "has_own_roof": bool(p.has_own_roof),
+        "solar_kwp": float(p.solar_kwp or 0.0),
+        "heating": p.heating,
+        "wall_type": p.wall_type,
+        "wall_insulation": p.wall_insulation or "none",
+        "glazing": p.glazing,
+        "score": score,
+    }
+
+    elements_json = json.dumps(elem_dict)
+    prop_json = json.dumps(prop_info)
+
+    html_template = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      color: #f1f5f9;
+      user-select: none;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 480px;
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .hud-panel {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      border-radius: 10px;
+      padding: 12px 14px;
+      z-index: 10;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    #hud-info {
+      top: 14px;
+      left: 14px;
+      min-width: 220px;
+      max-width: 270px;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+    #hud-info .title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    #hud-info .stat-line {
+      font-size: 12px;
+      color: #94a3b8;
+      margin: 3px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    #hud-info .stat-val {
+      font-weight: 600;
+      color: #f8fafc;
+    }
+    #hud-controls {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      gap: 8px;
+      z-index: 20;
+    }
+    .hud-btn {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid #475569;
+      color: #cbd5e1;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .hud-btn:hover {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+    .hud-btn.active {
+      background: #0369a1;
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+    #hud-legend {
+      bottom: 14px;
+      right: 14px;
+      display: flex;
+      gap: 8px;
+      font-size: 10px;
+      align-items: center;
+      padding: 6px 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #cbd5e1;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    #hud-hint {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      font-size: 11px;
+      color: #94a3b8;
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div id="canvas-container">
+    <div id="hud-info" class="hud-panel">
+      <div class="title" id="info-title"><span>🏠</span> Building Envelope</div>
+      <div class="stat-line"><span>Inspected:</span> <span class="stat-val" id="info-elem">Full Envelope</span></div>
+      <div class="stat-line"><span>Heat Loss Share:</span> <span class="stat-val" id="info-share">100%</span></div>
+      <div class="stat-line"><span>U-Value:</span> <span class="stat-val" id="info-u">Composite</span></div>
+      <div class="stat-line"><span>Surface Area:</span> <span class="stat-val" id="info-area">—</span></div>
+    </div>
+
+    <div id="hud-controls">
+      <button class="hud-btn active" id="btn-rotate" onclick="toggleRotate()">↺ Rotate</button>
+      <button class="hud-btn" id="btn-reset" onclick="resetView()">🎥 Reset View</button>
+    </div>
+
+    <div id="hud-hint">
+      🖱️ Drag to rotate • Scroll to zoom • Hover/tap envelope parts
+    </div>
+
+    <div id="hud-legend" class="hud-panel">
+      <span style="color: #64748b; font-weight: 600; margin-right: 2px;">HEAT LOSS:</span>
+      <div class="legend-item"><div class="legend-dot" style="background: #14b8a6;"></div> &lt;10%</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #eab308;"></div> 10-18%</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #f97316;"></div> 18-30%</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #ef4444;"></div> &gt;30%</div>
+    </div>
+  </div>
+
+  <script>
+    const elementsData = __ELEMENTS_JSON__;
+    const propData = __PROP_JSON__;
+
+    function colorForShare(share) {
+      if (share > 0.30) return { hex: 0xef4444, css: '#ef4444', label: 'Severe Loss' };
+      if (share > 0.18) return { hex: 0xf97316, css: '#f97316', label: 'High Loss' };
+      if (share > 0.10) return { hex: 0xeab308, css: '#eab308', label: 'Moderate Loss' };
+      return { hex: 0x14b8a6, css: '#14b8a6', label: 'Well Insulated' };
+    }
+
+    const container = document.getElementById('canvas-container');
+    const width = container.clientWidth || 550;
+    const height = 480;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a101d);
+    scene.fog = new THREE.FogExp2(0x0a101d, 0.038);
+
+    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+    const initialPos = { x: 7.2, y: 5.4, z: 7.8 };
+    camera.position.set(initialPos.x, initialPos.y, initialPos.z);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 + 0.02;
+    controls.minDistance = 3.5;
+    controls.maxDistance = 22;
+    controls.target.set(0, 1.3, 0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.0;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x090d16, 0.55);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff7ed, 0.95);
+    dirLight.position.set(7, 12, 6);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 25;
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+
+    const fillLight = new THREE.DirectionalLight(0x0284c7, 0.4);
+    fillLight.position.set(-8, 6, -6);
+    scene.add(fillLight);
+
+    // Ground Plinth & Tech Grid
+    const grid = new THREE.GridHelper(16, 16, 0x0284c7, 0x1e293b);
+    grid.position.y = -0.01;
+    scene.add(grid);
+
+    const plinthGeo = new THREE.CylinderGeometry(5.4, 5.7, 0.2, 40);
+    const plinthMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.85,
+      metalness: 0.15
+    });
+    const plinth = new THREE.Mesh(plinthGeo, plinthMat);
+    plinth.position.y = -0.11;
+    plinth.receiveShadow = true;
+    scene.add(plinth);
+
+    // Elements & Interaction Group
+    const interactiveObjects = [];
+
+    // Colors
+    const roofData = elementsData.roof || { share: 0.15, u_value: 0.18, area_m2: 45 };
+    const wallData = elementsData.wall || { share: 0.25, u_value: 0.35, area_m2: 85 };
+    const winData = elementsData.window || { share: 0.15, u_value: 1.8, area_m2: 18 };
+    const flrData = elementsData.floor || { share: 0.10, u_value: 0.22, area_m2: 45 };
+
+    const cRoof = colorForShare(roofData.share);
+    const cWall = colorForShare(wallData.share);
+    const cWin = colorForShare(winData.share);
+    const cFlr = colorForShare(flrData.share);
+
+    // 1. Foundation Slab (Floor)
+    const floorGeo = new THREE.BoxGeometry(4.0, 0.28, 4.0);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: cFlr.hex,
+      roughness: 0.5,
+      metalness: 0.1,
+      emissive: cFlr.hex,
+      emissiveIntensity: 0.12
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.position.y = 0.14;
+    floorMesh.castShadow = true;
+    floorMesh.receiveShadow = true;
+    floorMesh.userData = {
+      title: 'Ground Floor Slab',
+      type: 'floor',
+      elem: flrData,
+      color: cFlr
+    };
+    scene.add(floorMesh);
+    interactiveObjects.push(floorMesh);
+
+    // 2. Main Walls
+    const wallGeo = new THREE.BoxGeometry(3.7, 2.4, 3.7);
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: cWall.hex,
+      roughness: 0.45,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.94,
+      emissive: cWall.hex,
+      emissiveIntensity: 0.15
+    });
+    const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+    wallMesh.position.y = 0.28 + 1.2;
+    wallMesh.castShadow = true;
+    wallMesh.receiveShadow = true;
+    wallMesh.userData = {
+      title: 'External Walls (' + (propData.wall_type || 'Cavity') + ')',
+      type: 'wall',
+      elem: wallData,
+      color: cWall
+    };
+    scene.add(wallMesh);
+    interactiveObjects.push(wallMesh);
+
+    // 3. Windows & Frames
+    const winMat = new THREE.MeshStandardMaterial({
+      color: cWin.hex,
+      roughness: 0.15,
+      metalness: 0.7,
+      emissive: cWin.hex,
+      emissiveIntensity: 0.35
+    });
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+
+    function addWindow(x, y, z, rotY) {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+      group.rotation.y = rotY;
+
+      const frameGeo = new THREE.BoxGeometry(0.88, 0.78, 0.06);
+      const frame = new THREE.Mesh(frameGeo, frameMat);
+      group.add(frame);
+
+      const glassGeo = new THREE.BoxGeometry(0.78, 0.68, 0.08);
+      const glass = new THREE.Mesh(glassGeo, winMat);
+      glass.castShadow = true;
+      glass.userData = {
+        title: 'Glazing (' + (propData.glazing || 'Double') + ')',
+        type: 'window',
+        elem: winData,
+        color: cWin
+      };
+      group.add(glass);
+      interactiveObjects.push(glass);
+      scene.add(group);
+    }
+
+    addWindow(-0.95, 1.95, 1.86, 0);
+    addWindow(0.95, 1.95, 1.86, 0);
+    addWindow(-0.95, 0.95, 1.86, 0);
+    addWindow(1.86, 1.95, 0, Math.PI / 2);
+    addWindow(-1.86, 1.95, 0, -Math.PI / 2);
+    addWindow(0.95, 1.95, -1.86, Math.PI);
+
+    // Front Door
+    const doorGeo = new THREE.BoxGeometry(0.72, 1.35, 0.08);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.2 });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0.7, 0.95, 1.86);
+    scene.add(door);
+
+    // 4. Roof
+    const roofMat = new THREE.MeshStandardMaterial({
+      color: cRoof.hex,
+      roughness: 0.5,
+      metalness: 0.15,
+      emissive: cRoof.hex,
+      emissiveIntensity: 0.18
+    });
+
+    if (propData.has_own_roof) {
+      const roofSlopeGeo = new THREE.BoxGeometry(2.35, 0.12, 4.1);
+
+      const roofLeft = new THREE.Mesh(roofSlopeGeo, roofMat);
+      roofLeft.position.set(-0.95, 3.22, 0);
+      roofLeft.rotation.z = 0.52;
+      roofLeft.castShadow = true;
+      roofLeft.receiveShadow = true;
+      roofLeft.userData = {
+        title: 'Roof & Loft Insulation',
+        type: 'roof',
+        elem: roofData,
+        color: cRoof
+      };
+      scene.add(roofLeft);
+      interactiveObjects.push(roofLeft);
+
+      const roofRight = new THREE.Mesh(roofSlopeGeo, roofMat);
+      roofRight.position.set(0.95, 3.22, 0);
+      roofRight.rotation.z = -0.52;
+      roofRight.castShadow = true;
+      roofRight.receiveShadow = true;
+      roofRight.userData = {
+        title: 'Roof & Loft Insulation',
+        type: 'roof',
+        elem: roofData,
+        color: cRoof
+      };
+      scene.add(roofRight);
+      interactiveObjects.push(roofRight);
+
+      const gableGeo = new THREE.BufferGeometry();
+      const gableVerts = new Float32Array([
+        -1.85, 2.68, 1.85,
+         1.85, 2.68, 1.85,
+         0.0,  3.76, 1.85,
+        -1.85, 2.68, -1.85,
+         0.0,  3.76, -1.85,
+         1.85, 2.68, -1.85,
+      ]);
+      gableGeo.setAttribute('position', new THREE.BufferAttribute(gableVerts, 3));
+      gableGeo.computeVertexNormals();
+      const gableMesh = new THREE.Mesh(gableGeo, wallMat);
+      gableMesh.userData = wallMesh.userData;
+      scene.add(gableMesh);
+      interactiveObjects.push(gableMesh);
+
+      if (propData.solar_kwp > 0) {
+        const solarGroup = new THREE.Group();
+        solarGroup.position.set(0.95, 3.25, 0);
+        solarGroup.rotation.z = -0.52;
+
+        const panelMat = new THREE.MeshStandardMaterial({
+          color: 0x0f2b66,
+          roughness: 0.12,
+          metalness: 0.85,
+          emissive: 0x1d4ed8,
+          emissiveIntensity: 0.35
+        });
+
+        const frameMatSolar = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5, metalness: 0.6 });
+        const panelGeo = new THREE.BoxGeometry(1.0, 0.05, 0.88);
+        const frameGeoSolar = new THREE.BoxGeometry(1.04, 0.03, 0.92);
+
+        for (let i = -1.1; i <= 1.1; i += 1.1) {
+          const sFrame = new THREE.Mesh(frameGeoSolar, frameMatSolar);
+          sFrame.position.set(0, 0.08, i);
+          solarGroup.add(sFrame);
+
+          const pMesh = new THREE.Mesh(panelGeo, panelMat);
+          pMesh.position.set(0, 0.10, i);
+          pMesh.castShadow = true;
+          solarGroup.add(pMesh);
+        }
+
+        solarGroup.children.forEach(function(child) {
+          child.userData = {
+            title: 'Solar PV Array (' + propData.solar_kwp + ' kWp)',
+            type: 'solar',
+            elem: {
+              name: 'Solar PV',
+              share: 0,
+              u_value: 0,
+              area_m2: propData.solar_kwp * 6,
+              status: 'Generating Zero-Carbon Energy'
+            },
+            color: { css: '#38bdf8' }
+          };
+          interactiveObjects.push(child);
+        });
+        scene.add(solarGroup);
+      }
+    } else {
+      const flatGeo = new THREE.BoxGeometry(3.9, 0.2, 3.9);
+      const flatMesh = new THREE.Mesh(flatGeo, roofMat);
+      flatMesh.position.set(0, 2.78, 0);
+      flatMesh.castShadow = true;
+      flatMesh.receiveShadow = true;
+      flatMesh.userData = {
+        title: 'Ceiling / Flat Roof Slab',
+        type: 'roof',
+        elem: roofData,
+        color: cRoof
+      };
+      scene.add(flatMesh);
+      interactiveObjects.push(flatMesh);
+
+      if (propData.solar_kwp > 0) {
+        const solarGroup = new THREE.Group();
+        solarGroup.position.set(0, 2.92, 0);
+        solarGroup.rotation.x = -0.3;
+
+        const panelMat = new THREE.MeshStandardMaterial({
+          color: 0x0f2b66,
+          roughness: 0.12,
+          metalness: 0.85,
+          emissive: 0x1d4ed8,
+          emissiveIntensity: 0.35
+        });
+        const panelGeo = new THREE.BoxGeometry(0.9, 0.05, 0.75);
+        for (let i = -1; i <= 1; i++) {
+          const pMesh = new THREE.Mesh(panelGeo, panelMat);
+          pMesh.position.set(i * 1.05, 0.06, 0);
+          pMesh.castShadow = true;
+          pMesh.userData = {
+            title: 'Solar PV Array (' + propData.solar_kwp + ' kWp)',
+            type: 'solar',
+            elem: {
+              name: 'Solar PV',
+              share: 0,
+              u_value: 0,
+              area_m2: propData.solar_kwp * 6,
+              status: 'Generating Zero-Carbon Energy'
+            },
+            color: { css: '#38bdf8' }
+          };
+          solarGroup.add(pMesh);
+          interactiveObjects.push(pMesh);
+        }
+        scene.add(solarGroup);
+      }
+    }
+
+    let hpFan = null;
+    if (propData.heating === 'heat_pump') {
+      const hpGroup = new THREE.Group();
+      hpGroup.position.set(2.4, 0.45, 0.8);
+
+      const baseGeo = new THREE.BoxGeometry(0.85, 0.1, 0.55);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
+      const hpBase = new THREE.Mesh(baseGeo, baseMat);
+      hpBase.position.y = -0.38;
+      hpGroup.add(hpBase);
+
+      const caseGeo = new THREE.BoxGeometry(0.75, 0.75, 0.45);
+      const caseMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.4 });
+      const hpCase = new THREE.Mesh(caseGeo, caseMat);
+      hpCase.castShadow = true;
+      hpCase.receiveShadow = true;
+      hpGroup.add(hpCase);
+
+      const grillGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.04, 24);
+      grillGeo.rotateX(Math.PI / 2);
+      const grillMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+      const grill = new THREE.Mesh(grillGeo, grillMat);
+      grill.position.set(0, 0, 0.23);
+      hpGroup.add(grill);
+
+      const fanGeo = new THREE.BoxGeometry(0.38, 0.05, 0.02);
+      const fanMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+      hpFan = new THREE.Mesh(fanGeo, fanMat);
+      hpFan.position.set(0, 0, 0.24);
+      hpGroup.add(hpFan);
+
+      const ledGeo = new THREE.SphereGeometry(0.035, 12, 12);
+      const ledMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+      const led = new THREE.Mesh(ledGeo, ledMat);
+      led.position.set(0.28, 0.26, 0.23);
+      hpGroup.add(led);
+
+      hpCase.userData = {
+        title: 'Air Source Heat Pump (ASHP)',
+        type: 'heat_pump',
+        elem: {
+          name: 'Heat Pump',
+          share: 0,
+          u_value: 0,
+          area_m2: 0,
+          status: 'Low-Carbon Heating • COP ~3.2'
+        },
+        color: { css: '#22c55e' }
+      };
+      interactiveObjects.push(hpCase);
+      scene.add(hpGroup);
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredObject = null;
+    let prevEmissive = null;
+
+    const hudTitle = document.getElementById('info-title');
+    const hudElem = document.getElementById('info-elem');
+    const hudShare = document.getElementById('info-share');
+    const hudU = document.getElementById('info-u');
+    const hudArea = document.getElementById('info-area');
+
+    function resetHUD() {
+      hudTitle.innerHTML = '<span>🏠</span> Building Envelope';
+      hudElem.innerText = 'Full Envelope';
+      hudShare.innerText = '100% Total Loss';
+      hudU.innerText = 'Composite';
+      hudArea.innerText = 'Green Score: ' + propData.score + '/100';
+    }
+    resetHUD();
+
+    function onPointerMove(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(interactiveObjects, false);
+
+      if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        if (hoveredObject !== obj) {
+          if (hoveredObject && prevEmissive && hoveredObject.material && hoveredObject.material.emissive) {
+            hoveredObject.material.emissive.copy(prevEmissive);
+          }
+          hoveredObject = obj;
+          container.style.cursor = 'pointer';
+
+          if (obj.material && obj.material.emissive) {
+            prevEmissive = obj.material.emissive.clone();
+            obj.material.emissive.addScalar(0.25);
+          }
+
+          const ud = obj.userData;
+          hudTitle.innerHTML = '<span>🔍</span> ' + ud.title;
+          hudElem.innerText = ud.elem.name ? ud.elem.name.toUpperCase() : ud.type;
+          if (ud.type === 'solar' || ud.type === 'heat_pump') {
+            hudShare.innerText = ud.elem.status || 'Active';
+            hudU.innerText = ud.type === 'solar' ? (propData.solar_kwp + ' kWp') : 'COP 3.2';
+            hudArea.innerText = ud.type === 'solar' ? (ud.elem.area_m2 + ' m²') : 'Zero-Carbon';
+          } else {
+            const pct = Math.round(ud.elem.share * 100);
+            hudShare.innerHTML = '<span style="color:' + ud.color.css + ';">' + pct + '% of heat loss</span>';
+            hudU.innerText = ud.elem.u_value + ' W/m²K';
+            hudArea.innerText = ud.elem.area_m2 + ' m²';
+          }
+        }
+      } else {
+        if (hoveredObject) {
+          if (prevEmissive && hoveredObject.material && hoveredObject.material.emissive) {
+            hoveredObject.material.emissive.copy(prevEmissive);
+          }
+          hoveredObject = null;
+          container.style.cursor = 'default';
+          resetHUD();
+        }
+      }
+    }
+
+    renderer.domElement.addEventListener('pointermove', onPointerMove, false);
+
+    const btnRotate = document.getElementById('btn-rotate');
+    window.toggleRotate = function() {
+      controls.autoRotate = !controls.autoRotate;
+      if (controls.autoRotate) {
+        btnRotate.classList.add('active');
+        btnRotate.innerText = '↺ Rotate';
+      } else {
+        btnRotate.classList.remove('active');
+        btnRotate.innerText = '⏸ Paused';
+      }
+    };
+
+    window.resetView = function() {
+      controls.target.set(0, 1.3, 0);
+      camera.position.set(initialPos.x, initialPos.y, initialPos.z);
+      controls.autoRotate = true;
+      btnRotate.classList.add('active');
+      btnRotate.innerText = '↺ Rotate';
+      resetHUD();
+    };
+
+    window.addEventListener('resize', function() {
+      const w = container.clientWidth;
+      camera.aspect = w / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, height);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (hpFan) {
+        hpFan.rotation.z += 0.08;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>"""
+
+    html_code = html_template.replace("__ELEMENTS_JSON__", elements_json).replace("__PROP_JSON__", prop_json)
+    components.html(html_code, height=500)
 
 
 def render_thermal_house_svg(elements: list, score: int):
@@ -225,10 +915,21 @@ if view_mode == "Customer Experience":
     col_house, col_waterfall = st.columns([1, 1])
 
     with col_house:
-        st.subheader("Thermal Twin House Cross-Section")
-        elements = build_home_elements(p)
+        st.subheader("Thermal Twin House Model")
+        p_display = apply_retrofits_to_property(p, chosen_retrofits) if chosen_retrofits else p
+        elements = build_home_elements(p_display)
+        display_score = report.score_after.total if chosen_retrofits else report.score.total
         if elements:
-            render_thermal_house_svg(elements, report.score.total)
+            viz_mode = st.radio(
+                "Model View",
+                ["3D Interactive WebGL Twin", "2D Architecture Cross-Section (SVG)"],
+                horizontal=True,
+                label_visibility="collapsed",
+            )
+            if viz_mode == "3D Interactive WebGL Twin":
+                render_thermal_house_3d(elements, display_score, p_display)
+            else:
+                render_thermal_house_svg(elements, display_score)
         else:
             st.info("Heat-loss diagram unavailable: floor area is missing for this property.")
         st.caption("Elements glow in infrared spectrum based on specific heat loss ($W/K$). Toggling retrofits recolours the building envelope.")
