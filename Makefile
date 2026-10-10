@@ -2,11 +2,11 @@
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
-	uv run python -m greenhome.data.generate --seed 42
+	@if command -v uv >/dev/null 2>&1; then uv run python -m greenhome.data.generate --seed 42; else PYTHONPATH="src:." .venv/bin/python -m greenhome.data.generate --seed 42; fi
 
 # Rebuild config/ calibration tables from data/raw/ (needs the raw downloads).
 calibrate:
-	uv run python -m greenhome.data.calibrate
+	@if command -v uv >/dev/null 2>&1; then uv run python -m greenhome.data.calibrate; else PYTHONPATH="src:." .venv/bin/python -m greenhome.data.calibrate; fi
 
 test:
 	@if command -v uv >/dev/null 2>&1; then uv run pytest; else PYTHONPATH="src:." PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/pytest; fi
