@@ -1,0 +1,82 @@
+version: 1
+source: >
+  Mapping from EPC open-data domestic certificate fields (field definitions: EPC open data glossary,
+  get-energy-performance-data.communities.gov.uk) to the Property schema vocabulary
+  (src/greenhome/schema.py). Rules are team mappings; anything assumed is flagged on the record.
+  Rules are checked in order and the first matching pattern (case-insensitive regex) wins.
+
+local_authorities:   # EPC local_authority_label -> ONS region (same as calibrate.py)
+  Leeds: "Yorkshire and The Humber"
+  Cornwall: "South West"
+  Southwark: "London"
+
+# EPC property_type + built_form -> NEED property types (the energy model's vocabulary)
+property_type:
+  Flat: Flat
+  Maisonette: Flat
+  Bungalow: Bungalow
+  # Park homes are excluded: no NEED equivalent and different construction.
+built_form_for_houses:
+  Detached: Detached
+  Semi-Detached: Semi detached
+  Mid-Terrace: Mid terrace
+  Enclosed Mid-Terrace: Mid terrace
+  End-Terrace: End terrace
+  Enclosed End-Terrace: End terrace
+
+# Construction year -> NEED age band. EPC bands straddling a boundary go to the band holding most of their years.
+age_band_upper_years: [[1929, "pre-1930"], [1975, "1930-1972"], [2002, "1973-1999"], [9999, "2000+"]]
+
+floor_area_plausible_m2: [10, 1000]   # outside -> treated as missing + flagged
+
+heating:   # mainheat_description patterns -> Property.heating
+  - [heat pump, heat_pump]
+  - [community scheme|community, district]
+  - [storage heater, storage_heaters]
+  - [mains gas, GAS]          # GAS is resolved to gas_condensing / gas_non_condensing below
+  - ["\\boil\\b", oil]
+  - [lpg, lpg]
+  - [electric|electricaire|no system present, direct_electric]
+gas_boiler_condensing_if_mainheat_energy_eff: [Good, Very Good]   # SAP efficiency rating proxy for condensing
+
+walls:
+  construction:   # walls_description -> wall_type ("solid" = not cavity-fillable)
+    - [cavity, cavity]
+    - [solid brick|granite|whin|sandstone|limestone|cob|system built|timber frame|park home, solid]
+    - [average thermal transmittance, cavity]   # new-build SAP wording; modern walls are cavity / framed
+  insulation:     # walls_description -> wall_insulation
+    - ['filled cavity|with external insulation|with internal insulation|as built, insulated', full]
+    - [partial insulation, partial]
+    - [no insulation, none]
+  u_value_full_if_at_most: 0.45   # "Average thermal transmittance X W/m2K" -> full if X <= this, else partial
+
+roof:
+  no_own_roof: ["another dwelling above", "other premises above"]
+  mm_pattern: "(\\d+)\\+?\\s*mm"          # e.g. "Pitched, 250 mm loft insulation", "300+ mm"
+  phrases:       # roof_description -> loft_insulation_mm equivalent (flagged as assumed)
+    - [no insulation, 0]
+    - [limited insulation, 50]
+    - ['insulated at rafters|insulated', 270]
+  u_value_mm: [[0.20, 270], [0.35, 150], [99, 50]]   # "Average thermal transmittance U" -> mm equivalent
+
+glazing:   # windows_description (+ glazed_type for date) -> Property.glazing
+  - [triple, triple]
+  - [high performance|multiple glazing throughout, double_new]
+  - [single glazed, single]
+  - [mostly|partial|some, partial]
+  - [fully double|full secondary, DOUBLE]   # DOUBLE resolved with glazed_type below
+glazed_type_new: [during or after 2002]
+glazed_type_old: [before 2002]
+double_unknown_date_new_if_built_from: 2003   # unknown install date: assume new only for homes built 2003+
+
+controls:   # mainheatcont_description -> Property.smart_controls (EPC has no smart-thermostat field)
+  - [time and temperature zone control|at least two room thermostats, smart_trvs]
+  - [programmer, programmer]
+  - [".*", none]
+
+solar:   # photo_supply = % of roof area covered by PV
+  kwp_per_m2_covered: 0.15
+  storeys: {Flat: 1, Bungalow: 1, default: 2}
+  source: "VERIFY: ~1 kWp per 6-7 m2 of panel (Energy Saving Trust); roof area approximated by ground-floor footprint"
+
+bedrooms_from_habitable_rooms_minus: 1   # EPC has habitable rooms only; bedrooms ~ rooms - 1 living room (flagged)

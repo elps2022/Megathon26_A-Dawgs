@@ -32,20 +32,20 @@ def test_rating_monotonic():
 
 def test_heating_monotonic():
     t = M["heating"]["scores"]
-    order = ["heat_pump", "district", "condensing_gas", "non_condensing_gas",
-             "storage_heaters", "oil_lpg", "direct_electric"]
+    order = ["heat_pump", "district", "gas_condensing", "gas_non_condensing",
+             "storage_heaters", "oil", "direct_electric"]
     assert _strictly_decreasing([t[k] for k in order])
 
 
 def test_glazing_monotonic():
     t = M["glazing"]["scores"]
-    order = ["triple", "double_post_2002", "double_older", "partial", "single"]
+    order = ["triple", "double_new", "double_old", "partial", "single"]
     assert _strictly_decreasing([t[k] for k in order])
 
 
 def test_smart_controls_monotonic():
     t = M["smart_controls"]["scores"]
-    order = ["smart_trvs", "smart_thermostat", "timer", "none"]
+    order = ["smart_trvs", "smart_thermostat", "programmer", "none"]
     assert _strictly_decreasing([t[k] for k in order])
 
 
@@ -68,7 +68,7 @@ def test_lower_intensity_never_scores_lower():
 
 POOR = dict(energy_rating="F", sap_score=None, floor_area_m2=80,
             annual_elec_kwh=3000, annual_gas_kwh=20000, loft_insulation_mm=0,
-            wall_insulation="none", heating="non_condensing_gas", glazing="single",
+            wall_insulation="none", heating="gas_non_condensing", glazing="single",
             solar_kwp=0, smart_controls="none")
 
 GOOD = dict(energy_rating="A", sap_score=None, floor_area_m2=100,

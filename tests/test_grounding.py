@@ -36,7 +36,7 @@ def build_mock_report() -> PropertyReport:
         floor_area_m2=95.0,
         bedrooms=3,
         energy_rating="D",
-        heating="condensing_gas",
+        heating="gas_condensing",
         wall_type="cavity",
         wall_insulation="none",
         has_own_roof=True,

@@ -42,6 +42,20 @@ Prices = Price Paid median for LA × type × (area / reference area)^0.7 × EPC 
 
 Known limitations: HDD from monthly means understates shoulder months. Storage-heater bills (~10 MWh/yr) are on the high side. Simulated solar savings (~1,150 kWh/yr) are larger than NEED's observed −12% (≈ −320 kWh): NEED's PV is older and smaller, which makes a useful sanity check for the savings model. Glazing, solid wall and smart-control effects are assumptions, not observations.
 
-## Real data (planned)
+## Real property book (EPC ingest)
 
-See ARCHITECTURE §3.1. Raw files go in `data/raw/` and are never committed (EPC and Price Paid addresses are under Royal Mail terms).
+Run `make epc` (`python -m greenhome.data.epc_ingest`, about 15 s). It needs `data/raw/epc/`, `data/raw/onspd/` and `data/raw/imd/`. Raw files are never committed (EPC and Price Paid addresses are under Royal Mail terms).
+
+- **Input:** 731,331 domestic certificates for Leeds, Cornwall and Southwark (lodged 2012-01 to 2026-09).
+- **Dedup:** the latest certificate per UPRN. Certificates without a UPRN (9,561) and park homes (303) are dropped. Result: **542,711 homes** (Leeds 253,557, Cornwall 191,954, Southwark 97,200).
+- **Mapping:** free-text EPC fields map to the `Property` vocabulary with ordered rules in `config/epc_mapping.yaml`. Mapped share per field is 99.3-100% (`eval/results/epc_ingest_summary.json`). Anything assumed is listed in `data_flags`: for example `wall_insulation_assumed`, `loft_mm_assumed_from_description`, `glazing_install_date_unknown`, `gas_meter_inferred`. Fields that can't be mapped become `"unknown"` and are treated as missing (default sub-score + flag; a survey is needed before the affected retrofits).
+- **IMD:** postcode → LSOA 2011 (ONSPD Aug 2026) → IMD 2019 decile → NEED-style quintile (1 = most deprived). 100% joined.
+- **Outputs (gitignored):** `data/processed/epc_properties.parquet` (with postcode, for internal joins) and `epc_properties_share.parquet` (no postcode, safe to share on Drive). `property_id` is a hash of the UPRN.
+- **Not filled yet:** `annual_elec_kwh` / `annual_gas_kwh` (synthetic bills step), `current_value_estimate` (Price Paid + HPI step), and `customer_id` (synthetic).
+
+Known limitations:
+- EPC has no smart-thermostat field, so `smart_controls` only gives none / programmer / zone control (as `smart_trvs`).
+- Condensing vs non-condensing gas boilers is inferred from the main-heating efficiency rating, so only ~1% come out non-condensing, which is likely too low.
+- Solar kWp is estimated from the % of roof covered × ground-floor footprint.
+- Bedrooms are estimated as habitable rooms − 1.
+- Certificates can be up to ~14 years old, and EPC homes skew towards those sold or let since 2012.

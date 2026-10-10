@@ -61,7 +61,7 @@ between. Lower use never scores lower.
 **Renewables (10%).** Estimated solar generation = `solar_kwp` x 900 kWh/kWp/year. The score
 is 100 x generation / electricity demand, capped at 100. No solar (0 kWp) scores 0.
 
-**Smart controls (5%).** None 0, timer 30, smart thermostat 70, smart thermostat plus
+**Smart controls (5%).** None 0, programmer/timer 30, smart thermostat 70, smart thermostat plus
 radiator valves 100.
 
 ## 4. Bands
@@ -115,7 +115,7 @@ requires, and document this overlap here instead of hiding it.
 - Solar yield uses one flat 900 kWh/kWp, not a regional figure.
 - Consumption intensity adds the electricity and gas figures given on the property. It
   matches "purchased energy" only if `annual_elec_kwh` is grid import.
-- Category names in the config (for example `condensing_gas`) must match the names in the
+- Category names in the config (for example `gas_condensing`) must match the Property schema names in the
   data. Mismatches show up as `unknown_<field>` flags.
 - The data is synthetic, so the score shows how the method behaves, not real-world accuracy.
 - The architecture document expects example property P10001 to score about 38 (Poor).

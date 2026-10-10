@@ -42,18 +42,20 @@ heating:
   scores:
     heat_pump: 100
     district: 70
-    condensing_gas: 55
-    non_condensing_gas: 35
+    gas_condensing: 55
+    gas_non_condensing: 35
     storage_heaters: 30
-    oil_lpg: 25
+    oil: 25
+    lpg: 25
     direct_electric: 20
   source: "Team draft, ARCHITECTURE.md 3.3"
 
 glazing:
+  # Category names must match the Property schema vocabulary (src/greenhome/schema.py).
   scores:
     triple: 100
-    double_post_2002: 80
-    double_older: 60
+    double_new: 80        # double glazing installed 2002 or later
+    double_old: 60        # double glazing installed before 2002, or date unknown
     partial: 35
     single: 0
   source: "Team draft, ARCHITECTURE.md 3.3"
@@ -65,7 +67,7 @@ renewables:
 smart_controls:
   scores:
     none: 0
-    timer: 30
+    programmer: 30
     smart_thermostat: 70
     smart_trvs: 100
   source: "Team draft, ARCHITECTURE.md 3.3"

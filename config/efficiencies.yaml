@@ -3,16 +3,20 @@ unit: "ratio of useful heat delivered to fuel or electricity used (heat pump: SC
 
 # fuel tells the energy model which meter the heating draws from.
 heating_systems:
-  condensing_gas:
+  gas_condensing:
     fuel: gas
     efficiency: 0.85
     source: "docs/ARCHITECTURE.md 3.5 (boiler ~0.85); VERIFY against SAP 10 Table 4a / 4b"
-  non_condensing_gas:
+  gas_non_condensing:
     fuel: gas
     efficiency: 0.70
     source: "VERIFY: typical older non-condensing boiler seasonal efficiency (SAP 10 Table 4b)"
-  oil_lpg:
-    fuel: oil_lpg
+  oil:
+    fuel: oil
+    efficiency: 0.80
+    source: "VERIFY: typical oil boiler seasonal efficiency (SAP 10 Table 4b)"
+  lpg:
+    fuel: lpg
     efficiency: 0.80
     source: "VERIFY: typical oil/LPG boiler seasonal efficiency (SAP 10 Table 4b)"
   heat_pump:

@@ -19,7 +19,10 @@ def load_catalogue(path=_CFG) -> dict:
 
 
 def _norm(v):
-    return None if v is None else str(v).strip().lower().replace(" ", "_").replace("-", "_")
+    if v is None:
+        return None
+    n = str(v).strip().lower().replace(" ", "_").replace("-", "_")
+    return None if n in ("", "unknown", "nan") else n  # "unknown" placeholders count as missing data
 
 
 def _loft(p, t):
@@ -57,7 +60,7 @@ def _solid(p, t):
 
 def _glazing(p, t):
     g = _norm(p.get("glazing"))
-    if g in ("double_older", "double_post_2002", "triple", "double_new"):
+    if g in ("double_old", "double_new", "triple"):
         return "Windows are already double or triple glazed.", []
     return None, ([] if g else ["unknown_glazing"])
 
@@ -69,8 +72,11 @@ def _smart(p, t):
 
 
 def _heat_pump(p, t):
-    if _norm(p.get("heating")) == "heat_pump":
+    heating = _norm(p.get("heating"))
+    if heating == "heat_pump":
         return "Home already has a heat pump.", []
+    if heating is None:
+        return "Current heating system unknown: a survey is needed before a heat pump.", ["unknown_heating"]
     mm = p.get("loft_insulation_mm")
     flags = ["insulate_first"] if (mm is None or mm < t["heat_pump_min_loft_mm"]) else []
     return None, flags

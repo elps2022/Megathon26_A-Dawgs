@@ -1,0 +1,112 @@
+{
+  "source": "EPC domestic certificates, Leeds / Cornwall / Southwark (2012-01 to 2026-09)",
+  "certificates": 731331,
+  "with_uprn": 721770,
+  "homes_latest_certificate": 543014,
+  "park_homes_excluded": 303,
+  "homes_in_book": 542711,
+  "by_local_authority": {
+    "Leeds": 253557,
+    "Cornwall": 191954,
+    "Southwark": 97200
+  },
+  "mapped_share": {
+    "property_type": 1.0,
+    "age_band": 1.0,
+    "floor_area_m2": 0.9998,
+    "energy_rating": 1.0,
+    "heating": 1.0,
+    "wall_type": 1.0,
+    "wall_insulation": 0.9957,
+    "glazing": 1.0,
+    "imd_quintile": 1.0
+  },
+  "loft_known_share_own_roof": 0.9973,
+  "value_counts": {
+    "property_type": {
+      "Flat": 187772,
+      "Semi detached": 105462,
+      "Mid terrace": 86355,
+      "Detached": 65750,
+      "Bungalow": 49734,
+      "End terrace": 46486,
+      "unknown": 1152
+    },
+    "age_band": {
+      "1930-1972": 177446,
+      "2000+": 135874,
+      "pre-1930": 127562,
+      "1973-1999": 101826,
+      "nan": 3
+    },
+    "heating": {
+      "gas_condensing": 348430,
+      "direct_electric": 56919,
+      "storage_heaters": 40186,
+      "district": 38891,
+      "oil": 26024,
+      "heat_pump": 17627,
+      "lpg": 7642,
+      "unknown": 3742,
+      "gas_non_condensing": 3250
+    },
+    "wall_type": {
+      "cavity": 338611,
+      "solid": 203920,
+      "unknown": 180
+    },
+    "wall_insulation": {
+      "full": 326144,
+      "none": 192287,
+      "partial": 21972,
+      "nan": 2308
+    },
+    "glazing": {
+      "double_old": 262272,
+      "double_new": 224129,
+      "partial": 34347,
+      "single": 20385,
+      "triple": 1529,
+      "unknown": 49
+    },
+    "smart_controls": {
+      "programmer": 398592,
+      "none": 89330,
+      "smart_trvs": 54789
+    },
+    "energy_rating": {
+      "C": 188879,
+      "D": 180458,
+      "B": 79996,
+      "E": 66512,
+      "F": 16437,
+      "G": 5739,
+      "A": 4690
+    },
+    "imd_quintile": {
+      "2": 155733,
+      "1": 141401,
+      "3": 131474,
+      "4": 77155,
+      "5": 36948
+    }
+  },
+  "with_solar": 7210,
+  "flags": {
+    "smart_controls_from_epc": 542711,
+    "bedrooms_estimated_from_rooms": 457301,
+    "wall_insulation_assumed": 320371,
+    "glazing_install_date_unknown": 218515,
+    "loft_mm_assumed_from_description": 175513,
+    "solar_unknown_assumed_none": 94055,
+    "gas_meter_inferred": 85410,
+    "unknown_heating": 3742,
+    "unknown_wall_insulation": 2308,
+    "unknown_built_form": 1152,
+    "unknown_loft_insulation": 1121,
+    "unknown_wall_type": 180,
+    "implausible_floor_area": 85,
+    "unknown_glazing": 49,
+    "unknown_age_band": 3
+  }
+}

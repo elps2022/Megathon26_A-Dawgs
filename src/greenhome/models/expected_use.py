@@ -17,7 +17,7 @@ from greenhome.schema import Property
 
 _CFG = Path(__file__).resolve().parents[3] / "config" / "need_calibration.yaml"
 AGE_CODES = {"pre-1930": "1", "1930-1972": "2", "1973-1999": "3", "2000+": "4"}
-GAS_HEATING = {"gas_condensing", "gas_non_condensing", "condensing_gas", "non_condensing_gas"}
+GAS_HEATING = {"gas_condensing", "gas_non_condensing"}
 
 
 @lru_cache(maxsize=1)

@@ -34,9 +34,6 @@ REASONS = {
     "heat_pump": "Heat pump replaces gas heating; gas falls to zero while electricity use rises.",
     "solar_pv": "Solar panels generate electricity on site, reducing grid imports (not underlying demand).",
 }
-# Property.heating uses the generator's names; config/efficiencies.yaml uses its own keys.
-EFFICIENCY_KEY = {"gas_condensing": "condensing_gas", "gas_non_condensing": "non_condensing_gas",
-                  "oil": "oil_lpg", "lpg": "oil_lpg"}
 
 
 class EnergyUnavailable(ValueError):
@@ -124,7 +121,7 @@ def baseline_energy(p: Property) -> tuple[float, float, list[str]]:
 
 def _heating_efficiency(heating: str) -> float:
     systems = _cfg("efficiencies.yaml")["heating_systems"]
-    return systems[EFFICIENCY_KEY.get(heating, heating)]["efficiency"]
+    return systems[heating]["efficiency"]
 
 
 def simulate_package_savings(

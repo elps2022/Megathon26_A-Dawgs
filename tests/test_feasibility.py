@@ -3,7 +3,7 @@ from greenhome.engine.feasibility import assess, load_catalogue
 CAT = load_catalogue()
 
 BASE = dict(property_type="semi_detached", loft_insulation_mm=0, wall_insulation="none",
-            wall_type="cavity", glazing="single", heating="condensing_gas",
+            wall_type="cavity", glazing="single", heating="gas_condensing",
             solar_kwp=0, smart_controls="none")
 
 
@@ -42,7 +42,7 @@ def test_fully_insulated_walls_block_both_wall_upgrades():
 
 
 def test_existing_double_glazing_blocks_glazing():
-    for g in ("double_older", "double_post_2002", "triple"):
+    for g in ("double_old", "double_new", "triple"):
         assert "double_glazing" in blocked(dict(BASE, glazing=g))
     assert "double_glazing" not in blocked(dict(BASE, glazing="partial"))
 
