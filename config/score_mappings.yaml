@@ -1,0 +1,71 @@
+version: 1
+source_note: >
+  Weights and bands are fixed by the Lloyds PS2 problem statement. Mapping
+  values are team drafts from docs/ARCHITECTURE.md section 3.3 unless a
+  specific source is named. Items marked VERIFY need a real source added.
+
+weights:
+  energy_efficiency: 0.25
+  consumption_intensity: 0.20
+  insulation: 0.15
+  heating: 0.15
+  glazing: 0.10
+  renewables: 0.10
+  smart_controls: 0.05
+
+bands:            # checked top to bottom, first match wins
+  - {name: "Highly efficient", min: 80}
+  - {name: "Good", min: 65}
+  - {name: "Moderate", min: 50}
+  - {name: "Poor", min: 30}
+  - {name: "Very poor", min: 0}
+
+# Used when an input is missing. Never 0: missing data is flagged, not zeroed.
+default_score: 40
+
+energy_efficiency:
+  rating_midpoints: {a: 96, b: 86, c: 75, d: 61, e: 46, f: 30, g: 10}
+  source: "Team draft; EPC band midpoints (VERIFY against EPC band ranges)"
+
+consumption_intensity:
+  points: [[50, 100], [350, 0]]   # kWh/m2/yr -> score, linear between, clipped
+  source: "Team draft, ARCHITECTURE.md 3.3 (VERIFY against NEED/EPC benchmarks)"
+
+insulation:
+  loft_weight: 0.5
+  wall_weight: 0.5
+  loft_mm_points: [[0, 0], [100, 50], [270, 100]]   # mm -> score, linear
+  wall: {none: 0, partial: 50, full: 100}
+  source: "Team draft; 270mm full-depth loft is a commonly quoted target (VERIFY)"
+
+heating:
+  scores:
+    heat_pump: 100
+    district: 70
+    condensing_gas: 55
+    non_condensing_gas: 35
+    storage_heaters: 30
+    oil_lpg: 25
+    direct_electric: 20
+  source: "Team draft, ARCHITECTURE.md 3.3"
+
+glazing:
+  scores:
+    triple: 100
+    double_post_2002: 80
+    double_older: 60
+    partial: 35
+    single: 0
+  source: "Team draft, ARCHITECTURE.md 3.3"
+
+renewables:
+  solar_yield_kwh_per_kwp: 900     # ARCHITECTURE.md 3.6 quotes ~850-1000
+  source: "Team draft (VERIFY regional yield source)"
+
+smart_controls:
+  scores:
+    none: 0
+    timer: 30
+    smart_thermostat: 70
+    smart_trvs: 100
+  source: "Team draft, ARCHITECTURE.md 3.3"
