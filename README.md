@@ -12,14 +12,14 @@ uv sync                      # creates .venv with all dependencies (dev group ad
 
 ## Data and trained models (hosted externally)
 
-Datasets and model weights are not in this repository. Download them and install with one command each:
+Datasets and model weights are not in this repository. Both zips are in this Google Drive folder: <https://drive.google.com/drive/folders/1Ss5zbpSmv5ZF5RBw2gXpmxL4ENdWJbH3>. Download them, then install with one command each:
 
-| What | Link | Install |
+| What | File in the folder | Install |
 |---|---|---|
-| Trained models (energy V1 / V2 / mode 1 with bands, value model), 4.3 MB | MODELS_LINK | `make models SRC=<file or link>` |
-| Processed real data (property book, loans, splits, features, matched sales, monthly bills), 105 MB | DATA_LINK | `make real-data SRC=<file or link>` |
+| Trained models (energy V1 / V2 / mode 1 with bands, value model), 4.3 MB | `energy_models.zip` | `make models SRC=path/to/energy_models.zip` |
+| Processed real data (property book, loans, splits, features, matched sales, monthly bills), 105 MB | `real_data.zip` | `make real-data SRC=path/to/real_data.zip` |
 
-Both links are Google Drive files shared as "Anyone with the link"; `SRC` takes either the downloaded zip or the link itself. The processed data contains no postcodes or address fields.
+`SRC` also accepts a direct Google Drive file link ("Anyone with the link") instead of a downloaded zip. The processed data contains no postcodes or address fields.
 
 Without either download, the synthetic dataset can be generated locally (no downloads needed):
 
@@ -46,8 +46,8 @@ make train                   # energy models (5-fold CV + validation), saved to 
 make train-value             # value model, saved to the same folder
 make eval-test               # single test-set scoring of the energy models, savings checks, figures
 make eval-value              # single test-set scoring of the value model
-make package-models          # dist/energy_models.zip      (what MODELS_LINK hosts)
-make package-data            # dist/real_data.zip          (what DATA_LINK hosts)
+make package-models          # dist/energy_models.zip      (the hosted models zip)
+make package-data            # dist/real_data.zip          (the hosted data zip)
 ```
 
 ## Credits
