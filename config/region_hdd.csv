@@ -1,0 +1,13 @@
+# source: Met Office HadUK-Grid regional monthly Tmean (https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-and-regional-series); typical-year HDD (base 15.5 C)
+# = mean annual HDD 2015-2024, monthly-mean approximation as degree_days.csv
+region_code,region,metoffice_series,typical_hdd
+E12000001,North East,Tmean_England_E_and_NE.txt,2156.1
+E12000002,North West,Tmean_England_NW_and_N_Wales.txt,2166.7
+E12000003,Yorkshire and The Humber,Tmean_England_E_and_NE.txt,2156.1
+E12000004,East Midlands,Tmean_Midlands.txt,1973.9
+E12000005,West Midlands,Tmean_Midlands.txt,1973.9
+E12000006,East,Tmean_East_Anglia.txt,1808.9
+E12000007,London,Tmean_England_SE_and_Central_S.txt,1756.1
+E12000008,South East,Tmean_England_SE_and_Central_S.txt,1756.1
+E12000009,South West,Tmean_England_SW_and_S_Wales.txt,1867.5
+W92000004,Wales,Tmean_Wales.txt,2086.4

@@ -40,4 +40,24 @@ Dropping what EPC homes can't supply costs nothing measurable (well inside fold 
 - Conservatory (81.5% missing, with missingness tied to EPC presence) is coded as an explicit "unknown" level.
 - Monotone constraints: worse EPC band and larger floor area never lower predictions. For gas, cavity insulation never raises it; for electricity, PV never raises it.
 
+## V1 grey box and the physics-only baseline
+
+Reproduce with `python -m greenhome.models.energy_greybox` (part of `make train`) → `eval/results/energy_v1.json`. Same parity features, folds and splits as above; test untouched.
+
+| Fuel | Model | CV MAE (kWh) | CV R² (log) | Val MAE (kWh) | Val R² (log) |
+|---|---|---|---|---|---|
+| Gas | Physics only (no training) | 10,731 | −1.21 | 10,578 | −1.19 |
+| Gas | Physics × one scale factor (fitted on train) | 4,548 | 0.14 | 4,439 | 0.16 |
+| Gas | V2: LightGBM (untuned) | 4,119 | 0.28 | 4,015 | 0.30 |
+| Gas | **V1: physics × LightGBM residual** | **4,118** | **0.28** | **4,010** | **0.30** |
+| Elec | Physics only (no training) | 1,659 | 0.01 | 1,680 | 0.03 |
+| Elec | Physics × one scale factor | 1,621 | 0.02 | 1,653 | 0.03 |
+| Elec | V2: LightGBM (untuned) | 1,550 | 0.15 | 1,581 | 0.16 |
+| Elec | **V1: physics × LightGBM residual** | **1,549** | **0.15** | **1,578** | **0.16** |
+
+**Reading the numbers**
+- **Physics overpredicts NEED gas about 2×** (median 20,400 vs 10,100 kWh; the fitted scale factor is 0.51). This is the documented *prebound effect*: real homes, especially older and poorly rated ones, are heated less, and to lower temperatures, than steady-state physics assumes (Sunikka-Blank & Galvin, 2012). NEED homes have no fabric fields, so their physics uses age-band default fabric, which adds to the gap. Electricity physics (SAP lighting and appliances) is close: scale factor 0.89.
+- **V1 ties V2 on NEED, as expected.** For NEED homes the physics prediction is a fixed function of the same bands the residual model already sees, so it can't add accuracy there. V1 is shipped anyway (ARCHITECTURE §3.5 default: V2 isn't clearly better). Its value is elsewhere: retrofits act through U-values and efficiencies with diminishing returns, it gives per-element heat loss for the house diagram, and real customers' bills calibrate it (k).
+- Physics-only beats the global median only after one scale factor. Uncalibrated, it is worse than every baseline for gas, which is why the residual and calibration steps exist.
+
 **Next (§3.5 steps 5–7):** Optuna tuning, the LightGBM vs CatBoost bake-off, feature work (interactions; IMD quintile is already in), conformal p10/p90, subgroup errors, and checking loft/cavity/PV toggles against NEED's observed DiD effects. Then a single scoring of the test split.

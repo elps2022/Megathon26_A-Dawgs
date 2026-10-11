@@ -114,36 +114,69 @@ def calibrate_need() -> None:
     (CONFIG / "need_calibration.yaml").write_text(yaml.safe_dump(out, sort_keys=False))
 
 
-def calibrate_degree_days() -> None:
+# NEED REGION (ONS GSS code) -> Met Office HadUK-Grid areal series file (data/raw/metoffice/)
+NEED_REGION_SERIES = {
+    "E12000001": ("North East", "Tmean_England_E_and_NE.txt"),
+    "E12000002": ("North West", "Tmean_England_NW_and_N_Wales.txt"),
+    "E12000003": ("Yorkshire and The Humber", "Tmean_England_E_and_NE.txt"),
+    "E12000004": ("East Midlands", "Tmean_Midlands.txt"),
+    "E12000005": ("West Midlands", "Tmean_Midlands.txt"),
+    "E12000006": ("East", "Tmean_East_Anglia.txt"),
+    "E12000007": ("London", "Tmean_England_SE_and_Central_S.txt"),
+    "E12000008": ("South East", "Tmean_England_SE_and_Central_S.txt"),
+    "E12000009": ("South West", "Tmean_England_SW_and_S_Wales.txt"),
+    "W92000004": ("Wales", "Tmean_Wales.txt"),
+}
+
+
+def read_metoffice(fname: str, first_year: int = 2015) -> pd.DataFrame:
+    """Monthly mean temperature and HDD (base 15.5 C) from a Met Office areal series file."""
+    lines = (RAW / "metoffice" / fname).read_text().splitlines()
+    start = next(i for i, l in enumerate(lines) if l.startswith("year"))
+    header = lines[start]
+    # Fixed-width columns, values right-aligned under each month label. Months not yet reported are
+    # blank, so splitting on whitespace would shift the seasonal means (win/spr/sum) into Oct-Dec.
+    ends = [header.index(name) + len(name) for name in
+            ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")]
     rows = []
-    for la, (region, fname) in LA_REGIONS.items():
-        lines = (RAW / "metoffice" / fname).read_text().splitlines()
-        start = next(i for i, l in enumerate(lines) if l.startswith("year"))
-        header = lines[start]
-        # Fixed-width columns, values right-aligned under each month label. Months not yet reported are
-        # blank, so splitting on whitespace would shift the seasonal means (win/spr/sum) into Oct-Dec.
-        ends = [header.index(name) + len(name) for name in
-                ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")]
-        for line in lines[start + 1:]:
-            if not line.strip():
+    for line in lines[start + 1:]:
+        if not line.strip():
+            continue
+        year = int(line.split()[0])
+        if year < first_year:
+            continue
+        for m, end in enumerate(ends, start=1):
+            cell = line[end - 6:end].strip()
+            if cell in ("", "---"):
                 continue
-            year = int(line.split()[0])
-            if year < 2015:
-                continue
-            for m, end in enumerate(ends, start=1):
-                cell = line[end - 6:end].strip()
-                if cell in ("", "---"):
-                    continue
-                t = float(cell)
-                days = calendar.monthrange(year, m)[1]
-                rows.append({"region": region, "local_authority": la, "year": year, "month": m,
-                             "tmean_c": t, "hdd": round(days * max(0.0, HDD_BASE_C - t), 1)})
-    df = pd.DataFrame(rows)
+            t = float(cell)
+            days = calendar.monthrange(year, m)[1]
+            rows.append({"year": year, "month": m, "tmean_c": t, "hdd": round(days * max(0.0, HDD_BASE_C - t), 1)})
+    return pd.DataFrame(rows)
+
+
+def calibrate_degree_days() -> None:
+    rows = [read_metoffice(fname).assign(region=region, local_authority=la)
+            for la, (region, fname) in LA_REGIONS.items()]
+    df = pd.concat(rows)[["region", "local_authority", "year", "month", "tmean_c", "hdd"]]
     header = (f"# source: Met Office HadUK-Grid regional monthly Tmean ({METOFFICE_URL}).\n"
               f"# hdd = days_in_month * max(0, {HDD_BASE_C} - monthly mean); a monthly-mean approximation that\n"
               "# understates HDD in shoulder months. Swap for daily-based HDD if time allows.\n")
     path = CONFIG / "degree_days.csv"
     path.write_text(header + df.to_csv(index=False))
+
+    # Typical-year HDD for every NEED region (physics model, ARCHITECTURE 3.5), over the same normal period as
+    # the weather normalisation (config/annualisation.yaml), so physics and normalised bills share one "typical".
+    lo, hi = yaml.safe_load((CONFIG / "annualisation.yaml").read_text())["weather_normalisation"]["normal_years"]
+    out = []
+    for code, (name, fname) in NEED_REGION_SERIES.items():
+        m = read_metoffice(fname)
+        annual = m[m.year.between(lo, hi)].groupby("year").hdd.sum()
+        assert len(annual) == hi - lo + 1 and (m[m.year.between(lo, hi)].groupby("year").size() == 12).all()
+        out.append({"region_code": code, "region": name, "metoffice_series": fname, "typical_hdd": round(annual.mean(), 1)})
+    (CONFIG / "region_hdd.csv").write_text(
+        f"# source: Met Office HadUK-Grid regional monthly Tmean ({METOFFICE_URL}); typical-year HDD (base {HDD_BASE_C} C)\n"
+        f"# = mean annual HDD {lo}-{hi}, monthly-mean approximation as degree_days.csv\n" + pd.DataFrame(out).to_csv(index=False))
 
 
 def calibrate_prices() -> None:

@@ -7,8 +7,10 @@ roof:
   standard: 0.16        # loft >= 270 mm, or no own roof (heat loss to the flat above)
 wall:
   solid_uninsulated: 2.1
+  solid_partial: 1.0     # VERIFY: partly insulated solid wall (RdSAP 10 Table S6 range)
   solid_insulated: 0.30
   cavity_uninsulated: 1.6
+  cavity_partial: 1.0    # VERIFY: as-built partial fill, RdSAP 1976-1982 band ~1.0
   cavity_insulated: 0.45
 window:
   single: 4.8

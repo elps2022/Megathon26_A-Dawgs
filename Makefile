@@ -24,6 +24,7 @@ api:
 # Energy model first cut on NEED: baselines vs LightGBM, 5-fold CV + val (test split untouched).
 train:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_ml
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_greybox
 
 
 # Real property book from EPC certificates (needs data/raw/epc, onspd, imd). Writes data/processed/*.parquet.

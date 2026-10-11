@@ -140,7 +140,7 @@ class EnergyModel(Protocol):
 1. *Physics.* Heat loss coefficient HLC (W/K) = Σ U_element × area_element + 0.33 × air_changes × volume.
    - Element areas (walls, roof, floor, windows) come from floor area, property type and storeys (RdSAP-style geometry rules, `config/geometry.yaml`).
    - U-values come from age band + insulation level + glazing type (RdSAP default tables, `config/u_values.yaml`).
-   - Space-heating demand (kWh) = HLC × HDD_region × 24 / 1000 − useful gains, with HDD from `config/degree_days.csv`.
+   - Space-heating demand (kWh) = HLC × HDD_region × 24 / 1000, with typical-year HDD per region from `config/region_hdd.csv`. No separate gains term: the 15.5 °C base already allows for internal and solar gains, so subtracting them again would double-count. Hot water and lighting/appliances follow SAP Appendices J and L (`config/physics.yaml`). NEED homes have no fabric fields, so their physics uses age-band default fabric; EPC homes use their own (`models/physics.py`, one implementation shared with the house diagram).
    - Fuel = demand / heating efficiency (`config/efficiencies.yaml`: boiler ~0.85, heat pump SCOP ~2.8–3.2, direct electric 1.0).
 2. *Calibration to the home's bills (PRISM method),* when monthly bills exist. Regress monthly gas (or electricity, for electrically heated homes) on monthly regional HDD: slope = actual heating response, intercept = base load (hot water, cooking).
    - Calibration factor k = actual slope / physics slope. It captures occupancy, setpoint and hidden draughts.

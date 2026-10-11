@@ -65,38 +65,14 @@ def apply_retrofits_to_property(p: Property, retrofits: list[str]) -> Property:
 
 
 def build_home_elements(p: Property) -> list[Element]:
-    """Envelope geometry and U-values (config/geometry.yaml, config/u_values.yaml). Empty if floor area unknown."""
+    """Per-element heat loss for the house diagram, from the energy model's physics (models/physics.py), so the
+    diagram and the model share one implementation. Empty if floor area unknown."""
     if p.floor_area_m2 is None:
         return []
-    geo, u = _cfg("geometry.yaml"), _cfg("u_values.yaml")
-    area = p.floor_area_m2
-    is_flat = "flat" in p.property_type.lower()
-    storeys = geo["storeys"]["flat" if is_flat else "house"]
-    footprint = area / storeys
-
-    roof_area = footprint if p.has_own_roof else 0.0
-    perimeter = 4.0 * (footprint ** 0.5)
-    window_area = geo["glazing_ratio_of_floor_area"] * area
-    wall_net = max(perimeter * geo["storey_height_m"] * storeys - window_area, geo["min_net_wall_area_m2"])
-
-    t = geo["loft_thresholds_mm"]
-    mm = p.loft_insulation_mm
-    if not p.has_own_roof or (mm is not None and mm >= t["standard"]):
-        u_roof = u["roof"]["standard"]
-    elif mm is not None and mm >= t["partial"]:
-        u_roof = u["roof"]["partial"]
-    else:
-        u_roof = u["roof"]["uninsulated"]
-    insulated = "insulated" if p.wall_insulation == "full" else "uninsulated"
-    u_wall = u["wall"][f"{'solid' if p.wall_type == 'solid' else 'cavity'}_{insulated}"]
-    u_win = u["window"].get(p.glazing, u["window"]["double_new"])
-
-    losses = [(name, a, uv, round(a * uv, 2)) for name, a, uv in
-              [("roof", roof_area, u_roof), ("wall", wall_net, u_wall),
-               ("window", window_area, u_win), ("floor", footprint, u["floor"]["standard"])]]
-    total = sum(l for *_, l in losses) or 1.0
-    return [Element(name=n, area_m2=round(a, 1), u_value=uv, heat_loss_w_per_k=l, share=round(l / total, 3))
-            for n, a, uv, l in losses]
+    import pandas as pd
+    from greenhome.models.physics import elements, envelope, property_fabric
+    fabric, _ = property_fabric(pd.DataFrame([p.model_dump()]))
+    return [Element(**e) for e in elements(envelope(fabric).iloc[0])]
 
 
 def baseline_energy(p: Property) -> tuple[float, float, list[str]]:

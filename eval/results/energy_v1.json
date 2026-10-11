@@ -1,0 +1,204 @@
+{
+  "gas": {
+    "n_train": 25732,
+    "n_val": 5514,
+    "cv": {
+      "global_median": {
+        "mae_kwh": 5002.74,
+        "mape_pct": 65.896,
+        "median_ape_pct": 36.56,
+        "r2_log": -0.0099,
+        "mae_kwh_sd": 29.6
+      },
+      "cell_median": {
+        "mae_kwh": 4241.04,
+        "mape_pct": 52.844,
+        "median_ape_pct": 30.936,
+        "r2_log": 0.2416,
+        "mae_kwh_sd": 17.2
+      },
+      "log_linear": {
+        "mae_kwh": 4118.18,
+        "mape_pct": 50.07,
+        "median_ape_pct": 30.158,
+        "r2_log": 0.278,
+        "mae_kwh_sd": 21.4
+      },
+      "lightgbm": {
+        "mae_kwh": 4119.06,
+        "mape_pct": 50.088,
+        "median_ape_pct": 30.332,
+        "r2_log": 0.2799,
+        "mae_kwh_sd": 27.1
+      },
+      "physics_only": {
+        "mae_kwh": 10730.96,
+        "mape_pct": 160.518,
+        "median_ape_pct": 97.95,
+        "r2_log": -1.2098,
+        "mae_kwh_sd": 106.5
+      },
+      "physics_scaled": {
+        "mae_kwh": 4547.94,
+        "mape_pct": 59.494,
+        "median_ape_pct": 33.132,
+        "r2_log": 0.1355,
+        "mae_kwh_sd": 38.6
+      },
+      "v1_greybox": {
+        "mae_kwh": 4117.8,
+        "mape_pct": 50.138,
+        "median_ape_pct": 30.15,
+        "r2_log": 0.2775,
+        "mae_kwh_sd": 26.7
+      }
+    },
+    "val": {
+      "global_median": {
+        "mae_kwh": 4929.6,
+        "mape_pct": 64.09,
+        "median_ape_pct": 35.67,
+        "r2_log": -0.0069
+      },
+      "cell_median": {
+        "mae_kwh": 4130.7,
+        "mape_pct": 50.44,
+        "median_ape_pct": 30.3,
+        "r2_log": 0.2611
+      },
+      "log_linear": {
+        "mae_kwh": 4028.7,
+        "mape_pct": 47.61,
+        "median_ape_pct": 29.65,
+        "r2_log": 0.3001
+      },
+      "lightgbm": {
+        "mae_kwh": 4015.3,
+        "mape_pct": 47.41,
+        "median_ape_pct": 29.56,
+        "r2_log": 0.3026
+      },
+      "physics_only": {
+        "mae_kwh": 10578.4,
+        "mape_pct": 153.14,
+        "median_ape_pct": 95.63,
+        "r2_log": -1.1883
+      },
+      "physics_scaled": {
+        "mae_kwh": 4438.6,
+        "mape_pct": 56.34,
+        "median_ape_pct": 32.55,
+        "r2_log": 0.1624
+      },
+      "v1_greybox": {
+        "mae_kwh": 4009.8,
+        "mape_pct": 47.29,
+        "median_ape_pct": 29.5,
+        "r2_log": 0.3049
+      }
+    },
+    "physics_scale_factor": 0.505,
+    "v1_iterations": 163
+  },
+  "elec": {
+    "n_train": 31721,
+    "n_val": 6803,
+    "cv": {
+      "global_median": {
+        "mae_kwh": 1671.82,
+        "mape_pct": 57.212,
+        "median_ape_pct": 41.172,
+        "r2_log": -0.0022,
+        "mae_kwh_sd": 26.9
+      },
+      "cell_median": {
+        "mae_kwh": 1587.42,
+        "mape_pct": 54.378,
+        "median_ape_pct": 38.4,
+        "r2_log": 0.0924,
+        "mae_kwh_sd": 25.4
+      },
+      "log_linear": {
+        "mae_kwh": 1588.94,
+        "mape_pct": 55.094,
+        "median_ape_pct": 39.296,
+        "r2_log": 0.0991,
+        "mae_kwh_sd": 25.9
+      },
+      "lightgbm": {
+        "mae_kwh": 1550.2,
+        "mape_pct": 54.15,
+        "median_ape_pct": 37.75,
+        "r2_log": 0.1487,
+        "mae_kwh_sd": 23.5
+      },
+      "physics_only": {
+        "mae_kwh": 1658.62,
+        "mape_pct": 61.788,
+        "median_ape_pct": 42.66,
+        "r2_log": 0.0132,
+        "mae_kwh_sd": 26.7
+      },
+      "physics_scaled": {
+        "mae_kwh": 1621.28,
+        "mape_pct": 54.212,
+        "median_ape_pct": 39.558,
+        "r2_log": 0.0216,
+        "mae_kwh_sd": 27.2
+      },
+      "v1_greybox": {
+        "mae_kwh": 1549.08,
+        "mape_pct": 54.144,
+        "median_ape_pct": 37.744,
+        "r2_log": 0.149,
+        "mae_kwh_sd": 23.4
+      }
+    },
+    "val": {
+      "global_median": {
+        "mae_kwh": 1714.5,
+        "mape_pct": 57.61,
+        "median_ape_pct": 42.22,
+        "r2_log": -0.0035
+      },
+      "cell_median": {
+        "mae_kwh": 1614.2,
+        "mape_pct": 54.33,
+        "median_ape_pct": 38.62,
+        "r2_log": 0.1063
+      },
+      "log_linear": {
+        "mae_kwh": 1617.6,
+        "mape_pct": 54.84,
+        "median_ape_pct": 38.94,
+        "r2_log": 0.1107
+      },
+      "lightgbm": {
+        "mae_kwh": 1581.0,
+        "mape_pct": 54.24,
+        "median_ape_pct": 37.83,
+        "r2_log": 0.1615
+      },
+      "physics_only": {
+        "mae_kwh": 1680.4,
+        "mape_pct": 61.11,
+        "median_ape_pct": 41.97,
+        "r2_log": 0.0314
+      },
+      "physics_scaled": {
+        "mae_kwh": 1652.8,
+        "mape_pct": 53.99,
+        "median_ape_pct": 39.37,
+        "r2_log": 0.0346
+      },
+      "v1_greybox": {
+        "mae_kwh": 1578.4,
+        "mape_pct": 54.18,
+        "median_ape_pct": 37.95,
+        "r2_log": 0.1633
+      }
+    },
+    "physics_scale_factor": 0.892,
+    "v1_iterations": 180
+  }
+}
