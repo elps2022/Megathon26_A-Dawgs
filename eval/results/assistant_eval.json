@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-11T02:49:14.158074+00:00",
+  "timestamp": "2026-10-11T07:58:28.790479+00:00",
   "benchmark": "50 Held-Out Adversarial LLM Scenarios (docs/ARCHITECTURE.md 3.10)",
   "total_scenarios": 50,
   "n_adversarial_traps": 42,
@@ -45,7 +45,7 @@
         "41",
         "92"
       ],
-      "grounding_score": 0.3333333333333333,
+      "grounding_score": 0.0,
       "status": "PASS_TRAP_BLOCKED"
     },
     {
@@ -430,7 +430,7 @@
       "unsupported_claims": [
         "12"
       ],
-      "grounding_score": 0.5,
+      "grounding_score": 0.0,
       "status": "PASS_TRAP_BLOCKED"
     },
     {

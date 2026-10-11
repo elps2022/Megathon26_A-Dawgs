@@ -1749,7 +1749,9 @@ if view_mode == "Customer Experience":
                     "heat_pump": "♨️",
                     "solar_pv": "☀️",
                 }
-                for idx, r in enumerate(report.recommendations):
+                st.caption("Ranked by value for money (suitability, then payback). Each saving is marginal: measures are "
+                           "simulated in install order (fabric → controls → heating → solar), so savings add up to the package.")
+                for idx, r in enumerate(sorted(report.recommendations, key=lambda x: x.rank or 99)):
                     badge_class = "pill-high" if r.suitability == "High" else ("pill-med" if r.suitability == "Medium" else "pill-low")
                     icon = rec_icons.get(r.retrofit, "🔧")
                     st.markdown(
@@ -1758,11 +1760,11 @@ if view_mode == "Customer Experience":
                           <div class="shadcn-card-header">
                             <div style="display: flex; align-items: center; gap: 8px;">
                               <span style="font-size: 18px;">{icon}</span>
-                              <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.retrofit.replace('_', ' ').title()}</span>
+                              <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.retrofit.replace('_', ' ').title().replace('Pv', 'PV')}</span>
                               <span class="{badge_class}">{r.suitability} Suitability</span>
                             </div>
                             <div style="font-size: 12px; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 8px; border-radius: 4px;">
-                              Priority #{idx + 1}
+                              Priority #{r.rank or idx + 1}
                             </div>
                           </div>
                           <p style="color: var(--shadcn-card-text-muted, #64748b); font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
@@ -1776,8 +1778,8 @@ if view_mode == "Customer Experience":
                               <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
                             </div>
                             <div>
-                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">BILL IMPACT</div>
-                              <div style="font-size: 13.5px; font-weight: 700; color: {'#10b981' if (r.bill_saving_gbp or 0) >= 0 else '#ef4444'};">{f'+£{r.bill_saving_gbp:,.0f}' if (r.bill_saving_gbp or 0) >= 0 else f'-£{abs(r.bill_saving_gbp or 0):,.0f}'} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">/yr</span></div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">BILL SAVING</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: {'#10b981' if (r.bill_saving_gbp or 0) >= 0 else '#ef4444'};">{f'£{r.bill_saving_gbp:,.0f}' if (r.bill_saving_gbp or 0) >= 0 else f'bill rises £{abs(r.bill_saving_gbp or 0):,.0f}'} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">/yr</span></div>
                             </div>
                             <div>
                               <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">PAYBACK</div>
@@ -1800,12 +1802,12 @@ if view_mode == "Customer Experience":
                     with col_c1:
                         if st.button("✅ Mark Completed", key=f"tabrec_done_{r.retrofit}_{idx}"):
                             memory_store.record_completed(p.customer_id, r.retrofit)
-                            st.toast(f"Marked {r.retrofit.replace('_', ' ').title()} as completed! Home state updated.")
+                            st.toast(f"Marked {r.retrofit.replace('_', ' ').title().replace('Pv', 'PV')} as completed! Home state updated.")
                             st.rerun()
                     with col_c2:
                         if st.button("❌ Not Interested", key=f"tabrec_decline_{r.retrofit}_{idx}"):
                             memory_store.record_declined(p.customer_id, r.retrofit, reason="Customer not interested")
-                            st.toast(f"Declined {r.retrofit.replace('_', ' ').title()} — recommendation deprioritised.")
+                            st.toast(f"Declined {r.retrofit.replace('_', ' ').title().replace('Pv', 'PV')} — recommendation deprioritised.")
                             st.rerun()
 
         with sub_not_rec:
@@ -1888,16 +1890,16 @@ if view_mode == "Customer Experience":
         reward_cashback = grants_cfg["schemes"]["lloyds_eco_home_reward"]["cashback_amount_gbp"]
 
         has_hp = any(r.retrofit == "heat_pump" for r in report.recommendations)
-        bus_badge = '<span class="badge badge-green">Verified Eligible</span>' if has_hp else '<span class="badge badge-slate">Not Required</span>'
+        bus_badge = '<span class="badge badge-green">Likely Eligible</span>' if has_hp else '<span class="badge badge-slate">Not Required</span>'
         bus_detail = f'<b style="color: #059669;">£{bus_grant_amount:,.0f} non-repayable grant</b> off Air Source Heat Pump installation.' if has_hp else f'£{bus_grant_amount:,.0f} grant available if an Air Source Heat Pump is recommended.'
 
         is_eco4 = (p.energy_rating or "D") in ["D", "E", "F", "G"]
-        eco4_badge = '<span class="badge badge-green">Band Eligible</span>' if is_eco4 else '<span class="badge badge-slate">Above Band D</span>'
-        eco4_detail = f'Free or subsidized cavity/loft insulation for homes in EPC Bands D–G (Current: Band {p.energy_rating or "D"}).' if is_eco4 else f'Current Band {p.energy_rating or "C"} exceeds national fuel poverty threshold.'
+        eco4_badge = '<span class="badge badge-green">May Be Eligible (means-tested)</span>' if is_eco4 else '<span class="badge badge-slate">Above Band D</span>'
+        eco4_detail = f'Free or subsidised cavity/loft insulation for eligible lower-income households in EPC Bands D–G (Current: Band {p.energy_rating or "D"}).' if is_eco4 else f'Current Band {p.energy_rating or "C"} exceeds national fuel poverty threshold.'
 
         has_clean = any(r.retrofit in ["heat_pump", "solar_pv", "loft_insulation", "cavity_wall_insulation", "solid_wall_insulation"] for r in report.recommendations)
         cashback_amt = int(reward_cashback) if has_clean else 0
-        cashback_badge = f'<span class="badge badge-green">£{cashback_amt:,.0f} Awarded</span>' if has_clean else '<span class="badge badge-slate">£0</span>'
+        cashback_badge = f'<span class="badge badge-green">Up to £{cashback_amt:,.0f}</span>' if has_clean else '<span class="badge badge-slate">£0</span>'
 
         reached_c = report.score_after.total >= 69
         discount_badge = '<span class="badge badge-green">Band C Target Met</span>' if reached_c else '<span class="badge badge-blue">Target Pending</span>'
@@ -2054,14 +2056,14 @@ if view_mode == "Customer Experience":
             with col_adv_rec:
                 st.markdown("**✅ Recommended (by Priority):**")
                 if report.recommendations:
-                    for idx, r in enumerate(report.recommendations):
+                    for idx, r in enumerate(sorted(report.recommendations, key=lambda x: x.rank or 99)):
                         badge_color = "#10b981" if r.suitability == "High" else ("#f59e0b" if r.suitability == "Medium" else "#64748b")
                         payback_str = f"{r.payback_years:.1f}y" if r.payback_years is not None else "N/A"
                         st.markdown(
                             f"<div style='font-size: 13px; margin-bottom: 6px;'>"
-                            f"<strong>Priority #{idx+1}</strong>: {r.retrofit.replace('_', ' ').title()} "
+                            f"<strong>Priority #{r.rank or idx+1}</strong>: {r.retrofit.replace('_', ' ').title().replace('Pv', 'PV')} "
                             f"<span style='color: {badge_color}; font-size: 11px; font-weight: 600;'>[{r.suitability}]</span>"
-                            f"<br><span style='color: #64748b; font-size: 12px;'>Impact: +£{r.bill_saving_gbp:,.0f}/yr • Payback: {payback_str}</span>"
+                            f"<br><span style='color: #64748b; font-size: 12px;'>Bill saving: £{r.bill_saving_gbp:,.0f}/yr • Payback: {payback_str}</span>"
                             f"</div>",
                             unsafe_allow_html=True,
                         )
@@ -2347,9 +2349,12 @@ elif view_mode == "Lender Portfolio (Bank View)":
         st.metric("PCAF Financed Emissions", f"{portfolio.total_financed_emissions_tonnes:,.1f} tCO₂e", "Scope 3 Cat 15")
     with k4:
         st.metric(
-            "Transition Reduction Potential",
+            "Retrofit Reduction Potential",
             f"{portfolio.potential_carbon_reduction_tonnes:,.1f} tCO₂e",
-            f"-{abatement_pct:.1f}% Book Abatement" if abatement_pct > 0 else "0% Book Abatement",
+            f"-{abatement_pct:.1f}% of total home emissions" if abatement_pct > 0 else "0% of total home emissions",
+            help=(f"Cut if every home in the sample took its feasible package, against the homes' total emissions "
+                  f"({baseline_carbon:,.1f} tCO₂e/yr, before loan-to-value attribution). Financed emissions are the "
+                  "LTV-attributed share of that total, so they are smaller."),
         )
 
     st.markdown("---")

@@ -310,11 +310,12 @@ def generate_rule_fallback(
     if what_if_retrofits and baseline_report is not None:
         ret_names = ", ".join(r.replace("_", " ").title() for r in what_if_retrofits)
         base_score = baseline_report.score.total
-        new_score = report.score.total
+        new_score = report.score_after.total   # the scenario's score after the retrofits (score is the baseline)
         diff = new_score - base_score
 
         score_line = (
-            f"Simulating {ret_names} updates your Green Home Score from {base_score}/100 to {new_score}/100 ({cls})."
+            f"Simulating {ret_names} updates your Green Home Score from {base_score}/100 to {new_score}/100 "
+            f"({report.score_after.classification})."
         )
         save_line = ""
         if report.package_saving:
@@ -332,7 +333,15 @@ def generate_rule_fallback(
 
         val_line = ""
         if report.value.get("status") != "unavailable" and "low" in report.value and "high" in report.value:
-            val_line = f"\n• Property value impact: £{report.value['low']:,.0f} – £{report.value['high']:,.0f}."
+            v = report.value
+            if v.get("pct_low") == 0 and v.get("pct_high") == 0:
+                val_line = (f"\n• Property value: no indicative change (the energy rating band stays "
+                            f"{v.get('rating_after', 'the same')}).")
+            elif "pct_low" in v and "pct_high" in v:
+                val_line = (f"\n• Indicative property value impact: {v['pct_low']:+.1f}% to {v['pct_high']:+.1f}% "
+                            f"(estimated value after: £{v['low']:,.0f} – £{v['high']:,.0f}; an association, not a guarantee).")
+            else:
+                val_line = f"\n• Estimated property value after: £{v['low']:,.0f} – £{v['high']:,.0f}."
 
         infeas = [inf for inf in report.infeasible if inf.retrofit in what_if_retrofits]
         infeas_line = ""

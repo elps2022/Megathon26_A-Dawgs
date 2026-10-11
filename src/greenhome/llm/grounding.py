@@ -39,6 +39,9 @@ def extract_numbers_from_json(obj: Any) -> list[float]:
 
     if isinstance(obj, (int, float)) and not isinstance(obj, bool):
         numbers.append(float(obj))
+    elif isinstance(obj, str):
+        # Engine-written text in the report (rules, reasons, assumptions) is tool output too, e.g. "target 270 mm"
+        numbers.extend(v for v, _ in extract_numbers_from_text(obj))
     elif isinstance(obj, dict):
         for v in obj.values():
             numbers.extend(extract_numbers_from_json(v))
@@ -88,7 +91,8 @@ def verify_grounding(
     # Common non-hallucinated calendar years to ignore
     ignore_set = {2023.0, 2024.0, 2025.0, 2026.0, 2030.0}
 
-    extracted = extract_numbers_from_text(llm_response)
+    # "62/100": the score scale is not a claim (a stray "100%" or "100 kWh" still is)
+    extracted = extract_numbers_from_text(re.sub(r"/\s*100\b", "", llm_response))
     claims_to_check = [item for item in extracted if item[0] not in ignore_set]
 
     if not claims_to_check:
@@ -107,6 +111,7 @@ def verify_grounding(
         # Check against known numbers in report within tolerance
         matched = False
         for known in known_numbers:
+            known = abs(known)   # text numbers are read without their sign (e.g. "-2,122 kWh" -> 2122)
             if known == 0.0 and abs(num) < 1e-4:
                 matched = True
                 break
