@@ -217,11 +217,15 @@ def build_pdf(output_path: str, team_number: str = "73"):
     # 3. Features
     story += [
         Paragraph("3. Features", st["h1"]),
-        b("<b>Customer view:</b> score with points per part; heat-loss house (3D and SVG) coloured by each element's "
-          "share of heat loss, click a part to see its fix; what-if toggles that rerun the engine and move the score, "
+        b("<b>Customer view:</b> score with points per part; the heat-loss house with each part's fix; what-if toggles that rerun the engine and move the score, "
           "savings and house together; ranked recommendation cards (bill saving, payback, carbon, cost, why); grants "
           "and green-finance matching with monthly cash flow; the grounded assistant with an audit of every number; "
           "'Mark completed' / 'Not interested' buttons and a three-session memory timeline."),
+        b("<b>3D thermal twin of the home:</b> an interactive WebGL (Three.js) model built from the home's own "
+          "description, with a pitched or flat roof and solar panels or a heat-pump unit when present. Roof, walls, "
+          "windows and floor glow by their share of heat loss from V1's per-element physics; hovering a part shows "
+          "its share, U-value and area, and it can be rotated and zoomed. Ticking a what-if rebuilds it from the "
+          "retrofitted home, so the colours change as insulation goes in; a 2D cross-section is the lightweight view."),
         b("<b>Lender view:</b> a mortgage book of real homes: score and rating mix, share Poor / Very poor, financed "
           "emissions (PCAF, loan-to-value attribution), reduction potential, a 2030 EPC C target simulator and a "
           "ranked list of who to contact about green finance."),
