@@ -4,6 +4,8 @@ Input: a dict with the Property field names from docs/ARCHITECTURE.md section 4.
 Output: dict shaped like ScoreResult (total, classification, components).
 Missing inputs get the configured default and a flag; they are never zeroed.
 """
+import copy
+from functools import lru_cache
 from pathlib import Path
 import yaml
 
@@ -11,6 +13,13 @@ _CFG = Path(__file__).resolve().parents[3] / "config" / "score_mappings.yaml"
 
 
 def load_mappings(path=_CFG) -> dict:
+    """Parsed config, cached per file and modification time (parsing it on every call dominated portfolio runs).
+    Returns a copy, so a caller changing it can't affect later calls."""
+    return copy.deepcopy(_parsed(str(path), Path(path).stat().st_mtime))
+
+
+@lru_cache(maxsize=8)
+def _parsed(path: str, mtime: float) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
 

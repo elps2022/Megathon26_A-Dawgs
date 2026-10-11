@@ -588,6 +588,12 @@ def load_datasets():
 
 
 df_properties, df_loans = load_datasets()
+
+
+@st.cache_data(show_spinner="Building a report for every home in the sample...")
+def cached_portfolio(sample_size: int):
+    """The portfolio for a sample size, computed once: slider moves elsewhere on the page don't rebuild it."""
+    return build_portfolio(df_properties, df_loans, max_sample=sample_size)
 DEFAULT_FACTORS_YEAR = pd.read_csv(Path(__file__).resolve().parents[1] / "config" / "emission_factors.csv")["year"].iloc[0]
 memory_store = CustomerMemoryStore()
 llm_advisor = LLMAdvisor()
@@ -1565,11 +1571,17 @@ if view_mode == "Customer Experience":
                 )
         with col4:
             if report.value.get("status") == "unavailable":
-                st.metric("Indicative Property Value", "Unavailable")
+                st.metric("Property Value (indicative)", "Unavailable")
                 st.caption("No current valuation for this property.")
             else:
-                uplift_str = f"£{report.value['low']:,.0f} – £{report.value['high']:,.0f}"
-                st.metric("Indicative Property Value", uplift_str, delta=f"+{report.value['pct_low']}% to +{report.value['pct_high']}%")
+                lo_v, hi_v = report.value['low'], report.value['high']
+                fmt = lambda v: f"£{v / 1e6:.2f}m" if v >= 1e6 else f"£{v / 1e3:,.0f}k"   # compact: fits the card
+                uplift_str = fmt(lo_v) if fmt(lo_v) == fmt(hi_v) else f"{fmt(lo_v)} – {fmt(hi_v)}"
+                pl, ph = report.value['pct_low'], report.value['pct_high']
+                # The range can include 0 (an association with a CI), so only colour it when it is all gains
+                st.metric("Property Value (indicative)", uplift_str, delta=f"{pl:+.1f}% to {ph:+.1f}%",
+                          delta_color="normal" if pl >= 0 else "off",
+                          help=f"£{lo_v:,.0f} – £{hi_v:,.0f}. {report.value.get('caveat', '')}")
 
         st.markdown("<div style='margin: 16px 0;'></div>", unsafe_allow_html=True)
 
@@ -1882,7 +1894,7 @@ elif view_mode == "Lender Portfolio (Bank View)":
     st.caption("PCAF Scope 3 Category 15 financed emissions & 2030 EPC Band C transition pathway.")
 
     sample_size = st.slider("Mortgage Book Sample Size", 50, 500, 200, step=25)
-    portfolio = build_portfolio(df_properties, df_loans, max_sample=sample_size)
+    portfolio = cached_portfolio(sample_size)
 
     # Portfolio KPI bar
     k1, k2, k3, k4 = st.columns(4)

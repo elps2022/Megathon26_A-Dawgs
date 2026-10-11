@@ -11,6 +11,39 @@ from greenhome.engine.report import build_report
 from greenhome.schema import PortfolioPropertySummary, PortfolioSummary, Property
 
 
+def _clean(d: dict) -> dict:
+    out = {k: (None if pd.isna(v) else v) for k, v in d.items() if k in Property.model_fields}
+    flags = out.get("data_flags")
+    out["data_flags"] = [f.strip() for f in str(flags).split(",") if f.strip() and f != "nan"] if flags else []
+    return out
+
+
+def _warm_energy_cache(df: pd.DataFrame) -> None:
+    """Predict every home (and its gas-heated comparison home, and its bill forecast) in one batch, so the
+    per-home reports below hit the model cache instead of running the model one row at a time."""
+    from greenhome.models.energy import ModelUnavailable, load_model
+    try:
+        model = load_model("greybox")
+    except ModelUnavailable:
+        return
+    from greenhome.engine.feasibility import RETROFIT_CATALOGUE, check_feasibility
+    from greenhome.engine.savings import apply_retrofits_to_property
+    rows = df.drop(columns=[c for c in ("ltv", "outstanding_balance") if c in df]).copy()
+    model.forecast_frame(rows)
+    states = []
+    for _, row in rows.iterrows():
+        try:
+            p = Property(**_clean(row.to_dict()))
+        except Exception:
+            continue
+        feasible = sorted(check_feasibility(p, [])[0], key=lambda r: RETROFIT_CATALOGUE[r]["priority"])
+        for i in range(len(feasible) + 1):          # the home, then each cumulative package step
+            d = apply_retrofits_to_property(p, feasible[:i]).model_dump()
+            states += [d, {**d, "heating": "gas_condensing"}]   # + its gas-heated comparison home (score)
+    if states:
+        model.predict_frame(pd.DataFrame(states))
+
+
 def build_portfolio(
     properties_df: pd.DataFrame,
     loans_df: pd.DataFrame | None = None,
@@ -26,6 +59,8 @@ def build_portfolio(
     else:  # no loan book: financed emissions are unavailable, not guessed
         df["ltv"] = None
         df["outstanding_balance"] = None
+
+    _warm_energy_cache(df)
 
     summaries: list[PortfolioPropertySummary] = []
     total_carbon_kg = 0.0

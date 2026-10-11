@@ -5,6 +5,8 @@ Input: a dict with Property field names, plus optional extras wall_type
 Output: feasible retrofits in stage order, plus infeasible ones with the rule that blocked them.
 Unknown data is flagged, never guessed.
 """
+import copy
+from functools import lru_cache
 from pathlib import Path
 import yaml
 
@@ -15,6 +17,13 @@ DECLINED_RULE = "Previously declined by customer preference."  # a preference, n
 
 
 def load_catalogue(path=_CFG) -> dict:
+    """Parsed config, cached per file and modification time (parsing it on every call dominated portfolio runs).
+    Returns a copy, so a caller changing it can't affect later calls."""
+    return copy.deepcopy(_parsed(str(path), Path(path).stat().st_mtime))
+
+
+@lru_cache(maxsize=8)
+def _parsed(path: str, mtime: float) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
 

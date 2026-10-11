@@ -71,7 +71,31 @@ class EnergyModel(Protocol):
     def predict(self, p: Property) -> EnergyBreakdown: ...
 
 
+_FRAME_MEMO: dict = {}
+
+
+def _memo(kind: str, props: pd.DataFrame, fn):
+    """Reuse a derived frame for the same input frame within one prediction (physics, features)."""
+    key = (kind, id(props), len(props))
+    hit = _FRAME_MEMO.get(key)
+    if hit is not None and hit[0] is props:
+        return hit[1]
+    if len(_FRAME_MEMO) > 64:
+        _FRAME_MEMO.clear()
+    val = fn(props)
+    _FRAME_MEMO[key] = (props, val)
+    return val
+
+
 def physics_frame(props: pd.DataFrame) -> pd.DataFrame:
+    return _memo("physics", props, _physics_frame)
+
+
+def features_frame(props: pd.DataFrame) -> pd.DataFrame:
+    return _memo("features", props, epc_features)
+
+
+def _physics_frame(props: pd.DataFrame) -> pd.DataFrame:
     """Physics demands for Property rows (own fabric), plus the training-convention log physics per fuel."""
     fabric, filled = physics.property_fabric(props)
     d = physics.demands(fabric)
@@ -80,6 +104,26 @@ def physics_frame(props: pd.DataFrame) -> pd.DataFrame:
     d["log_physics_elec"] = np.log(d.lights_appliances_kwh)
     d["fabric_defaulted"] = filled.map(",".join)
     return d
+
+
+# Every Property field the description-only models read (physics fabric + parity features); the cache key.
+INPUT_COLS = ("property_type", "age_band", "floor_area_m2", "has_own_roof", "loft_insulation_mm", "wall_type",
+              "wall_insulation", "glazing", "region", "heating", "gas_meter", "energy_rating", "solar_kwp",
+              "imd_quintile", "cavity_filled_retrofit")
+
+
+def _row_key(row) -> tuple:
+    """Hashable key: missing (None / NaN / pd.NA) -> None, numbers as float, so CSV rows and Property dumps of
+    the same home match."""
+    def norm(v):
+        if v is None or v is pd.NA or (isinstance(v, float) and v != v):
+            return None
+        if isinstance(v, (bool, np.bool_)):
+            return bool(v)
+        if isinstance(v, (int, float, np.integer, np.floating)):
+            return float(v)
+        return v
+    return tuple(norm(v) for v in row)
 
 
 def _gas_heated(props: pd.DataFrame) -> np.ndarray:
@@ -93,8 +137,22 @@ class _Base:
         raise NotImplementedError
 
     def predict_frame(self, props: pd.DataFrame) -> pd.DataFrame:
-        """Expected annual elec_kwh / gas_kwh per home (NaN where the model can't place the home)."""
+        """Expected annual elec_kwh / gas_kwh per home (NaN where the model can't place the home).
+        Cached per distinct home description: one report asks about the same few homes several times (score
+        before / after, baseline, retrofit steps, detector), and a portfolio repeats that for every home."""
         props = props.reset_index(drop=True)
+        keys = [_row_key(r) for r in props.reindex(columns=list(INPUT_COLS)).itertuples(index=False)]
+        cache = self.__dict__.setdefault("_cache", {})
+        miss = [i for i, k in enumerate(keys) if k not in cache]
+        if miss:
+            if len(cache) > 200_000:
+                cache.clear()
+            fresh = self._compute(props.iloc[miss].reset_index(drop=True))
+            for i, (_, row) in zip(miss, fresh.iterrows()):
+                cache[keys[i]] = row
+        return pd.DataFrame([cache[k] for k in keys]).reset_index(drop=True).infer_objects()
+
+    def _compute(self, props: pd.DataFrame) -> pd.DataFrame:
         phys = physics_frame(props)
         out = pd.DataFrame(index=props.index)
         for fuel in FUELS:
@@ -156,7 +214,7 @@ class _Trained(_Base):
                       for fuel in FUELS if "mode1" in self.meta[fuel]}
 
     def _x(self, props, phys, fuel) -> pd.DataFrame:
-        x = epc_features(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
+        x = features_frame(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
         # NEED has no missing deprivation quintile, and LightGBM sends a value it never saw missing to the 0 side,
         # i.e. "more deprived than quintile 1". Unknown -> the training median instead (neutral, not most deprived).
         return x.fillna({"imd_quintile": self.meta.get("imd_fill", 3.0)})
@@ -181,8 +239,21 @@ class GreyboxModel(_Trained):
 
     def forecast_frame(self, props: pd.DataFrame) -> pd.DataFrame:
         """Mode 1: next year's expected (mean) use from each home's own billed annual use + description.
-        NaN where the home has no bill for that fuel (or, for gas, isn't gas heated)."""
+        NaN where the home has no bill for that fuel (or, for gas, isn't gas heated). Cached like predict_frame."""
         props = props.reset_index(drop=True)
+        cols = [*INPUT_COLS, "annual_elec_kwh", "annual_gas_kwh"]
+        keys = [_row_key(r) for r in props.reindex(columns=cols).itertuples(index=False)]
+        cache = self.__dict__.setdefault("_fcache", {})
+        miss = [i for i, k in enumerate(keys) if k not in cache]
+        if miss:
+            if len(cache) > 200_000:
+                cache.clear()
+            fresh = self._forecast(props.iloc[miss].reset_index(drop=True))
+            for i, (_, row) in zip(miss, fresh.iterrows()):
+                cache[keys[i]] = row
+        return pd.DataFrame([cache[k] for k in keys]).reset_index(drop=True).infer_objects()
+
+    def _forecast(self, props: pd.DataFrame) -> pd.DataFrame:
         phys = physics_frame(props)
         out = pd.DataFrame(index=props.index)
         for fuel in FUELS:
@@ -192,17 +263,16 @@ class GreyboxModel(_Trained):
                 out[f"{fuel}_kwh"] = np.nan
                 continue
             prior = prior.where(prior > 0)
-            x = epc_features(props).assign(log_physics=phys[f"log_physics_{fuel}"].to_numpy(),
-                                           log_prior=np.log(prior.to_numpy()))
+            x = features_frame(props).assign(log_physics=phys[f"log_physics_{fuel}"].to_numpy(),
+                                             log_prior=np.log(prior.to_numpy()))
             x = x[m["features"]].fillna({"imd_quintile": self.meta.get("imd_fill", 3.0)})
             change = self.mode1[fuel].predict(x)
             out[f"{fuel}_kwh"] = np.where(prior.notna(), np.exp(x.log_prior.to_numpy() + change) * m["total_factor"], np.nan)
         out.loc[~_gas_heated(props), "gas_kwh"] = np.nan
         return out
 
-    def predict_frame(self, props: pd.DataFrame) -> pd.DataFrame:
-        out = super().predict_frame(props)
-        props = props.reset_index(drop=True)
+    def _compute(self, props: pd.DataFrame) -> pd.DataFrame:
+        out = super()._compute(props)
         phys = physics_frame(props)
         for fuel in self.quantiles:
             lo, hi = self.log_band(props, phys, fuel)
