@@ -14,3 +14,4 @@ skills-lock.json
 src/greenhome/models/artifacts/
 catboost_info/
 dist/
+data/memory/

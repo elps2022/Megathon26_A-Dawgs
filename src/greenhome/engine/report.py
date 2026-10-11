@@ -133,16 +133,33 @@ def build_report(
         energy_before, energy_after, recs, package_saving, package_carbon = simulate_package_savings(
             p, active_retrofits, energy_model
         )
-        # Spec 3.11: If customer declined a retrofit in past session, down-rank in suitability
-        # with reason shown: "You declined X on <date>".
-        if memory and memory.get("declined_retrofits"):
-            declined = memory["declined_retrofits"]
-            for r in recs:
-                if r.retrofit in declined:
-                    r.suitability = "Low"
-                    val = declined[r.retrofit]
-                    date_str = val.get("date", "12 Oct 2026") if isinstance(val, dict) else str(val)
-                    r.reason = f"You declined this on {date_str}. {r.reason}"
+        # Spec 3.11: Customer Memory Adaptive Learning
+        if memory:
+            # 1. Filter out measures already completed by customer
+            completed = set(memory.get("completed_retrofits", []))
+            if completed:
+                recs = [r for r in recs if r.retrofit not in completed]
+
+            # 2. Down-rank declined retrofits with historical date citation
+            if memory.get("declined_retrofits"):
+                declined = memory["declined_retrofits"]
+                for r in recs:
+                    if r.retrofit in declined:
+                        r.suitability = "Low"
+                        val = declined[r.retrofit]
+                        date_str = val.get("date", "12 Oct 2026") if isinstance(val, dict) else str(val)
+                        r.reason = f"You declined this on {date_str}. {r.reason}"
+
+            # 3. Down-rank measures exceeding stated customer budget limit
+            budget_max = memory.get("budget_max")
+            if budget_max is not None and budget_max > 0:
+                for r in recs:
+                    if r.indicative_cost and r.indicative_cost[0] > budget_max:
+                        r.suitability = "Low"
+                        b_note = f"Exceeds stated budget (£{r.indicative_cost[0]:,.0f} > £{budget_max:,.0f}); consider combining with Lloyds Green Lending or BUS grants."
+                        if b_note not in r.reason:
+                            r.reason = f"{b_note} {r.reason}"
+
             from greenhome.engine.savings import rank_recommendations
             rank_recommendations(recs)
     except EnergyUnavailable as exc:

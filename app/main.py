@@ -1496,17 +1496,21 @@ if view_mode == "Customer Experience":
         sample_count = min(300, len(df_properties))
         featured_ids = get_featured_properties(df_properties, sample_count)
 
+        qp_pid = st.query_params.get("property_id")
+        default_idx = featured_ids.index(qp_pid) if (qp_pid and qp_pid in featured_ids) else 0
+
         sel_sub1, sel_sub2 = st.columns([1, 1])
         with sel_sub1:
             chosen_pid = st.selectbox(
                 f"Choose Property ({sample_count} featured of {len(df_properties):,} book)",
                 featured_ids,
-                index=0,
+                index=default_idx,
                 key="featured_property_selector",
             )
         with sel_sub2:
             custom_pid = st.text_input(
                 "Or Lookup by Property ID",
+                value=qp_pid if (qp_pid and qp_pid not in featured_ids) else "",
                 placeholder="e.g. E4ef6ab13a0",
                 help="Search and inspect any home across the 542k property dataset.",
                 key="custom_property_lookup",
@@ -1575,8 +1579,9 @@ if view_mode == "Customer Experience":
     report = build_report(p, retrofits=chosen_retrofits if chosen_retrofits else None, memory=mem)
 
     # Customer Experience Tabs
-    tab_studio, tab_banking, tab_advisor = st.tabs([
+    tab_studio, tab_recs, tab_banking, tab_advisor = st.tabs([
         "🏡 Interactive What-If Studio",
+        "📋 Recommended Retrofits & Priority",
         "🏦 Lloyds Green Banking & Grants",
         "🤖 AI Green Advisor (Shielded)",
     ])
@@ -1722,74 +1727,151 @@ if view_mode == "Customer Experience":
             for c in report.score.components:
                 st.progress(int(c.score), text=f"{c.component} ({c.score:.0f}/100) — Contribution: {c.contribution:.1f} pts")
 
-        st.markdown("---")
+    with tab_recs:
+        st.markdown("### 📋 Prioritised Recommendations & Customer Memory")
+        st.caption(
+            "Every measure is evaluated and ranked by thermodynamic return, annual bill savings, and payback period. "
+            "Customer preferences, completed retrofits, and budget constraints are learned and automatically adapt these priorities."
+        )
 
-        # Sequenced Recommendations
-        st.markdown("### Prioritised Feasible Recommendations")
-        if not report.recommendations:
-            st.info("No further retrofits currently feasible for this property state.")
-        else:
-            rec_icons = {
-                "loft_insulation": "🏠",
-                "cavity_wall_insulation": "🧱",
-                "solid_wall_insulation": "🧱",
-                "double_glazing": "🪟",
-                "smart_thermostat": "📱",
-                "heat_pump": "♨️",
-                "solar_pv": "☀️",
-            }
-            for idx, r in enumerate(report.recommendations):
-                badge_class = "pill-high" if r.suitability == "High" else ("pill-med" if r.suitability == "Medium" else "pill-low")
-                icon = rec_icons.get(r.retrofit, "🔧")
-                st.markdown(
-                    f"""
-                    <div class="shadcn-card">
-                      <div class="shadcn-card-header">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                          <span style="font-size: 18px;">{icon}</span>
-                          <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.retrofit.replace('_', ' ').title()}</span>
-                          <span class="{badge_class}">{r.suitability} Suitability</span>
-                        </div>
-                        <div style="font-size: 12px; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 8px; border-radius: 4px;">
-                          Priority #{idx + 1}
-                        </div>
-                      </div>
-                      <p style="color: var(--shadcn-card-text-muted, #64748b); font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
-                      <div class="shadcn-subcard" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: var(--shadcn-subcard-bg, #f8fafc); border: 1px solid var(--shadcn-subcard-border, #e2e8f0); padding: 10px 14px; border-radius: 8px;">
-                        <div>
-                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">ELEC SAVING</div>
-                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
-                        </div>
-                        <div>
-                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">GAS SAVING</div>
-                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
-                        </div>
-                        <div>
-                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">BILL IMPACT</div>
-                          <div style="font-size: 13.5px; font-weight: 700; color: {'#10b981' if (r.bill_saving_gbp or 0) >= 0 else '#ef4444'};">{f'+£{r.bill_saving_gbp:,.0f}' if (r.bill_saving_gbp or 0) >= 0 else f'-£{abs(r.bill_saving_gbp or 0):,.0f}'} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">/yr</span></div>
-                        </div>
-                        <div>
-                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">PAYBACK</div>
-                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{f'{r.payback_years:.1f} yrs' if r.payback_years is not None else 'N/A'}</div>
-                        </div>
-                        <div>
-                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">CARBON CUT</div>
-                          <div style="font-size: 13.5px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kg CO₂e</span></div>
-                        </div>
-                        <div>
-                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">INDICATIVE COST</div>
-                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
-                        </div>
-                      </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+        sub_rec, sub_not_rec = st.tabs(["✅ Recommended Features (Prioritised)", "⛔ Not Recommended & Excluded Features"])
 
-        if report.infeasible:
-            with st.expander("Disqualified / Infeasible Interventions"):
+        with sub_rec:
+            if not report.recommendations:
+                st.info("No further retrofits currently feasible for this property state.")
+            else:
+                rec_icons = {
+                    "loft_insulation": "🏠",
+                    "cavity_wall_insulation": "🧱",
+                    "solid_wall_insulation": "🧱",
+                    "double_glazing": "🪟",
+                    "smart_thermostat": "📱",
+                    "heat_pump": "♨️",
+                    "solar_pv": "☀️",
+                }
+                for idx, r in enumerate(report.recommendations):
+                    badge_class = "pill-high" if r.suitability == "High" else ("pill-med" if r.suitability == "Medium" else "pill-low")
+                    icon = rec_icons.get(r.retrofit, "🔧")
+                    st.markdown(
+                        f"""
+                        <div class="shadcn-card">
+                          <div class="shadcn-card-header">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                              <span style="font-size: 18px;">{icon}</span>
+                              <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.retrofit.replace('_', ' ').title()}</span>
+                              <span class="{badge_class}">{r.suitability} Suitability</span>
+                            </div>
+                            <div style="font-size: 12px; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 8px; border-radius: 4px;">
+                              Priority #{idx + 1}
+                            </div>
+                          </div>
+                          <p style="color: var(--shadcn-card-text-muted, #64748b); font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
+                          <div class="shadcn-subcard" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: var(--shadcn-subcard-bg, #f8fafc); border: 1px solid var(--shadcn-subcard-border, #e2e8f0); padding: 10px 14px; border-radius: 8px;">
+                            <div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">ELEC SAVING</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
+                            </div>
+                            <div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">GAS SAVING</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
+                            </div>
+                            <div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">BILL IMPACT</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: {'#10b981' if (r.bill_saving_gbp or 0) >= 0 else '#ef4444'};">{f'+£{r.bill_saving_gbp:,.0f}' if (r.bill_saving_gbp or 0) >= 0 else f'-£{abs(r.bill_saving_gbp or 0):,.0f}'} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">/yr</span></div>
+                            </div>
+                            <div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">PAYBACK</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{f'{r.payback_years:.1f} yrs' if r.payback_years is not None else 'N/A'}</div>
+                            </div>
+                            <div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">CARBON CUT</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kg CO₂e</span></div>
+                            </div>
+                            <div>
+                              <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">INDICATIVE COST</div>
+                              <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
+                            </div>
+                          </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    col_c1, col_c2, _ = st.columns([1, 1, 2.5])
+                    with col_c1:
+                        if st.button("✅ Mark Completed", key=f"tabrec_done_{r.retrofit}_{idx}"):
+                            memory_store.record_completed(p.customer_id, r.retrofit)
+                            st.toast(f"Marked {r.retrofit.replace('_', ' ').title()} as completed! Home state updated.")
+                            st.rerun()
+                    with col_c2:
+                        if st.button("❌ Not Interested", key=f"tabrec_decline_{r.retrofit}_{idx}"):
+                            memory_store.record_declined(p.customer_id, r.retrofit, reason="Customer not interested")
+                            st.toast(f"Declined {r.retrofit.replace('_', ' ').title()} — recommendation deprioritised.")
+                            st.rerun()
+
+        with sub_not_rec:
+            st.markdown("#### ⛔ Not Recommended & Excluded Features")
+            st.caption("Measures either completed (baked into current rating), declined by preference, or physically disqualified.")
+
+            # 1. Completed Works
+            completed_list = mem.get("completed_retrofits", [])
+            st.markdown(f"**✅ Completed Retrofits ({len(completed_list)})**")
+            if not completed_list:
+                st.caption("No completed retrofits recorded yet.")
+            else:
+                for c_item in completed_list:
+                    col_done_info, col_done_undo = st.columns([4, 1])
+                    with col_done_info:
+                        st.markdown(f"- **{c_item.replace('_', ' ').title()}**: Installed & applied to building model (lifted baseline score).")
+                    with col_done_undo:
+                        if st.button("↩️ Undo", key=f"tabrec_undo_{c_item}"):
+                            memory_store.remove_completed(p.customer_id, c_item)
+                            st.toast(f"Reverted {c_item.replace('_', ' ').title()}.")
+                            st.rerun()
+
+            # 2. Declined Measures
+            declined_dict = mem.get("declined_retrofits", {})
+            st.markdown(f"**❌ Customer Declined ({len(declined_dict)})**")
+            if not declined_dict:
+                st.caption("No recommendations declined.")
+            else:
+                for d_item, d_info in declined_dict.items():
+                    col_dec_info, col_dec_rest = st.columns([4, 1])
+                    with col_dec_info:
+                        d_reason = d_info.get("reason", "Customer not interested") if isinstance(d_info, dict) else str(d_info)
+                        d_date = d_info.get("date", "Recent") if isinstance(d_info, dict) else ""
+                        st.markdown(f"- **{d_item.replace('_', ' ').title()}**: Declined on {d_date} (*{d_reason}*). Deprioritised to bottom.")
+                    with col_dec_rest:
+                        if st.button("🔄 Restore", key=f"tabrec_restore_{d_item}"):
+                            memory_store.remove_declined(p.customer_id, d_item)
+                            st.toast(f"Restored {d_item.replace('_', ' ').title()} to standard ranking.")
+                            st.rerun()
+
+            # 3. Disqualified by Physics
+            st.markdown(f"**⚠️ Disqualified by Building Physics ({len(report.infeasible)})**")
+            if not report.infeasible:
+                st.caption("No physically disqualified retrofits.")
+            else:
                 for inf in report.infeasible:
                     st.markdown(f"- **{inf.retrofit.replace('_', ' ').title()}**: {inf.rule}")
+
+            # 4. Budget & Reset Controls
+            st.markdown("---")
+            col_b1, col_b2 = st.columns([3, 1])
+            with col_b1:
+                b_max = mem.get("budget_max")
+                b_str = f"£{b_max:,.0f}" if b_max else "None stated"
+                st.caption(f"**Stated Budget:** `{b_str}` | **Tenure:** `{mem.get('tenure', 'owner_occupier')}`")
+            with col_b2:
+                if st.button("🗑️ Reset All Memory", key="tabrec_reset_all_mem"):
+                    memory_store.save_memory(p.customer_id, {
+                        "customer_id": p.customer_id,
+                        "constraints": [],
+                        "completed_retrofits": [],
+                        "declined_retrofits": {},
+                        "session_timeline": [],
+                    })
+                    st.toast("Customer memory reset to default baseline.")
+                    st.rerun()
 
     with tab_banking:
         st.markdown("### Lloyds Green Banking & UK Grant Matcher")
@@ -1966,52 +2048,55 @@ if view_mode == "Customer Experience":
                 }
             ]
 
-        # 3-Session Customer Memory Learning Demo (Spec 3.11)
-        with st.expander("🧠 Customer Memory & 3-Session Adaptive Learning Demo (Spec 3.11)", expanded=False):
-            st.markdown(
-                "Demonstrates how persistent memory learns constraints and completed works across separate sessions: "
-                "completed retrofits update the physical property state, while declined measures are down-ranked with date citations."
-            )
-            col_s1, col_s2, col_s3, col_s_reset = st.columns([1, 1, 1, 0.8])
-            if col_s1.button("Session 1: Initial Baseline", key="mem_sess_1"):
-                memory_store.save_memory(p.customer_id, {
-                    "customer_id": p.customer_id,
-                    "constraints": [],
-                    "completed_retrofits": [],
-                    "declined_retrofits": {},
-                    "session_timeline": [{"session": 1, "note": "Initial baseline assessment", "date": "10 Oct 2026"}],
-                })
-                st.session_state[chat_key] = []
-                st.rerun()
+        # Recommended vs Excluded Quick Priority Status
+        with st.expander("📋 Feature Priority Status (Recommended vs. Excluded)", expanded=False):
+            col_adv_rec, col_adv_excl = st.columns(2)
+            with col_adv_rec:
+                st.markdown("**✅ Recommended (by Priority):**")
+                if report.recommendations:
+                    for idx, r in enumerate(report.recommendations):
+                        badge_color = "#10b981" if r.suitability == "High" else ("#f59e0b" if r.suitability == "Medium" else "#64748b")
+                        payback_str = f"{r.payback_years:.1f}y" if r.payback_years is not None else "N/A"
+                        st.markdown(
+                            f"<div style='font-size: 13px; margin-bottom: 6px;'>"
+                            f"<strong>Priority #{idx+1}</strong>: {r.retrofit.replace('_', ' ').title()} "
+                            f"<span style='color: {badge_color}; font-size: 11px; font-weight: 600;'>[{r.suitability}]</span>"
+                            f"<br><span style='color: #64748b; font-size: 12px;'>Impact: +£{r.bill_saving_gbp:,.0f}/yr • Payback: {payback_str}</span>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    st.caption("No pending recommendations.")
 
-            if col_s2.button("Session 2: Decline Solar", key="mem_sess_2"):
-                memory_store.record_declined(p.customer_id, "solar_pv", reason="Roof structural works delayed", date_str="11 Oct 2026")
-                st.session_state[chat_key] = []
-                st.rerun()
+            with col_adv_excl:
+                st.markdown("**⛔ Excluded / Not Recommended:**")
+                completed_names = mem.get("completed_retrofits", [])
+                declined_names = list(mem.get("declined_retrofits", {}).keys())
+                
+                if completed_names:
+                    for c_name in completed_names:
+                        st.markdown(f"- **{c_name.replace('_', ' ').title()}**: *Completed (already applied)*")
+                if declined_names:
+                    for d_name in declined_names:
+                        st.markdown(f"- **{d_name.replace('_', ' ').title()}**: *Declined by customer*")
+                if report.infeasible:
+                    for inf in report.infeasible:
+                        st.markdown(f"- **{inf.retrofit.replace('_', ' ').title()}**: *{inf.rule}*")
+                if not (completed_names or declined_names or report.infeasible):
+                    st.caption("None excluded.")
 
-            if col_s3.button("Session 3: Complete Loft Insulation", key="mem_sess_3"):
-                memory_store.record_completed(p.customer_id, "loft_insulation", date_str="12 Oct 2026")
-                st.session_state[chat_key] = []
-                st.rerun()
-
-            if col_s_reset.button("Reset Memory", key="mem_sess_reset"):
-                memory_store.save_memory(p.customer_id, {
-                    "customer_id": p.customer_id,
-                    "constraints": [],
-                    "completed_retrofits": [],
-                    "declined_retrofits": {},
-                    "session_timeline": [],
-                })
-                st.session_state[chat_key] = []
-                st.rerun()
-
-            curr_mem = memory_store.get_memory(p.customer_id)
-            if curr_mem.get("completed_retrofits") or curr_mem.get("declined_retrofits"):
-                st.caption(
-                    f"**Current Memory Profile ({p.customer_id}):** "
-                    f"Completed: `{curr_mem.get('completed_retrofits', [])}` | "
-                    f"Declined: `{list(curr_mem.get('declined_retrofits', {}).keys())}`"
-                )
+            col_res1, col_res2 = st.columns([3, 1])
+            with col_res2:
+                if st.button("Reset Memory", key="adv_mem_reset"):
+                    memory_store.save_memory(p.customer_id, {
+                        "customer_id": p.customer_id,
+                        "constraints": [],
+                        "completed_retrofits": [],
+                        "declined_retrofits": {},
+                        "session_timeline": [],
+                    })
+                    st.session_state[chat_key] = []
+                    st.rerun()
 
         # Preset suggestion chips + Clear button
         c_p1, c_p2, c_p3, c_p4 = st.columns([1, 1, 1, 0.4])
@@ -2044,6 +2129,15 @@ if view_mode == "Customer Experience":
                 grounded_pct = audit_data.get("grounding_score_pct", 100.0)
                 verified_count = len(audit_data.get("verified_claims", []))
                 model_name = msg.get("model", "Lloyds Advisor")
+                content_to_show = msg.get("content", "")
+                mem_badge_html = ""
+                if content_to_show.startswith("[🧠 Memory Updated:"):
+                    end_idx = content_to_show.find("]\n\n")
+                    if end_idx != -1:
+                        badge_label = content_to_show[1:end_idx]
+                        content_to_show = content_to_show[end_idx + 3:]
+                        mem_badge_html = f'<div style="margin-bottom: 8px;"><span class="badge badge-green" style="font-size: 11.5px; padding: 3px 8px; font-weight: 600;">{html.escape(badge_label)}</span></div>'
+
                 st.markdown(
                     f"""
                     <div class="chat-bubble-assistant">
@@ -2054,7 +2148,8 @@ if view_mode == "Customer Experience":
                           <div class="verified-hover-tooltip">✓ {grounded_pct:.0f}% Verified Grounded</div>
                         </div>
                       </div>
-                      <div style="font-size: 14px; color: var(--shadcn-card-text, var(--text-color, #0f172a)); line-height: 1.6; white-space: pre-wrap;">{html.escape(msg["content"])}</div>
+                      {mem_badge_html}
+                      <div style="font-size: 14px; color: var(--shadcn-card-text, var(--text-color, #0f172a)); line-height: 1.6; white-space: pre-wrap;">{html.escape(content_to_show)}</div>
                       <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(128, 128, 128, 0.16); display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b);">Claims verified: {verified_count} numeric values</span>
                         <span style="font-size: 11px; color: #10b981; font-weight: 600;">Grounding Shield: ACTIVE</span>
@@ -2099,6 +2194,136 @@ if view_mode == "Customer Experience":
                 "audit": audit.to_dict(),
             })
             st.rerun()
+
+    # -------------------------------------------------------------
+    # Floating Bottom-Right Customer Memory HUD (Terminal style, visible on screen)
+    # -------------------------------------------------------------
+    curr_mem = memory_store.get_memory(p.customer_id)
+    completed_items = curr_mem.get("completed_retrofits", [])
+    declined_items = curr_mem.get("declined_retrofits", {})
+    budget_max = curr_mem.get("budget_max")
+    tenure_val = curr_mem.get("tenure", "owner_occupier")
+
+    has_any_memory = bool(completed_items or declined_items or budget_max or (tenure_val and tenure_val != "owner_occupier"))
+
+    if not has_any_memory:
+        body_content = '<div style="color: #64748b; font-style: italic; padding: 2px 0;">// Memory empty (no interventions added yet)</div>'
+    else:
+        sections = []
+        if completed_items:
+            comp_rows = "".join([
+                f'<div style="color: #10b981; padding-left: 6px;">+ {c.replace("_", " ").title()}</div>'
+                for c in completed_items
+            ])
+            sections.append(
+                f'<div style="margin-bottom: 5px;"><span style="color: #94a3b8; font-weight: 700;">COMPLETED ({len(completed_items)}):</span>{comp_rows}</div>'
+            )
+
+        if declined_items:
+            dec_keys = declined_items.keys() if isinstance(declined_items, dict) else declined_items
+            dec_rows = "".join([
+                f'<div style="color: #ef4444; padding-left: 6px;">- {d.replace("_", " ").title()}</div>'
+                for d in dec_keys
+            ])
+            sections.append(
+                f'<div style="margin-bottom: 5px;"><span style="color: #94a3b8; font-weight: 700;">DECLINED ({len(declined_items)}):</span>{dec_rows}</div>'
+            )
+
+        meta_rows = []
+        if budget_max:
+            meta_rows.append(f'budget: <span style="color: #38bdf8; font-weight: 700;">£{budget_max:,.0f}</span>')
+        if tenure_val and tenure_val != "owner_occupier":
+            meta_rows.append(f'tenure: <span style="color: #f1f5f9;">{tenure_val.replace("_", " ").title()}</span>')
+        if meta_rows:
+            sections.append(
+                f'<div style="border-top: 1px dashed #334155; padding-top: 4px; margin-top: 4px; color: #94a3b8; font-size: 10.5px;">{" | ".join(meta_rows)}</div>'
+            )
+
+        body_content = "".join(sections)
+
+    # Build drop-up options: ONLY houses for which changes have been made by the user
+    modified_cids = memory_store.get_modified_customers()
+
+    modified_houses = []
+    if modified_cids:
+        m_matches = df_properties[df_properties["customer_id"].isin(modified_cids)]
+        for _, m_row in m_matches.iterrows():
+            m_pid = m_row["property_id"]
+            m_cid = m_row["customer_id"]
+            if m_pid not in [h[0] for h in modified_houses]:
+                modified_houses.append((m_pid, m_cid))
+
+    curr_in_list = any(h[0] == selected_pid for h in modified_houses)
+    if not curr_in_list:
+        modified_houses.insert(0, (selected_pid, p.customer_id))
+
+    dropup_opts = []
+    if len(modified_houses) == 1 and not has_any_memory:
+        dropup_opts.append(f'<option value="{selected_pid}" selected="selected">{selected_pid} (Current - No changes yet)</option>')
+    else:
+        for m_pid, m_cid in modified_houses:
+            is_sel = ' selected="selected"' if m_pid == selected_pid else ""
+            tag = " (Current)" if m_pid == selected_pid else ""
+            dropup_opts.append(f'<option value="{m_pid}"{is_sel}>{m_pid} [{m_cid}]{tag}</option>')
+    dropup_html_str = "".join(dropup_opts)
+
+    st.markdown(
+        f"""
+        <div style="
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          z-index: 999999;
+          width: 295px;
+          max-height: 350px;
+          overflow-y: auto;
+          background: #0f172a;
+          border: 1px solid #334155;
+          border-left: 3.5px solid #10b981;
+          border-radius: 8px;
+          padding: 9px 12px;
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 11px;
+          color: #f1f5f9;
+          line-height: 1.5;
+          pointer-events: auto;
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 5px; margin-bottom: 5px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 12px;">🧠</span>
+              <span style="font-weight: 700; color: #f8fafc; font-size: 11px;">CUSTOMER_MEMORY</span>
+            </div>
+            <span style="font-size: 10px; color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1px 5px; border-radius: 3px;">
+              {p.customer_id}
+            </span>
+          </div>
+          <div style="margin: 4px 0 6px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+              <span style="font-size: 9.5px; color: #94a3b8; font-weight: 700;">HOUSE OPTION (DROP-UP):</span>
+            </div>
+            <select style="
+              width: 100%;
+              background: #1e293b;
+              color: #38bdf8;
+              border: 1px solid #475569;
+              border-radius: 4px;
+              font-family: inherit;
+              font-size: 10.5px;
+              font-weight: 600;
+              padding: 2px 5px;
+              cursor: pointer;
+              outline: none;
+            " onchange="const u = new URL(window.location); u.searchParams.set('property_id', this.value); window.location.href = u.href;">
+              {dropup_html_str}
+            </select>
+          </div>
+          {body_content}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 
 elif view_mode == "Lender Portfolio (Bank View)":

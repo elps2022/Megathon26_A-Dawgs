@@ -47,9 +47,57 @@ class CustomerMemoryStore:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
+    def get_modified_customers(self) -> list[str]:
+        """Return list of customer_ids that have stored modifications/memory."""
+        modified = []
+        for path in self.storage_dir.glob("*.json"):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if (
+                    data.get("completed_retrofits")
+                    or data.get("declined_retrofits")
+                    or (data.get("budget_max") is not None)
+                    or data.get("constraints")
+                ):
+                    modified.append(path.stem)
+            except Exception:
+                pass
+        return sorted(modified)
+
+    def set_budget(self, customer_id: str, budget_gbp: float | None) -> dict[str, Any]:
+        """Set customer's maximum out-of-pocket budget limit."""
+        mem = self.get_memory(customer_id)
+        mem["budget_max"] = budget_gbp
+        mem.setdefault("session_timeline", []).append({
+            "type": "budget_updated",
+            "budget_max": budget_gbp,
+        })
+        self.save_memory(customer_id, mem)
+        return mem
+
+    def set_tenure(self, customer_id: str, tenure: str) -> dict[str, Any]:
+        """Set customer's housing tenure (e.g. owner_occupier, tenant)."""
+        mem = self.get_memory(customer_id)
+        mem["tenure"] = tenure
+        if tenure == "tenant" and "tenant" not in mem.setdefault("constraints", []):
+            mem["constraints"].append("tenant")
+        mem.setdefault("session_timeline", []).append({
+            "type": "tenure_updated",
+            "tenure": tenure,
+        })
+        self.save_memory(customer_id, mem)
+        return mem
+
     def record_constraint(self, customer_id: str, constraint: str, session_note: str = "") -> dict[str, Any]:
         """Record a newly stated constraint (e.g. 'tenant', 'budget_3000')."""
         mem = self.get_memory(customer_id)
+        if constraint.startswith("budget_"):
+            try:
+                b_val = float(constraint.split("_", 1)[1])
+                mem["budget_max"] = b_val
+            except (ValueError, IndexError):
+                pass
         if constraint not in mem.get("constraints", []):
             mem.setdefault("constraints", []).append(constraint)
 
@@ -111,3 +159,27 @@ class CustomerMemoryStore:
             clone.solar_kwp = max(clone.solar_kwp, 3.5)
 
         return clone
+
+    def remove_completed(self, customer_id: str, retrofit: str) -> dict[str, Any]:
+        """Remove a retrofit from completed list."""
+        mem = self.get_memory(customer_id)
+        if retrofit in mem.get("completed_retrofits", []):
+            mem["completed_retrofits"].remove(retrofit)
+        mem.setdefault("session_timeline", []).append({
+            "type": "retrofit_uncompleted",
+            "retrofit": retrofit,
+        })
+        self.save_memory(customer_id, mem)
+        return mem
+
+    def remove_declined(self, customer_id: str, retrofit: str) -> dict[str, Any]:
+        """Remove a retrofit from declined list so it can be recommended again."""
+        mem = self.get_memory(customer_id)
+        if retrofit in mem.get("declined_retrofits", {}):
+            del mem["declined_retrofits"][retrofit]
+        mem.setdefault("session_timeline", []).append({
+            "type": "retrofit_restored",
+            "retrofit": retrofit,
+        })
+        self.save_memory(customer_id, mem)
+        return mem

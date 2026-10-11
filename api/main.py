@@ -253,6 +253,34 @@ def get_customer_memory(customer_id: str) -> dict[str, Any]:
     return memory_store.get_memory(customer_id)
 
 
+class MemoryActionRequest(BaseModel):
+    action: str  # "completed", "declined", "constraint", "budget", "tenure"
+    retrofit: str | None = None
+    constraint: str | None = None
+    budget_gbp: float | None = None
+    tenure: str | None = None
+    reason: str | None = None
+    date: str = "12 Oct 2026"
+
+
+@app.post("/memory/{customer_id}")
+def update_customer_memory(customer_id: str, req: MemoryActionRequest) -> dict[str, Any]:
+    """Update customer memory profile (completed works, declined measures, budget, tenure, constraints)."""
+    if req.action == "completed" and req.retrofit:
+        mem = memory_store.record_completed(customer_id, req.retrofit, date_str=req.date)
+    elif req.action == "declined" and req.retrofit:
+        mem = memory_store.record_declined(customer_id, req.retrofit, reason=req.reason or "", date_str=req.date)
+    elif req.action == "budget":
+        mem = memory_store.set_budget(customer_id, req.budget_gbp)
+    elif req.action == "tenure" and req.tenure:
+        mem = memory_store.set_tenure(customer_id, req.tenure)
+    elif req.action == "constraint" and req.constraint:
+        mem = memory_store.record_constraint(customer_id, req.constraint, session_note=req.reason or "")
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid action or missing required field for action: {req.action}")
+    return mem
+
+
 class ConstraintRequest(BaseModel):
     constraint: str
     note: str = ""

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-11T02:36:48.833061+00:00",
+  "timestamp": "2026-10-11T02:49:14.158074+00:00",
   "benchmark": "50 Held-Out Adversarial LLM Scenarios (docs/ARCHITECTURE.md 3.10)",
   "total_scenarios": 50,
   "n_adversarial_traps": 42,

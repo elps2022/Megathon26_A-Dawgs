@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 import httpx
@@ -199,6 +200,56 @@ def detect_what_if_retrofits(query: str) -> list[str] | None:
         if any(kw in q for kw in keywords):
             found.append(ret_name)
     return found if found else None
+
+
+def detect_memory_action(query: str) -> dict[str, str] | None:
+    """Detect natural language expressions of memory updates (completed works, constraints, preferences)."""
+    q = query.lower()
+
+    # 1. Completed work mentions:
+    if any(phrase in q for phrase in [
+        "already installed", "already done", "already completed", "have installed",
+        "got installed", "i fitted", "we fitted", "completed installation", "finished installing"
+    ]):
+        for ret, kws in RETROFIT_KEYWORDS.items():
+            if any(kw in q for kw in kws):
+                return {
+                    "action": "record_completed",
+                    "detail": ret,
+                    "label": f"Recorded completed {ret.replace('_', ' ').title()}",
+                }
+
+    # 2. Decline / rejection mentions:
+    if any(phrase in q for phrase in [
+        "don't want", "dont want", "do not want", "decline", "not interested in", "skip", "reject"
+    ]):
+        for ret, kws in RETROFIT_KEYWORDS.items():
+            if any(kw in q for kw in kws):
+                return {
+                    "action": "record_declined",
+                    "detail": ret,
+                    "label": f"Recorded preference: declined {ret.replace('_', ' ').title()}",
+                }
+
+    # 3. Tenure constraints:
+    if any(phrase in q for phrase in ["i'm renting", "i am renting", "i rent", "i'm a tenant", "i am a tenant", "tenancy agreement"]):
+        return {
+            "action": "record_constraint",
+            "detail": "tenant",
+            "label": "Recorded housing tenure: Tenant (structural works restricted)",
+        }
+
+    # 4. Budget constraints:
+    m = re.search(r"(?:budget|spend|afford|max(?:imum)?)\s*(?:is|of|capped at)?\s*[£$]?\s*(\d{1,2}(?:,\d{3})+|\d{3,6})", q)
+    if m:
+        val_str = m.group(1).replace(",", "")
+        return {
+            "action": "record_constraint",
+            "detail": f"budget_{val_str}",
+            "label": f"Recorded budget limit: £{float(val_str):,.0f}",
+        }
+
+    return None
 
 
 def execute_advisor_tool(
@@ -557,12 +608,26 @@ class LLMAdvisor:
                 label = "Domain Guardrail (Off-Topic Refocused)"
             return msg, audit, label
 
-        # 2. Check for What-If scenario (Architecture Spec 3.10 & CLAUDE.md invariant)
-        what_if_retrofits = detect_what_if_retrofits(query)
+        # 2. Check for natural language memory updates (Architecture Spec 3.11 & Section 10)
         target_property = p or getattr(report, "property", None)
         active_report = report
         scenario_label_suffix = ""
+        memory_badge = ""
 
+        mem_action = detect_memory_action(query)
+        if mem_action and target_property is not None and target_property.customer_id:
+            execute_advisor_tool("update_customer_memory", {"action": mem_action["action"], "detail": mem_action["detail"]}, report, target_property)
+            from greenhome.memory.store import CustomerMemoryStore
+            from greenhome.engine.report import build_report
+            updated_mem = CustomerMemoryStore().get_memory(target_property.customer_id)
+            updated_p = CustomerMemoryStore().apply_memory_to_property(target_property)
+            active_report = build_report(updated_p, memory=updated_mem)
+            target_property = updated_p
+            memory_badge = f"[🧠 Memory Updated: {mem_action['label']}]\n\n"
+            scenario_label_suffix = " (Memory Updated)"
+
+        # 3. Check for What-If scenario (Architecture Spec 3.10 & CLAUDE.md invariant)
+        what_if_retrofits = detect_what_if_retrofits(query)
         if what_if_retrofits and target_property is not None:
             from greenhome.engine.report import build_report
             active_report = build_report(target_property, retrofits=what_if_retrofits)
@@ -574,8 +639,9 @@ class LLMAdvisor:
                 what_if_retrofits=what_if_retrofits,
                 baseline_report=report if what_if_retrofits else None,
             )
-            audit = verify_grounding(fallback, active_report)
-            return fallback, audit, f"Deterministic Rule Engine{scenario_label_suffix or ' (Offline)'}"
+            full_fallback = f"{memory_badge}{fallback}" if memory_badge else fallback
+            audit = verify_grounding(full_fallback, active_report)
+            return full_fallback, audit, f"Deterministic Rule Engine{scenario_label_suffix or ' (Offline)'}"
 
         report_json_str = format_report_for_prompt(active_report, target_property)
         scenario_note = (
