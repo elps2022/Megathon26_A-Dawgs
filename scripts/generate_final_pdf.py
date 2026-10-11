@@ -172,13 +172,21 @@ def build_pdf(output_path: str, team_number: str = "73"):
           "template."),
     ]
 
+    story.insert(len(story), b("<b>Customer memory that changes the engine's inputs, not just the chat.</b> Each "
+          "customer has a persistent profile the assistant reads and writes through tools. Completed retrofits update "
+          "the home before the engine runs, so they are never recommended again and savings start from the new state; "
+          "stated constraints become feasibility rules (a tenant gets no structural works, measures above a stated "
+          "budget drop to Low); a declined measure drops to Low with the reason shown ('You declined this on 12 Oct') "
+          "and every rank is recomputed. Numbers still come only from the engine."))
+
     # 3. Features
     story += [
         Paragraph("3. Features", st["h1"]),
         b("<b>Customer view:</b> score with points per part; heat-loss house (3D and SVG) coloured by each element's "
           "share of heat loss, click a part to see its fix; what-if toggles that rerun the engine and move the score, "
           "savings and house together; ranked recommendation cards (bill saving, payback, carbon, cost, why); grants "
-          "and green-finance matching with monthly cash flow; the grounded assistant with an audit of every number."),
+          "and green-finance matching with monthly cash flow; the grounded assistant with an audit of every number; "
+          "'Mark completed' / 'Not interested' buttons and a three-session memory timeline."),
         b("<b>Lender view:</b> a mortgage book of real homes: score and rating mix, share Poor / Very poor, financed "
           "emissions (PCAF, loan-to-value attribution), reduction potential, a 2030 EPC C target simulator and a "
           "ranked list of who to contact about green finance."),
@@ -191,13 +199,10 @@ def build_pdf(output_path: str, team_number: str = "73"):
     energy_rows = [
         ["Real metered homes, test split (scored once)", "Gas MAE (kWh)", "Gas median error", f"Gas {R2} (log)",
          "Elec MAE (kWh)", "Elec median error"],
-        ["Median of similar homes (no model)", "4,177", "30.7%", "0.25", "1,569", "37.9%"],
-        ["Log-linear model", "4,061", "30.3%", "0.28", "1,573", "38.6%"],
-        ["Physics x one scale factor", "4,546", "33.5%", "0.14", "-", "-"],
-        ["V2: LightGBM, Optuna-tuned", "4,008", "29.4%", "0.28", "1,533", "37.2%"],
-        ["<b>V1 grey box (shipped), description only</b>", "<b>4,018</b>", "<b>29.6%</b>", "<b>0.27</b>", "<b>1,535</b>", "<b>37.2%</b>"],
-        ["This home: last year's bill (no model)", "2,005", "11.4%", "0.67", "917", "16.0%"],
-        ["<b>This home: change model with the bill</b>", "<b>1,953</b>", "<b>10.9%</b>", "<b>0.69</b>", "<b>886</b>", "<b>15.6%</b>"],
+        ["Median of similar homes (no-model baseline)", "4,177", "30.7%", "0.25", "1,569", "37.9%"],
+        ["<b>V1 grey box, description only</b>", "<b>4,018</b>", "<b>29.6%</b>", "<b>0.27</b>", "<b>1,535</b>", "<b>37.2%</b>"],
+        ["Last year's bill alone (no-model baseline)", "2,005", "11.4%", "0.67", "917", "16.0%"],
+        ["<b>V1 with the customer's own bills</b>", "<b>1,953</b>", "<b>10.9%</b>", "<b>0.69</b>", "<b>886</b>", "<b>15.6%</b>"],
     ]
     retro_rows = [
         ["Real installs, test split", "Observed", "Physics alone", "<b>V1</b>", "V2 (GBDT)"],
@@ -207,86 +212,55 @@ def build_pdf(output_path: str, team_number: str = "73"):
     value_rows = [
         ["Price model, real resales, test split", "Median error", "Within 20%", f"{R2} (log)", "MAE (GBP)"],
         ["Area median x fixed rating premium (brief's baseline)", "32.6%", "32.0%", "0.17", "150,200"],
-        ["Area x property type median", "24.6%", "41.7%", "0.48", "117,600"],
-        ["Hedonic log-linear, no location (CV)", "22.2%", "45.6%", "0.37", "110,800"],
         ["<b>Value model (LightGBM, conformal range)</b>", "<b>14.9%</b>", "<b>62.8%</b>", "<b>0.76</b>", "<b>73,900</b>"],
-        ["Homes sold before: indexed last sale", "8.5%", "81.3%", "0.85", "45,400"],
-        ["<b>Homes sold before: 85% last sale + 15% model</b>", "<b>8.2%</b>", "<b>82.9%</b>", "<b>0.87</b>", "<b>44,100</b>"],
-    ]
-    premium_rows = [
-        ["Rating band vs D", "<b>Same-street model (shipped)</b>", "Without location", "Refit on test sales"],
-        ["A/B", "<b>+1.0%</b>", "-1.5%", "+0.6%"],
-        ["C", "<b>+0.7%</b>", "-0.7%", "+0.7%"],
-        ["E", "<b>-2.7%</b>", "+1.9%", "-4.1%"],
-        ["F/G", "<b>-5.1%</b>", "+6.9%", "-5.5%"],
+        ["<b>Homes sold before: last sale indexed + model</b>", "<b>8.2%</b>", "<b>82.9%</b>", "<b>0.87</b>", "<b>44,100</b>"],
     ]
     rank_rows = [
         ["Ranking of feasible retrofits (1,691 homes)", "NDCG@3, bill saving per GBP", "Top pick right",
          "NDCG@3, carbon per GBP", "Top pick right (carbon)"],
-        ["<b>Engine (payback suitability)</b>", "<b>0.978</b>", "<b>91.1%</b>", "<b>0.968</b>", "<b>89.2%</b>"],
-        ["Cheapest first", "0.968", "88.8%", "0.904", "75.3%"],
         ["Fixed order, all feasible (brief's baseline)", "0.813", "37.6%", "0.846", "45.5%"],
-        ["Random", "0.803", "39.4%", "0.820", "39.4%"],
+        ["<b>Engine (payback suitability)</b>", "<b>0.978</b>", "<b>91.1%</b>", "<b>0.968</b>", "<b>89.2%</b>"],
     ]
     story += [
         Paragraph("4. Results", st["h1"]),
         Paragraph("Energy model", st["h2"]),
         KeepTogether([m1.grid_table(energy_rows, [0.34 * w, 0.13 * w, 0.13 * w, 0.13 * w, 0.13 * w, 0.14 * w], st)]),
         Spacer(1, 3),
-        b("<b>Single homes are noisy, books are not.</b> Identical homes vary 0.5-1.7&times; in gas use, which caps "
-          f"description-only accuracy (Optuna tuning gained 1.1% on gas; CatBoost and interaction features moved MAE &lt; 0.3%, inside fold noise). "
-          f"Yet predicted totals for 1,000 homes are within <b>1.7%</b> of metered, gas {R2} is <b>0.79</b> across "
-          "groups of similar homes, and the top 25% of users are found with precision 0.55 (0.25 random). That is what "
-          "a lender's portfolio view needs."),
-        b("<b>80% ranges hold on new homes:</b> test coverage 79.2% gas, 80.7% electricity, and 76-84% in every "
-          "region, type, age, rating and deprivation group. The detector flags 10.2% (gas) / 9.7% (electricity) of test "
-          "homes against 10% expected, and 6-12% in every group."),
-        b("<b>Learning from the customer's own bills (post-test, chosen on validation):</b> a second year of bills cuts "
-          "error a further 1.5% (gas) and 2.7% (electricity), and weather-correcting the history removes a 7% "
-          "under-forecast after a mild year (synthetic check: error 798 &rarr; 308 kWh)."),
+        b("<b>Accurate where it matters for a lender:</b> predicted totals for 1,000 homes are within <b>1.7%</b> of "
+          f"metered use, gas {R2} is <b>0.79</b> across groups of similar homes, and with the customer's own bills the "
+          "median error is <b>10.9%</b>, better than the bill alone on the same held-out homes."),
+        b("<b>Calibrated 80% ranges:</b> test coverage 79.2% gas and 80.7% electricity, and 76-84% in every region, "
+          "type, age, rating and deprivation group; the detector flags 10.2% / 9.7% of homes against 10% by design."),
+        b("<b>Bill history:</b> a second year of bills cuts error a further 1.5% (gas) / 2.7% (electricity) on "
+          "validation, and weather correction removes a 7% under-forecast after a mild year."),
 
         Paragraph("Retrofit savings model", st["h2"]),
         KeepTogether([m1.grid_table(retro_rows, [0.36 * w, 0.16 * w, 0.16 * w, 0.16 * w, 0.16 * w], st)]),
         Spacer(1, 3),
-        figure_row(["eval_retrofit_check.png", "eval_test_calibration.png"], w,
-                   ["Retrofit savings vs real installs, held-out validation and test splits.",
-                    "Energy model test calibration by decile: metered use follows the diagonal; shading is the 80% range."], st),
-        b("<b>Savings match real installs.</b> One elasticity &beta;, fitted on train installs only, brings V1 within "
-          "about 2 points of the observed change for both measures on held-out installs, where physics alone overstates "
-          "3-4&times;. The tuned GBDT captures only a third of the cavity saving: trained on consumption levels, it "
-          "learns a between-home difference rather than a before-after change. This is why V1 ships for savings."),
-        b("<b>Solar, recalibrated on real installs:</b> the standard rule (3.5 kWp x yield x 40% self-consumption) "
-          "predicted a 1,260 kWh/yr cut in grid import; real installs show 487. Calibrated on train installs, it "
-          "predicts -488 vs -483 kWh/yr observed on validation."),
-        b("<b>All seven measures, against hidden truth:</b> on 1,175 synthetic homes that retrofit mid-series (loft, "
-          "cavity, solid wall, glazing, smart thermostat, heat pump, solar), seeing only pre-install bills, the "
-          "predicted total saving is within 3% of the true total (ratio 1.03), the sign is right for 96% of homes and "
-          "for every heat pump and solar install, and the heat pump's electricity rise is sized correctly "
-          "(-1,773 vs -2,176 kWh/yr)."),
+        b("<b>Savings match real installs:</b> one elasticity fitted on train installs brings V1 within about 2 points "
+          "of the observed change on held-out installs, where physics alone overstates 3-4&times;. Solar, recalibrated "
+          "on real installs, predicts -488 vs -483 kWh/yr observed."),
+        b("<b>All seven measures:</b> on 1,175 synthetic homes that retrofit mid-series, seeing only pre-install bills, "
+          "the predicted total saving is within <b>3%</b> of the hidden truth and the sign is right for 96% of homes "
+          "and every heat pump and solar install."),
 
         Paragraph("Property value model", st["h2"]),
         KeepTogether([m1.grid_table(value_rows, [0.40 * w, 0.15 * w, 0.15 * w, 0.15 * w, 0.15 * w], st)]),
         Spacer(1, 3),
-        b("<b>Price level:</b> LightGBM on 106k real resales matched to the certificate lodged before each sale, prices "
-          "indexed to the valuation date by property type and area, monotone in rating, with conformal 80% ranges: "
-          "test coverage <b>79.3%</b>, and 78-81% in every area, type and rating band. For homes sold before, the "
-          "indexed last sale blended 85/15 with the model reaches <b>8.2%</b> median error."),
-        KeepTogether([m1.grid_table(premium_rows, [0.25 * w, 0.25 * w, 0.25 * w, 0.25 * w], st)]),
-        Spacer(1, 3),
-        b("<b>Rating uplift:</b> the same-street comparison (259 postcode sectors, clustered errors) fixes the "
-          "reversed premium and is confirmed by a refit on test sales only. A retrofit's new rating comes from a "
-          f"SAP-score regression on 376,769 real certificates ({R2} 0.70), and the report shows premium(after) - "
-          "premium(before) for the same home and date."),
+        b("<b>Price level:</b> LightGBM trained on 106k real resales matched to the certificate lodged before each sale, "
+          "monotone in rating, with conformal 80% ranges (test coverage <b>79.3%</b>, 78-81% in every area, type and "
+          "rating band)."),
+        b("<b>Rating uplift:</b> comparing homes on the same streets (259 postcode sectors) gives the premium vs band D: "
+          "A/B +1.0%, C +0.7%, E -2.7%, F/G -5.1%, confirmed by a refit on test sales. A retrofit's new rating comes from "
+          f"a SAP-score model on 376,769 real certificates ({R2} 0.70)."),
 
         Paragraph("Recommendations and assistant", st["h2"]),
         KeepTogether([m1.grid_table(rank_rows, [0.34 * w, 0.165 * w, 0.165 * w, 0.165 * w, 0.165 * w], st)]),
         Spacer(1, 3),
-        b("<b>Ranking</b> is scored against the synthetic world's hidden true saving per pound on 1,691 homes, not "
-          "against the engine's own numbers. The engine's top pick is right 91% of the time vs 38% for the brief's "
-          "fixed-order list, and it beats a strong cheapest-first reference on both bill value and carbon."),
-        b("<b>Assistant:</b> on 50 held-out adversarial scenarios, all 42 traps (invented figures, wrong signs, "
-          "infeasible asks) were blocked and all 8 legitimate answers passed: groundedness 100%, unsupported claims 0%. "
-          "What-if answers on 20 real homes: 60 of 60 grounded after the engine rerun."),
+        b("<b>Ranking</b> is scored against hidden true saving per pound, not the engine's own numbers: the top pick is "
+          "right 91% of the time vs 38% for the brief's fixed-order list."),
+        b("<b>Assistant:</b> on 50 held-out adversarial scenarios, groundedness <b>100%</b> and unsupported claims "
+          "<b>0%</b> (all 42 traps blocked); what-if answers on 20 real homes: 60 of 60 grounded after the engine rerun."),
         m1.boxed(Paragraph(
             "<b>Engineering.</b> 186 automated tests (monotone score mappings, feasibility, per-fuel carbon, physics "
             "directions, feature parity between training and deployment, grounding). <i>make build</i> rebuilds the "
@@ -302,7 +276,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="deliverables/final_report.pdf")
     parser.add_argument("--team-number", default="73")
-    parser.add_argument("--text-scale", type=float, default=1.22)
+    parser.add_argument("--text-scale", type=float, default=1.3)
     args = parser.parse_args()
     m1.TEXT_SCALE = args.text_scale
     build_pdf(args.output, args.team_number)
