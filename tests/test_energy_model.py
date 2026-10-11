@@ -169,3 +169,25 @@ def test_heat_pump_and_solar_never_lower_the_score():
     r0 = build_report(home())
     r1 = build_report(home(), retrofits=["heat_pump", "solar_pv"])
     assert r1.score_after.total >= r0.score.total
+
+
+@needs_artifacts
+def test_detector_flags_heavy_users_not_big_homes():
+    from greenhome.engine.detector import similar_homes_check
+    from greenhome.engine.report import build_report
+    typical = similar_homes_check(home())
+    assert typical["status"] == "checked" and typical["flagged"] == []
+    heavy = similar_homes_check(home(annual_gas_kwh=60000.0))
+    assert heavy["flagged"] == ["gas"] and heavy["fuels"]["gas"]["ratio_to_similar_median"] > 2
+    big = similar_homes_check(home(floor_area_m2=250.0, property_type="Detached", annual_gas_kwh=22000.0))
+    assert "gas" not in big["flagged"]          # big, but normal for a big home
+    assert any("similar homes" in i for i in build_report(home(annual_gas_kwh=60000.0)).key_issues)
+
+
+@needs_artifacts
+def test_detector_unavailable_without_bills_or_for_cooker_gas():
+    from greenhome.engine.detector import similar_homes_check
+    c = similar_homes_check(home(annual_gas_kwh=None, annual_elec_kwh=None))
+    assert c["status"] == "unavailable" and c["flagged"] == []
+    cooker = similar_homes_check(home(heating="storage_heaters"))
+    assert cooker["fuels"]["gas"]["status"] == "unavailable"

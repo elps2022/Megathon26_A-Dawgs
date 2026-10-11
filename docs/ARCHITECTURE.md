@@ -124,6 +124,7 @@ Unit tests: weights sum to 1, each mapping monotonic, P10001-style example gives
 - `E = grid_import + gas` (kWh/yr). Potential = 100 × (E_base − E_after) / E_base using the full feasible package. E_base = 0 or missing → "unavailable".
 - "Inefficient" uses intensity **relative to expected for similar homes** (energy-model residual, 3.5), so a big house is not flagged just for being big.
 - Key issues = sub-scores below threshold + intensity residual > X%.
+- *As built* (`engine/detector.py`, `PropertyReport.similar_homes`): per fuel, billed use above the p90 of V1's conformalised band for homes with the same description (mode 2, never the home's own use). The band is calibrated so 10% of similar homes exceed p90, so X is set by a stated false-alarm rate rather than a hand-picked %. On the NEED test split the flag rate is 9.7% (electricity) / 10.2% (gas), 5.6–12.5% in every region, type, age, EPC and deprivation group; F/G homes are flagged least (`eval/eval_detector.py`). Unavailable without a bill, for gas in homes not heated by gas, or without the trained models.
 
 ### 3.5 Energy model: grey-box physics + tuned ML, accuracy first
 
@@ -405,6 +406,7 @@ class Infeasible(BaseModel): retrofit: str; rule: str
 class PropertyReport(BaseModel):
     property: Property; score: ScoreResult; score_after: ScoreResult
     is_poor: bool; key_issues: list[str]; improvement_potential_pct: float | None
+    similar_homes: dict | None   # detector: per fuel billed kWh, similar-home p50 / p90, ratio, above_p90; flagged fuels
     recommendations: list[RetrofitRec]; infeasible: list[Infeasible]
     # None = unavailable: no usable bills and too little data to estimate expected use (never a silent 0)
     package_saving: FuelDelta | None; package_carbon_kg: float | None
@@ -434,7 +436,7 @@ src/greenhome/
   data/            generate.py, annualise.py, degree_day_fit.py, split.py, epc_ingest.py, synthetic_parts.py,
                    sales_join.py, valuation.py, need_labels.py, features.py, calibrate.py, build.py
   score/           score.py
-  engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
+  engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py, detector.py
   models/          energy.py (EnergyModel interface, load_model, train -> artifacts/), physics.py,
                    energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), energy_bills.py (mode 1), tune.py, bakeoff.py,
                    share.py (pack / install trained models without raw data: make package-models, make models SRC=...),
@@ -515,10 +517,10 @@ Why this split works: C's pieces are pure functions with small inputs and output
 
 - [ ] A Working dashboard — B
 - [ ] B Code + `make data`, `make train`, `make eval`, `make app` — all
-- [ ] C Trained models in `models/artifacts/` + inference code — A
+- [x] C Trained models in `models/artifacts/` + inference code — A (weights hosted externally, link in README)
 - [ ] D `docs/SCORING.md` — C
 - [ ] E `docs/LLM.md` — B
 - [ ] F Architecture diagram — B
-- [ ] G `docs/EVALUATION.md` (validation metrics, baselines, limitations) — A, B
+- [~] G `docs/EVALUATION.md` (validation metrics, baselines, limitations) — A, B (A's part done)
 - [ ] H `docs/RESPONSIBLE_AI.md` — C
-- [ ] I Held-out test predictions + schema/label docs — A
+- [x] I Held-out test predictions + schema/label docs — A

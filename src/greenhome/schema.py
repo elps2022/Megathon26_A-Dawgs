@@ -142,6 +142,8 @@ class PropertyReport(BaseModel):
     score_after: ScoreResult
     is_poor: bool
     key_issues: list[str] = Field(default_factory=list)
+    # "Worse than similar homes" detector (engine/detector.py): billed use vs V1's band for similar homes
+    similar_homes: dict[str, Any] | None = None
     improvement_potential_pct: float | None = None
     recommendations: list[RetrofitRec] = Field(default_factory=list)
     infeasible: list[Infeasible] = Field(default_factory=list)

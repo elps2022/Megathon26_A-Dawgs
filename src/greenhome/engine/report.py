@@ -94,6 +94,10 @@ def build_report(
     for comp in score_before.components:
         if comp.score < 40.0:
             key_issues.append(f"Low {comp.component.lower()} score ({comp.score:.0f}/100)")
+    # "Worse than similar homes": billed use above the 90th percentile for homes with the same description
+    from greenhome.engine.detector import key_issue, similar_homes_check
+    similar = similar_homes_check(p)
+    key_issues.extend(key_issue(similar))
     if is_poor and not key_issues:
         key_issues.append("Low overall energy efficiency classification")
 
@@ -191,6 +195,7 @@ def build_report(
         score_after=score_after,
         is_poor=is_poor,
         key_issues=key_issues,
+        similar_homes=similar,
         improvement_potential_pct=improvement_potential,
         recommendations=recs,
         infeasible=infeasible,

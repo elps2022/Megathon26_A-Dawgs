@@ -1,4 +1,4 @@
-.PHONY: data calibrate build epc real sales value labels features train train-value eval-value eval-test models package-models need-raw test eval app api
+.PHONY: data calibrate build epc real sales value labels features train train-value eval-value eval-test models package-models real-data package-data need-raw test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -47,6 +47,15 @@ eval-value:
 models:
 	@test -n "$(SRC)" || { echo "usage: make models SRC=<energy_models.zip or download link>"; exit 1; }
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.share install "$(SRC)"
+
+# Install the shareable processed real data (no raw data needed): make real-data SRC=<real_data.zip or link>
+real-data:
+	@test -n "$(SRC)" || { echo "usage: make real-data SRC=<real_data.zip or download link>"; exit 1; }
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.share install-data "$(SRC)"
+
+# Zip the shareable processed data (no postcodes, no hidden ground truth) -> dist/real_data.zip
+package-data:
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.share pack-data
 
 # Zip the trained models for teammates / external hosting -> dist/energy_models.zip
 package-models:

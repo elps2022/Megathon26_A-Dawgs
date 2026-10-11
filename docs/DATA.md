@@ -171,3 +171,18 @@ Known limitations:
 | `mode1_last_year_kwh`, `mode1_last_year_x_trend_kwh`, `mode1_change_model_l1_kwh` | "This home" mode: last year's (2022) bill, the bill x median trend, and the change model; homes without a valid 2022 reading fall back to V1 |
 
 Every model was fitted on the train split only; V1's bands were calibrated on val. Description-only features: property type, age band, floor-area band, EPC band, region, conservatory, deprivation quintile, gas heated, cavity / PV installed before 2023.
+
+## Value-model training data (`make train-value`, ~35 s; needs `data/raw/hpi` and the raw-derived `properties.parquet`)
+
+`models/value_model.training_sales()` builds the training table from `sales.parquet` (results in `docs/EVALUATION.md`):
+
+- **Rows:** matched Price Paid resales 2018–2025 with a certificate lodged **before** the sale (`has_pre_sale_epc`); new builds excluded (their premium doesn't apply to an existing home); prices ≤ £10,000 dropped (non-market transfers). 151,587 sales: 106,140 train / 22,970 val / 22,477 test, by the fixed customer split (`splits.parquet`), so all sales of a home sit on one side.
+- **Target:** `log_value_now` = log(price × HPI(type, LA, Jul 2026) / HPI(type, LA, sale month)), the sale indexed to the valuation month with the UK HPI series for its Price Paid property type (detached / semi / terraced / flat) in its local authority.
+- **Features** (all from the pre-sale certificate, plus deprivation): local authority, property type, floor area, bedrooms (22% unknown, left missing), age band, SAP score, EPC band, IMD quintile. Tenure is not used: it is unknown for homes that haven't sold.
+- **This home:** `prior_log_value_now`, the same home's previous sale (strictly earlier) indexed to the same month; 11% of sales have one.
+- **Location for the rating premium only:** the postcode sector (e.g. `SE15 4`) from the raw-derived `properties.parquet`, used as a fixed effect when estimating the EPC-band premium. It isn't stored in any shared file or model; the shipped value model holds only the band premia and their covariance.
+- **SAP gain per retrofit:** SAP score regressed on the fabric fields over the real certificates of train-split customers (376,769 homes with known heating), coefficients in `value_meta.json`.
+
+## "Worse than similar homes" detector
+
+`engine/detector.py` compares a home's billed annual use per fuel with the p90 of V1's band for homes with the same description; `eval/eval_detector.py` checks the flag rate on the NEED test split (real metered use): 9.7% electricity / 10.2% gas, 5.6–12.5% in every subgroup (`eval/results/detector_check.json`). On the real property book the flag fires for 7% of gas and 15% of electricity bills, but those bills are synthetic, so that rate says nothing about accuracy.

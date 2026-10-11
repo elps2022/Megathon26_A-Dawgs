@@ -19,6 +19,7 @@ dependencies = [
     "httpx>=0.28.1",
     "optuna>=5.0.0",
     "catboost>=1.2.10",
+    "matplotlib>=3.11.2",
 ]
 
 [dependency-groups]
