@@ -123,28 +123,9 @@ st.markdown(
       --shadcn-cashflow-grad: var(--cashflow-grad);
     }
 
-    /* Media query dark mode switch */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --card-bg: var(--dark-card-bg);
-        --card-border: var(--dark-card-border);
-        --card-hover-border: var(--dark-card-hover-border);
-        --card-header-border: var(--dark-card-header-border);
-        --subcard-bg: var(--dark-subcard-bg);
-        --subcard-border: var(--dark-subcard-border);
-        --text-primary: var(--dark-text-primary);
-        --text-sub: var(--dark-text-sub);
-        --text-muted: var(--dark-text-muted);
-        --card-shadow: var(--dark-shadow);
-        --card-shadow-hover: var(--dark-shadow-hover);
-        --cashflow-grad: var(--dark-cashflow-grad);
-        --badge-slate-bg: var(--dark-badge-slate-bg);
-        --badge-slate-text: var(--dark-badge-slate-text);
-        --badge-shield-bg: var(--dark-badge-shield-bg);
-        --badge-shield-text: var(--dark-badge-shield-text);
-        --badge-shield-border: var(--dark-badge-shield-border);
-      }
-    }
+    /* The active palette follows the theme Streamlit is actually rendering (light / dark, incl. a live switch in
+       Settings), not the OS preference: a small script sets data-theme on .stApp from its background colour
+       (see sync_theme_attribute below). The OS media query was removed because the two can disagree. */
 
     /* Explicit Dark Theme selector */
     [data-theme="dark"],
@@ -616,68 +597,36 @@ view_mode = st.sidebar.radio(
     ["Customer Experience", "Lender Portfolio (Bank View)", "AI Grounding Inspector"],
 )
 
-theme_mode = st.sidebar.radio(
-    "Theme Mode",
-    ["Auto (System)", "Light Mode", "Dark Mode"],
-    horizontal=True,
-    index=0,
-    help="Switches active tokens between light and dark palettes.",
-)
+def sync_theme_attribute() -> None:
+    """Tag the page with Streamlit's active theme so the card palette matches it.
 
-if theme_mode == "Dark Mode":
-    st.markdown(
-        """
-        <style>
-        :root, .stApp {
-          --card-bg: var(--dark-card-bg) !important;
-          --card-border: var(--dark-card-border) !important;
-          --card-hover-border: var(--dark-card-hover-border) !important;
-          --card-header-border: var(--dark-card-header-border) !important;
-          --subcard-bg: var(--dark-subcard-bg) !important;
-          --subcard-border: var(--dark-subcard-border) !important;
-          --text-primary: var(--dark-text-primary) !important;
-          --text-sub: var(--dark-text-sub) !important;
-          --text-muted: var(--dark-text-muted) !important;
-          --card-shadow: var(--dark-shadow) !important;
-          --card-shadow-hover: var(--dark-shadow-hover) !important;
-          --cashflow-grad: var(--dark-cashflow-grad) !important;
-          --badge-slate-bg: var(--dark-badge-slate-bg) !important;
-          --badge-slate-text: var(--dark-badge-slate-text) !important;
-          --badge-shield-bg: var(--dark-badge-shield-bg) !important;
-          --badge-shield-text: var(--dark-badge-shield-text) !important;
-          --badge-shield-border: var(--dark-badge-shield-border) !important;
+    Streamlit doesn't expose its theme to CSS (no attribute or variable), and st.context.theme can disagree with
+    what is rendered, so this reads the app's computed background colour and sets data-theme="light" / "dark"
+    on .stApp and <html>, re-checking twice a second so a theme switch in Settings is followed live. Light and
+    dark mode are chosen in Streamlit's own menu (top right, Settings -> Theme), which switches every element;
+    an in-app toggle could only recolour the custom cards and left the page, inputs and charts mismatched."""
+    components.html(
+        """<script>
+        const doc = window.parent.document;
+        function sync() {
+          const app = doc.querySelector('.stApp');
+          if (!app) return;
+          const m = getComputedStyle(app).backgroundColor.match(/[0-9.]+/g);
+          if (!m) return;
+          const [r, g, b] = m.map(Number);
+          const theme = (0.2126 * r + 0.7152 * g + 0.0722 * b) < 128 ? 'dark' : 'light';
+          for (const el of [app, doc.documentElement]) {
+            if (el.getAttribute('data-theme') !== theme) el.setAttribute('data-theme', theme);
+          }
         }
-        </style>
-        """,
-        unsafe_allow_html=True,
+        sync();
+        setInterval(sync, 500);
+        </script>""",
+        height=0,
     )
-elif theme_mode == "Light Mode":
-    st.markdown(
-        """
-        <style>
-        :root, .stApp {
-          --card-bg: var(--light-card-bg) !important;
-          --card-border: var(--light-card-border) !important;
-          --card-hover-border: var(--light-card-hover-border) !important;
-          --card-header-border: var(--light-card-header-border) !important;
-          --subcard-bg: var(--light-subcard-bg) !important;
-          --subcard-border: var(--light-subcard-border) !important;
-          --text-primary: var(--light-text-primary) !important;
-          --text-sub: var(--light-text-sub) !important;
-          --text-muted: var(--light-text-muted) !important;
-          --card-shadow: var(--light-shadow) !important;
-          --card-shadow-hover: var(--light-shadow-hover) !important;
-          --cashflow-grad: var(--light-cashflow-grad) !important;
-          --badge-slate-bg: var(--light-badge-slate-bg) !important;
-          --badge-slate-text: var(--light-badge-slate-text) !important;
-          --badge-shield-bg: var(--light-badge-shield-bg) !important;
-          --badge-shield-text: var(--light-badge-shield-text) !important;
-          --badge-shield-border: var(--light-badge-shield-border) !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+
+
+sync_theme_attribute()
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Megathon X | Lloyds PS2 | Team 73")
