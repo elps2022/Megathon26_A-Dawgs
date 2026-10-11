@@ -109,7 +109,7 @@ Reproducible: `python -m greenhome.data.build --seed 42` (`make build`: EPC inge
 | Component | w | Mapping (draft) |
 |---|---|---|
 | Energy efficiency | .25 | SAP points if present (1–100, clipped), else rating band midpoint: A 96, B 86, C 75, D 61, E 46, F 30, G 10 |
-| Consumption intensity | .20 | purchased energy ÷ expected for a typical similar home (same type, size, age, EPC band; NEED model), piecewise-linear: ≤0.5 → 100, 1.0 → 75, ≥2.0 → 0. Raw kWh/m² penalised small homes by ~23 points on real NEED use (`docs/SCORING.md`); unmetered heating fuel → default + flag |
+| Consumption intensity | .20 | purchased energy ÷ expected for a typical similar home (same type, size, age, EPC band; NEED log-linear model, `models/expected_use.py`; not yet switched to V1), piecewise-linear: ≤0.5 → 100, 1.0 → 75, ≥2.0 → 0. Raw kWh/m² penalised small homes by ~23 points on real NEED use (`docs/SCORING.md`); unmetered heating fuel → default + flag |
 | Insulation | .15 | loft depth score × 0.5 + wall score × 0.5 (none 0, partial 50, full 100) |
 | Heating | .15 | heat pump 100, district 70, condensing gas 55, non-condensing gas 35, oil/LPG 25, storage heaters 30, direct electric 20 |
 | Glazing | .10 | triple 100, double (post-2002) 80, double (older) 60, partial 35, single 0 |
@@ -175,7 +175,7 @@ The input is the (post-retrofit) `Property`, not a `HomeState`: V1 and V2 need t
 - **Feature parity rule:** only features we can also derive for an EPC home: property type, age band, floor-area band, EPC band, region, main heating fuel, conservatory ("unknown" for EPC homes), IMD quintile, and cavity / PV installed flags. One definition serves both sources (`need_data.features` / `epc_features`, tested to match). EPC proxies: `cavity_installed` = EPC "filled cavity" (a retrofit, not "as built, insulated"); `pv_installed` = solar > 0. The loft flag (a top-up can't be told from an original deep loft) and years since install (EPC has no dates) are dropped: on NEED CV this costs < 0.1% MAE (`docs/EVALUATION.md`). `COUNCIL_TAX_BAND` is excluded (EPC homes don't have it). For V1, NEED bands map to a physics `HomeState` using band midpoints and age-band default fabric.
 - **Two prediction modes**, both scored on real NEED use (2022 → 2023, same splits):
   - *Mode 2, "similar homes"* (description only, no lagged consumption): V1 / V2 above. Used for homes without bills and by the "worse than similar homes" detector (3.4), which must not see the home's own use.
-  - *Mode 1, "this home"* (`models/energy_bills.py`): adds the home's own previous-year use (for EPC homes, the weather-normalised annual use from their bills, `data/features.py`). A GBDT predicts the change log(this year / last year) with an L1 objective; homes without last year's bill fall back to mode 2. It must beat the no-model references "last year's bill" and "last year × median trend", which carry most of the signal.
+  - *Mode 1, "this home"* (`models/energy_bills.py`): adds the home's own previous-year use (for EPC homes, the weather-normalised annual use from their bills, `data/features.py`). A GBDT predicts the change log(this year / last year) with an L1 objective; homes without last year's bill fall back to mode 2. It must beat the no-model references "last year's bill" and "last year × median trend", which carry most of the signal. *As built:* evaluation only (it beats last year's bill by ~3% on test). It isn't saved as an artifact; the engine uses the home's billed use itself as the baseline.
 
 **Split.** NEED rows are distinct properties: one fixed 70/15/15 train/val/test split, stratified by region × fuel, seed 42 (`data/splits/need_split.csv`). **The test set is touched once.** All tuning uses 5-fold CV on train.
 
@@ -196,7 +196,7 @@ Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml`
 
 ### 3.6 Savings simulator (per fuel, sequential)
 1. Start from the baseline property. Apply retrofits **in priority order** (fabric → controls → heating → generation). Each one edits the property, and the energy model predicts again, so every step acts on what the previous steps left. The model's relative change is applied to the home's own use (calibrated to its bills, k = actual / expected). Fabric in a gas-heated home uses the selected model (V2 only sees cavity walls; other measures use physics^β). Electric heating, which the NEED electricity model can't separate, uses the physics space-heat change^β, labelled physics-based. Controls still use the catalogue range (no physics hook yet); a home the model can't place (floor area unknown) falls back to the catalogue range, labelled.
-2. Solar is applied after the energy model: kWp × regional yield (~850–1000 kWh/kWp) × self-consumption ratio → reduces grid import only, not demand.
+2. Solar is applied after the energy model: kWp × regional yield (~850–1000 kWh/kWp) × self-consumption ratio → reduces grid import only, not demand. The effective self-consumption (0.155) is calibrated on real NEED PV installs (train split; `eval/eval_savings.py` checks val / test). The synthetic bills still use 0.40 (`config/synthetic.yaml`).
 3. In a gas-heated home a heat pump lowers gas (space heating + hot water; cooking gas stays) and **raises electricity**, which shows as a negative electricity saving. In an electrically heated home it lowers electricity, since it replaces resistance heating at SCOP × the efficiency. Savings only ever come off the fuel the heating system actually uses (`config/efficiencies.yaml` `fuel`), so a gas cooker in an electrically heated home is untouched.
 4. Report per retrofit the **marginal** saving in package order (these add up to the package total), plus the package's elec/gas/total and a low/high band (from U-value / SCOP ranges and the model's p10/p90).
 
@@ -429,13 +429,13 @@ src/greenhome/
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
   models/          energy.py (EnergyModel interface, load_model, train -> artifacts/), physics.py,
-                   energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), energy_bills.py (mode 1), tune.py,
+                   energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), energy_bills.py (mode 1), tune.py, bakeoff.py,
                    need_data.py, expected_use.py (log-linear fallback when artifacts are missing), value_model.py
   llm/             agent.py, tools.py, grounding.py, prompts/
   memory/          store.py
 api/               main.py (FastAPI)
 app/               customer dashboard + lender portfolio page
-eval/              eval_energy.py (V1 vs V2 vs physics-only vs baselines, NEED test set), eval_value.py, eval_recs.py, eval_llm.py, fairness.py, scenarios/
+eval/              eval_energy.py (V1 vs V2 vs physics-only vs baselines, NEED test set), eval_savings.py, eda_energy.py (figures/), eval_value.py, eval_recs.py, eval_llm.py, fairness.py, scenarios/
 tests/
 docs/              ARCHITECTURE.md, SCORING.md, DATA.md, EVALUATION.md, RESPONSIBLE_AI.md, diagram
 ```

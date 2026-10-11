@@ -123,3 +123,25 @@ def test_v1_band_brackets_the_prediction():
     assert np.isnan(out.gas_p10[1]) and np.isnan(out.gas_p90[1])
     b = load_model("greybox").predict(home())
     assert b.gas_p10 < b.gas_kwh < b.gas_p90 and b.elec_p10 < b.elec_kwh < b.elec_p90
+
+
+@needs_artifacts
+def test_missing_deprivation_is_neutral_not_most_deprived():
+    out = load_model("greybox").predict_frame(frame(home(imd_quintile=None), home(imd_quintile=3), home(imd_quintile=1)))
+    assert out.gas_kwh[0] == pytest.approx(out.gas_kwh[1])
+    assert out.gas_kwh[0] != pytest.approx(out.gas_kwh[2])
+
+
+@pytest.mark.parametrize("name", ["greybox", "physics"])
+def test_cooker_only_gas_is_base_load_not_a_heating_estimate(name):
+    gas_heated = savings.baseline_energy(home(annual_gas_kwh=None), name)[1]
+    cooker = savings.baseline_energy(home(heating="storage_heaters", annual_gas_kwh=None), name)[1]
+    assert 0 < cooker < 0.3 * gas_heated
+
+
+@needs_artifacts
+def test_estimated_use_carries_the_model_band():
+    before = savings.simulate_package_savings(home(annual_gas_kwh=None, annual_elec_kwh=None), ["loft_insulation"])[0]
+    assert before.gas_p10 < before.gas_kwh < before.gas_p90 and before.elec_p10 < before.elec_kwh < before.elec_p90
+    billed = savings.simulate_package_savings(home(), ["loft_insulation"])[0]
+    assert billed.gas_p10 is None  # billed use is a measurement, not a model estimate

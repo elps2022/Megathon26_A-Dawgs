@@ -113,12 +113,26 @@ def energy_model(name: str = "greybox"):
 
 def _expected(p: Property, model, fallback: bool) -> dict[str, float | None]:
     """Expected annual use for similar homes: the energy model, or the NEED log-linear table when the model is
-    a fallback or can't place the home (gas for a home whose gas isn't its heating fuel, unknown floor area)."""
+    a fallback or can't place the home (e.g. unknown floor area).
+
+    A gas meter in a home not heated by gas is hot water / cooking only. NEED has no gas readings for such homes,
+    so their gas is the base-load share (1 - gas_heating_share, config/simulator.yaml) of what a similar
+    gas-heated home uses, the same rule the synthetic bills use; it was the whole gas-heated figure before."""
     table = expected_annual_kwh(p)
+    gas_heated = _heating_fuel(p) == "gas"
+    if p.gas_meter and not gas_heated:
+        as_gas_heated = p.model_copy(update={"heating": "gas_condensing"})
+        share = 1 - _cfg("simulator.yaml")["gas_heating_share"]["value"]
+    else:
+        as_gas_heated, share = p, 1.0
     if fallback:
-        return table
-    pred = model.predict_frame(pd.DataFrame([p.model_dump()])).iloc[0]
-    out = {f: (None if np.isnan(pred[f"{f}_kwh"]) else round(float(pred[f"{f}_kwh"]), 1)) for f in ("elec", "gas")}
+        gas = expected_annual_kwh(as_gas_heated)["gas"]
+        return {"elec": table["elec"], "gas": None if gas is None else round(gas * share, 1)}
+    pred = model.predict_frame(pd.DataFrame([p.model_dump(), as_gas_heated.model_dump()]))
+    elec, gas = pred.elec_kwh.iloc[0], pred.gas_kwh.iloc[1] * share
+    out = {"elec": None if np.isnan(elec) else round(float(elec), 1), "gas": None if np.isnan(gas) else round(float(gas), 1)}
+    if out["gas"] is None and table["gas"] is not None:
+        out["gas"] = round(expected_annual_kwh(as_gas_heated)["gas"] * share, 1)
     return {f: out[f] if out[f] is not None else table[f] for f in out}
 
 
@@ -320,7 +334,16 @@ def simulate_package_savings(
         actual = base_gas if heating_fuel == "gas" else base_elec
         k = round(float(actual / expected), 3) if np.isfinite(expected) and expected > 0 else None
 
-    energy_before = EnergyBreakdown(
+    # The model's 80% band for this home's use, shown when its use is estimated rather than billed.
+    bands = {}
+    if not fallback and baseline_flags:
+        for f in ("elec", "gas"):
+            if f"{f}_estimated_from_similar_homes" in baseline_flags and f"{f}_p10" in pred_now:
+                lo, hi = pred_now[f"{f}_p10"], pred_now[f"{f}_p90"]
+                if np.isfinite(lo) and np.isfinite(hi):
+                    bands.update({f"{f}_p10": round(float(lo), 1), f"{f}_p90": round(float(hi), 1)})
+
+    energy_before = EnergyBreakdown(**bands,
         elec_kwh=round(base_elec, 1), gas_kwh=round(base_gas, 1),
         heat_demand_kwh=round(gas_heat_demand + elec_heat_demand, 1),
         base_load_kwh=round(gas_base_load + elec_base_load, 1),

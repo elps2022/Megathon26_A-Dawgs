@@ -144,7 +144,10 @@ class _Trained(_Base):
                           for fuel in FUELS if "band" in self.meta[fuel]}
 
     def _x(self, props, phys, fuel) -> pd.DataFrame:
-        return epc_features(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
+        x = epc_features(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
+        # NEED has no missing deprivation quintile, and LightGBM sends a value it never saw missing to the 0 side,
+        # i.e. "more deprived than quintile 1". Unknown -> the training median instead (neutral, not most deprived).
+        return x.fillna({"imd_quintile": self.meta.get("imd_fill", 3.0)})
 
 
 class GreyboxModel(_Trained):
@@ -251,6 +254,9 @@ def train(path: Path = ARTIFACTS) -> dict:
         es = np.random.default_rng(0).random(len(xtr)) < 0.15
         plain = lambda df: df.drop(columns="log_physics")
         beta = elasticity(fuel)
+        if fuel == "gas":
+            imd_fill = float(xtr.imd_quintile.median())
+            meta["greybox"]["imd_fill"] = meta["ml"]["imd_fill"] = imd_fill
         v1 = fit_v1(xtr, ytr, fuel, beta)
         v2 = fit_lgb(plain(xtr)[~es], ytr[~es], plain(xtr)[es], ytr[es], fuel)
         for kind, m, log_pred in (("greybox", v1, lambda d: v1_log_pred(v1, beta, d)),
