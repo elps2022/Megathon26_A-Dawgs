@@ -2,7 +2,8 @@
 
     uv run python -m greenhome.models.energy_ml
 
-Reports 5-fold CV on train and the val score. The test split is never scored here.
+Reports 5-fold CV on train and the val score. The test split is never scored here. Uses the "parity" feature
+set (what EPC homes can supply); `--feature-sets` compares full / parity / no_installs on CV instead.
 """
 
 from __future__ import annotations
@@ -125,8 +126,32 @@ def evaluate(fuel: str) -> dict:
     return out
 
 
+def compare_feature_sets() -> dict:
+    """LightGBM 5-fold CV on train for each feature set (need_data.FEATURE_SETS): the parity check, 3.5."""
+    from greenhome.models.need_data import FEATURE_SETS
+    out = {}
+    for fuel in ("gas", "elec"):
+        out[fuel] = {}
+        for name in FEATURE_SETS:
+            x, y, split = dataset(fuel, feature_set=name)
+            xtr, ytr = x[split == "train"], y[split == "train"]
+            maes = []
+            for tr, ev in KFold(5, shuffle=True, random_state=42).split(xtr):
+                es = np.random.default_rng(0).random(len(tr)) < 0.15
+                m = fit_lgb(xtr.iloc[tr][~es], ytr.iloc[tr][~es], xtr.iloc[tr][es], ytr.iloc[tr][es], fuel)
+                maes.append(metrics(ytr.iloc[ev].to_numpy(), m.predict(xtr.iloc[ev]))["mae_kwh"])
+            out[fuel][name] = {"cv_mae_kwh": round(float(np.mean(maes)), 1), "cv_mae_sd": round(float(np.std(maes)), 1),
+                               "features": list(x.columns)}
+            print(fuel, name, out[fuel][name]["cv_mae_kwh"], "+/-", out[fuel][name]["cv_mae_sd"])
+    return out
+
+
 def main() -> None:
+    import sys
     RESULTS.mkdir(parents=True, exist_ok=True)
+    if "--feature-sets" in sys.argv:
+        (RESULTS / "energy_feature_sets.json").write_text(json.dumps(compare_feature_sets(), indent=2))
+        return
     results = {fuel: evaluate(fuel) for fuel in ("gas", "elec")}
     (RESULTS / "energy_first_cut.json").write_text(json.dumps(results, indent=2))
     for fuel, r in results.items():

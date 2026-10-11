@@ -1,0 +1,37 @@
+{
+  "homes": 542711,
+  "heating_fuel_fits": {
+    "gas": {
+      "homes": 351398,
+      "fit_ok_share": 0.9773,
+      "median_r2": 0.992,
+      "median_normalised_over_annualised": 1.0707
+    },
+    "elec": {
+      "homes": 114732,
+      "fit_ok_share": 0.9983,
+      "median_r2": 0.987,
+      "median_normalised_over_annualised": 1.0548
+    }
+  },
+  "parity_features_missing_share": {
+    "prop_type": 0.0021,
+    "age_band": 0.0,
+    "floor_area_band": 0.0002,
+    "epc_band": 0.0,
+    "has_epc": 0.0,
+    "region": 0.0,
+    "conservatory": 0.0,
+    "imd_quintile": 0.0,
+    "gas_heated": 0.0,
+    "cavity_installed": 0.0,
+    "pv_installed": 0.0
+  },
+  "median_purchased_kwh_per_m2": 126.1,
+  "intensity_available_share": 0.9781,
+  "flags": {
+    "heating_fuel_unmetered": 72557,
+    "intensity_unavailable": 11883,
+    "weather_normalisation_unavailable": 8155
+  }
+}

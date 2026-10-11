@@ -123,6 +123,7 @@ def map_certificates(d: pd.DataFrame) -> pd.DataFrame:
     wu = u_value(d.walls_description)
     ins[ins.isna() & wu.notna()] = np.where(wu[ins.isna() & wu.notna()] <= w["u_value_full_if_at_most"], "full", "partial")
     x["wall_insulation"] = ins
+    x["cavity_filled_retrofit"] = d.walls_description.str.contains(w["retrofit_fill"], case=False, na=False)
     flag(ins.isna(), "unknown_wall_insulation")
     flag(d.walls_description.str.contains("assumed", case=False, na=False), "wall_insulation_assumed")
 

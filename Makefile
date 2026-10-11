@@ -1,8 +1,8 @@
-.PHONY: data calibrate build epc real sales value labels train test eval app api
+.PHONY: data calibrate build epc real sales value labels features train test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
-	@if command -v uv >/dev/null 2>&1; then uv run python -m greenhome.data.generate --seed 42; else PYTHONPATH="src:." .venv/bin/python -m greenhome.data.generate --seed 42; fi
+	@if command -v uv >/dev/null 2>&1; then uv run python -m greenhome.data.generate --seed 42 && uv run python -m greenhome.data.features --interim; else PYTHONPATH="src:." .venv/bin/python -m greenhome.data.generate --seed 42 && PYTHONPATH="src:." .venv/bin/python -m greenhome.data.features --interim; fi
 
 # Rebuild config/ calibration tables from data/raw/ (needs the raw downloads).
 calibrate:
@@ -42,10 +42,14 @@ sales:
 value:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.valuation
 
-# The whole real data layer in one go: epc -> real -> sales -> value -> labels (~2 min, needs data/raw/).
+# The whole real data layer in one go: epc -> real -> sales -> value -> labels -> features (~2.5 min, needs data/raw/).
 build:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.build --seed 42
 
 # Observed per-home retrofit before/after labels from NEED, with the fixed NEED split (held-out savings validation).
 labels:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.need_labels
+
+# Stage 2 features for the real homes (parity model inputs, weather-normalised use, intensities). After `make real`.
+features:
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.features

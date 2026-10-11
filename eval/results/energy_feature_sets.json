@@ -1,0 +1,109 @@
+{
+  "gas": {
+    "full": {
+      "cv_mae_kwh": 4117.4,
+      "cv_mae_sd": 27.2,
+      "features": [
+        "prop_type",
+        "age_band",
+        "floor_area_band",
+        "epc_band",
+        "has_epc",
+        "region",
+        "conservatory",
+        "imd_quintile",
+        "loft_installed",
+        "years_since_loft",
+        "cavity_installed",
+        "years_since_cavity",
+        "pv_installed",
+        "years_since_pv"
+      ]
+    },
+    "parity": {
+      "cv_mae_kwh": 4119.1,
+      "cv_mae_sd": 27.1,
+      "features": [
+        "prop_type",
+        "age_band",
+        "floor_area_band",
+        "epc_band",
+        "has_epc",
+        "region",
+        "conservatory",
+        "imd_quintile",
+        "cavity_installed",
+        "pv_installed"
+      ]
+    },
+    "no_installs": {
+      "cv_mae_kwh": 4123.1,
+      "cv_mae_sd": 26.0,
+      "features": [
+        "prop_type",
+        "age_band",
+        "floor_area_band",
+        "epc_band",
+        "has_epc",
+        "region",
+        "conservatory",
+        "imd_quintile"
+      ]
+    }
+  },
+  "elec": {
+    "full": {
+      "cv_mae_kwh": 1550.3,
+      "cv_mae_sd": 23.9,
+      "features": [
+        "prop_type",
+        "age_band",
+        "floor_area_band",
+        "epc_band",
+        "has_epc",
+        "region",
+        "conservatory",
+        "imd_quintile",
+        "gas_heated",
+        "loft_installed",
+        "years_since_loft",
+        "cavity_installed",
+        "years_since_cavity",
+        "pv_installed",
+        "years_since_pv"
+      ]
+    },
+    "parity": {
+      "cv_mae_kwh": 1550.2,
+      "cv_mae_sd": 23.5,
+      "features": [
+        "prop_type",
+        "age_band",
+        "floor_area_band",
+        "epc_band",
+        "has_epc",
+        "region",
+        "conservatory",
+        "imd_quintile",
+        "gas_heated",
+        "cavity_installed",
+        "pv_installed"
+      ]
+    },
+    "no_installs": {
+      "cv_mae_kwh": 1550.6,
+      "cv_mae_sd": 23.6,
+      "features": [
+        "prop_type",
+        "age_band",
+        "floor_area_band",
+        "epc_band",
+        "has_epc",
+        "region",
+        "conservatory",
+        "imd_quintile",
+        "gas_heated"
+      ]
+    }
+  }
+}

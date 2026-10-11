@@ -9,6 +9,10 @@ local_authorities:   # EPC local_authority_label -> ONS region (same as calibrat
   Leeds: "Yorkshire and The Humber"
   Cornwall: "South West"
   Southwark: "London"
+need_region_codes:   # ONS region -> GSS code, as NEED's REGION column (ONS Open Geography region codes)
+  "Yorkshire and The Humber": E12000003
+  "South West": E12000009
+  "London": E12000007
 
 # EPC property_type + built_form -> NEED property types (the energy model's vocabulary)
 property_type:
@@ -51,6 +55,8 @@ walls:
     - [partial insulation, partial]
     - [no insulation, none]
   u_value_full_if_at_most: 0.45   # "Average thermal transmittance X W/m2K" -> full if X <= this, else partial
+  retrofit_fill: "filled cavity"  # EPC wording for a cavity filled after construction ("as built, insulated" = original);
+                                  # the energy model's cavity_installed proxy (NEED records retrofit installs only)
 
 roof:
   no_own_roof: ["another dwelling above", "other premises above"]

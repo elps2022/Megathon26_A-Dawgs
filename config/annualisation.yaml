@@ -9,3 +9,13 @@ low_coverage_if_fewer_distinct_months: 6
 low_coverage_if_share_below: 0.40
 gas: {1: 0.165, 2: 0.145, 3: 0.125, 4: 0.080, 5: 0.045, 6: 0.025, 7: 0.020, 8: 0.020, 9: 0.035, 10: 0.075, 11: 0.120, 12: 0.145}
 elec: {1: 0.105, 2: 0.095, 3: 0.090, 4: 0.080, 5: 0.075, 6: 0.070, 7: 0.070, 8: 0.070, 9: 0.075, 10: 0.085, 11: 0.090, 12: 0.095}
+
+weather_normalisation:   # per-home degree-day regression on monthly bills (PRISM, Fels 1986), ARCHITECTURE 3.5 step 2
+  source: >
+    PRISM: monthly use = base + slope x HDD (Met Office regional HDD, base 15.5 C, config/degree_days.csv).
+    Normalised annual = 12 x base + slope x typical-year HDD. Gas is normalised because NEED gas is weather
+    corrected; electricity only for electrically heated homes (NEED electricity is not weather corrected).
+    Fit thresholds are team choices (VERIFY): too few months or a weak fit -> unnormalised + flagged.
+  normal_years: [2015, 2024]
+  min_months: 6
+  min_r2: 0.5

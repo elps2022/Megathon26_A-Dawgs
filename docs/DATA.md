@@ -2,7 +2,7 @@
 
 ## Real data in one command
 
-`make build` (`python -m greenhome.data.build --seed 42`, about 2 min) runs the whole real data layer in dependency order: EPC ingest → synthetic parts → Price Paid join → valuation → NEED retrofit labels. Each step is described below and can also be run alone (`make epc`, `make real`, `make sales`, `make value`, `make labels`). The calibration tables (`make calibrate`) are a separate step because their outputs are committed to `config/`. `make data` still builds the interim synthetic dataset, which needs no raw data.
+`make build` (`python -m greenhome.data.build --seed 42`, about 2 min) runs the whole real data layer in dependency order: EPC ingest → synthetic parts → Price Paid join → valuation → NEED retrofit labels → features. Each step is described below and can also be run alone (`make epc`, `make real`, `make sales`, `make value`, `make labels`, `make features`). The calibration tables (`make calibrate`) are a separate step because their outputs are committed to `config/`. `make data` still builds the interim synthetic dataset, which needs no raw data.
 
 ## Sources and licences
 
@@ -137,3 +137,21 @@ Known limitations:
 - **Counts (train / val / test):** loft 1,512 / 303 / 319, cavity wall 960 / 193 / 225, solar 193 / 57 / 29. Each home keeps its fixed NEED split, so the test labels belong to homes the energy model never trains on.
 - **Train + val medians (DiD):** loft −3.1% gas, cavity wall −10.9% gas, solar −15.5% electricity. These are close to the pooled effects in `need_calibration.yaml` (−2.7%, −11.0%, −13.9%), which use the same rules. **Test medians are withheld** until the final savings evaluation.
 - Limitation: only 29 solar labels in test, so the solar savings check has wide uncertainty. Report it with a bootstrap interval.
+
+## Stage 2 features (`make features`, ~15 s; also built for the interim data by `make data`)
+
+`greenhome.data.features` writes one row per home: `data/processed/real/features.parquet` (gitignored) and `data/generated/features.csv` for the interim dataset. Aggregates are in `eval/results/features_summary.json`.
+
+| Columns | Content |
+|---|---|
+| `prop_type` … `pv_installed` | The energy model's inputs, built by `need_data.epc_features` with exactly NEED's codes (tested). Unknowns stay NaN / "unknown" |
+| `heating_fuel`, `fit_*`, `base_kwh_per_month`, `slope_kwh_per_hdd` | Per-home degree-day regression of monthly bills on regional HDD (`data/degree_day_fit.py`): base load, heating response (V1's calibration input), R², months used |
+| `annual_gas_kwh_wn`, `annual_elec_kwh_wn` | Weather-normalised annual use: the heating fuel at typical-year (2015–2024) HDD when the fit is usable, otherwise the annualised figure + `weather_normalisation_unavailable`. Non-heating electricity stays annualised, matching NEED (gas is weather corrected there, electricity isn't) |
+| `elec_kwh_per_m2`, `gas_kwh_per_m2`, `purchased_kwh_per_m2` | Intensities from the normalised figures; NaN + `intensity_unavailable` without floor area or a fuel |
+| `elec_months`, `gas_months`, `*_year_share` | Coverage: months observed and the share of a typical year they cover |
+| `feature_flags` | `weather_normalisation_unavailable`, `heating_fuel_unmetered`, `intensity_unavailable` |
+
+- **Fits:** 97.7% of gas-heated homes and 99.8% of electrically heated homes have a usable fit (≥ 6 months, positive slope, base ≥ 0, R² ≥ 0.5; `config/annualisation.yaml`). The rest are unmatched gas meters or homes without bills.
+- **Normalisation effect:** the billing period (Oct 2024 – Sep 2026) was 9–11% milder than 2015–2024, so normalised heating-fuel use is ~7% (gas) / ~5% (electric heating) above the raw annualised figure.
+- **Circularity:** synthetic bills are generated from the same HDD, so the median R² (0.99) only shows the pipeline works. It is not evidence about real homes.
+- Median purchased intensity: 126 kWh/m²/yr; available for 97.8% of homes. Oil, LPG and district homes understate it (heating fuel not metered) and carry `heating_fuel_unmetered`.

@@ -8,6 +8,8 @@ Steps, in dependency order:
   3 sales_join       Price Paid sales -> EPC homes, pre-sale features     data/processed/real/sales.parquet
   4 valuation        current_value_estimate + loan balances               data/processed/real/ (in place)
   5 need_labels      observed per-home retrofit before/after (NEED)       data/processed/need_retrofit_labels.parquet
+  6 features         stage 2: parity model inputs, weather-normalised use, data/processed/real/features.parquet
+                     intensities, coverage
 
 Calibration tables (`make calibrate`) are a separate step because their outputs are committed to config/.
 The interim synthetic dataset (`make data`, data/generated/) needs no raw data and is unchanged.
@@ -18,7 +20,7 @@ from __future__ import annotations
 import argparse
 import time
 
-from greenhome.data import epc_ingest, need_labels, sales_join, synthetic_parts, valuation
+from greenhome.data import epc_ingest, features, need_labels, sales_join, synthetic_parts, valuation
 
 
 def main() -> None:
@@ -29,7 +31,8 @@ def main() -> None:
              ("synthetic_parts", lambda: synthetic_parts.main(["--seed", str(seed)])),
              ("sales_join", sales_join.main),
              ("valuation", valuation.main),
-             ("need_labels", need_labels.main)]
+             ("need_labels", need_labels.main),
+             ("features", lambda: features.main([]))]
     for name, step in steps:
         t0 = time.time()
         print(f"== {name}", flush=True)

@@ -167,7 +167,7 @@ class EnergyModel(Protocol):
 **Training data: NEED (real metered consumption)**, used for the V1 residual and for V2.
 - Targets, one model per fuel: `log(Gcons)` for gas-heated homes, `log(Econs)` for all homes. Valid (`*ValFlag == "V"`) readings only.
 - Default target year: 2023. A candidate variant uses the mean of valid 2021–2023 years (less noisy). Pick it in CV, and report the test metric on whichever target is used.
-- **Feature parity rule:** only features we can also derive for an EPC home: property type, age band, floor-area band, EPC band, region, main heating fuel, conservatory, loft / cavity / PV installed-before-target-year flags with years since install, and IMD quintile once the postcode lookup is downloaded. `COUNCIL_TAX_BAND` is excluded (EPC homes don't have it). For V1, NEED bands map to a physics `HomeState` using band midpoints and age-band default fabric.
+- **Feature parity rule:** only features we can also derive for an EPC home: property type, age band, floor-area band, EPC band, region, main heating fuel, conservatory ("unknown" for EPC homes), IMD quintile, and cavity / PV installed flags. One definition serves both sources (`need_data.features` / `epc_features`, tested to match). EPC proxies: `cavity_installed` = EPC "filled cavity" (a retrofit, not "as built, insulated"); `pv_installed` = solar > 0. The loft flag (a top-up can't be told from an original deep loft) and years since install (EPC has no dates) are dropped: on NEED CV this costs < 0.1% MAE (`docs/EVALUATION.md`). `COUNCIL_TAX_BAND` is excluded (EPC homes don't have it). For V1, NEED bands map to a physics `HomeState` using band midpoints and age-band default fabric.
 - **No lagged consumption** in the shipped models: they estimate "expected use for similar homes" (3.4).
 
 **Split.** NEED rows are distinct properties: one fixed 70/15/15 train/val/test split, stratified by region × fuel, seed 42 (`data/splits/need_split.csv`). **The test set is touched once.** All tuning uses 5-fold CV on train.
@@ -416,7 +416,7 @@ data/              generated/ (gitignored if large), splits/
 src/greenhome/
   schema.py
   data/            generate.py, annualise.py, degree_day_fit.py, split.py, epc_ingest.py, synthetic_parts.py,
-                   sales_join.py, valuation.py, need_labels.py, calibrate.py, build.py
+                   sales_join.py, valuation.py, need_labels.py, features.py, calibrate.py, build.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
   models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py,

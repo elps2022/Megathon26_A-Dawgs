@@ -19,7 +19,24 @@ TARGET_YEAR = 2023
 EPC_ORDINAL = {"A/B": 1, "C": 2, "D": 3, "E": 4, "F/G": 5}  # "No EPC" -> NaN, with has_epc = 0
 CATEGORICAL = ["prop_type", "region", "conservatory"]
 INSTALLS = {"loft": "LI", "cavity": "CWI", "pv": "PV"}
+# Fixed category lists, so NEED (training) and EPC homes (prediction) get identical pandas codes.
+CATEGORIES = {
+    "prop_type": ["Bungalow", "Detached", "End terrace", "Flat", "Mid terrace", "Semi detached"],
+    "region": ["E12000001", "E12000002", "E12000003", "E12000004", "E12000005", "E12000006", "E12000007",
+               "E12000008", "E12000009", "W92000004"],
+    "conservatory": ["no", "yes", "unknown"],
+}
 # COUNCIL_TAX_BAND is deliberately excluded: EPC homes don't have it (feature parity).
+# Feature sets (ARCHITECTURE 3.5 parity rule). "parity" is what EPC homes can supply and is the default:
+# NEED's loft install flag has no EPC proxy (a deep loft can be original) and EPC has no install dates.
+FULL_FEATURES = ["prop_type", "age_band", "floor_area_band", "epc_band", "has_epc", "region", "conservatory",
+                 "imd_quintile", "gas_heated", "loft_installed", "years_since_loft", "cavity_installed",
+                 "years_since_cavity", "pv_installed", "years_since_pv"]
+PARITY_FEATURES = ["prop_type", "age_band", "floor_area_band", "epc_band", "has_epc", "region", "conservatory",
+                   "imd_quintile", "gas_heated", "cavity_installed", "pv_installed"]
+FEATURE_SETS = {"full": FULL_FEATURES, "parity": PARITY_FEATURES,
+                "no_installs": [c for c in PARITY_FEATURES if not c.endswith("_installed")]}
+AGE_CODES = {"pre-1930": 1, "1930-1972": 2, "1973-1999": 3, "2000+": 4}
 
 
 def load_need(path: Path = NEED_PATH) -> pd.DataFrame:
@@ -52,8 +69,8 @@ def load_split(d: pd.DataFrame) -> pd.Series:
 def features(d: pd.DataFrame, year: int = TARGET_YEAR) -> pd.DataFrame:
     x = pd.DataFrame(index=d.index)
     x["prop_type"] = d.PROP_TYPE
-    x["age_band"] = d.PROP_AGE_BAND            # 1 = pre-1930 ... 4 = 2000+
-    x["floor_area_band"] = d.FLOOR_AREA_BAND   # 1 = <=50 m2 ... 5 = >200 m2
+    x["age_band"] = d.PROP_AGE_BAND.astype(float)            # 1 = pre-1930 ... 4 = 2000+
+    x["floor_area_band"] = d.FLOOR_AREA_BAND.astype(float)   # 1 = <=50 m2 ... 5 = >200 m2
     x["epc_band"] = d.EPC.map(EPC_ORDINAL)
     x["has_epc"] = (d.EPC != "No EPC").astype(int)
     x["region"] = d.REGION
@@ -65,13 +82,48 @@ def features(d: pd.DataFrame, year: int = TARGET_YEAR) -> pd.DataFrame:
         before = (d[f"{code}_FLAG"] == 1) & (d[f"{code}_DATE"] < year)
         x[f"{name}_installed"] = before.astype(int)
         x[f"years_since_{name}"] = np.where(before, year - d[f"{code}_DATE"], np.nan)
+    return _categorise(x)
+
+
+def _categorise(x: pd.DataFrame) -> pd.DataFrame:
     for c in CATEGORICAL:
-        x[c] = x[c].astype("category")
+        x[c] = pd.Categorical(x[c], categories=CATEGORIES[c])
     return x
 
 
-def dataset(fuel: str, year: int = TARGET_YEAR, d: pd.DataFrame | None = None) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
-    """(X, log target, split) for fuel in {"gas", "elec"}; valid ('V') readings only."""
+def floor_area_band(area: pd.Series) -> pd.Series:
+    """NEED FLOOR_AREA_BAND: 1 <=50, 2 51-100, 3 101-150, 4 151-200, 5 >200 m2 (NaN if unknown)."""
+    area = pd.to_numeric(area, errors="coerce")  # None (e.g. from the API) -> NaN
+    return pd.cut(area, [0, 50, 100, 150, 200, np.inf], labels=[1, 2, 3, 4, 5]).astype(float)
+
+
+def epc_features(p: pd.DataFrame) -> pd.DataFrame:
+    """The same feature columns, codes and dtypes as features(), for EPC homes (real book or interim
+    synthetic properties). Anything an EPC home can't supply is NaN / "unknown", never invented."""
+    import yaml
+    region_codes = yaml.safe_load((ROOT / "config" / "epc_mapping.yaml").read_text())["need_region_codes"]
+    rating = p.energy_rating.where(p.energy_rating.isin(list("ABCDEFG")))
+    need_band = rating.map({"A": "A/B", "B": "A/B", "C": "C", "D": "D", "E": "E", "F": "F/G", "G": "F/G"})
+    x = pd.DataFrame(index=p.index)
+    x["prop_type"] = p.property_type.where(p.property_type.isin(CATEGORIES["prop_type"]))
+    x["age_band"] = p.age_band.map(AGE_CODES).astype(float)
+    x["floor_area_band"] = floor_area_band(p.floor_area_m2)
+    x["epc_band"] = need_band.map(EPC_ORDINAL)
+    x["has_epc"] = rating.notna().astype(int)
+    x["region"] = p.region.map(region_codes)
+    x["conservatory"] = "unknown"                     # EPC has no conservatory field (81% unknown in NEED too)
+    x["imd_quintile"] = p["imd_quintile"].astype(float) if "imd_quintile" in p else np.nan
+    x["gas_heated"] = (p.gas_meter.astype(bool) & p.heating.isin(["gas_condensing", "gas_non_condensing"])).astype(int)
+    x["cavity_installed"] = (p["cavity_filled_retrofit"].astype(bool).astype(int)
+                             if "cavity_filled_retrofit" in p else np.nan)
+    x["pv_installed"] = (p.solar_kwp.fillna(0) > 0).astype(int)
+    return _categorise(x)[PARITY_FEATURES]
+
+
+def dataset(fuel: str, year: int = TARGET_YEAR, d: pd.DataFrame | None = None,
+            feature_set: str = "parity") -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+    """(X, log target, split) for fuel in {"gas", "elec"}; valid ('V') readings only. feature_set picks
+    the columns (FEATURE_SETS); "parity" is the default, matching what EPC homes can supply."""
     d = load_need() if d is None else d
     split = load_split(d)
     if fuel == "gas":
@@ -85,7 +137,7 @@ def dataset(fuel: str, year: int = TARGET_YEAR, d: pd.DataFrame | None = None) -
     # Homes that installed a measure during the target year have a partly-treated target: drop them.
     for code in INSTALLS.values():
         keep &= d[f"{code}_DATE"] != year
-    x = features(d)[keep]
+    x = features(d)[keep][FEATURE_SETS[feature_set]]
     if fuel == "gas":
         x = x.drop(columns="gas_heated")
     return x, np.log(y[keep]).rename("log_kwh"), split[keep]
