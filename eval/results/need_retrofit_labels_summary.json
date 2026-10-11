@@ -1,0 +1,32 @@
+{
+  "source": "DESNZ NEED anonymised data 2025, 50k sample (valid readings only)",
+  "method": "per-home post/pre mean use, 2 years each side, install year dropped, installs 2010-2020; DiD against never-treated non-test homes",
+  "labels_by_measure_and_split": {
+    "cavity_wall_insulation": {
+      "train": 960,
+      "test": 225,
+      "val": 193
+    },
+    "loft_insulation": {
+      "train": 1512,
+      "test": 319,
+      "val": 303
+    },
+    "solar_pv": {
+      "train": 193,
+      "val": 57,
+      "test": 29
+    }
+  },
+  "train_val_median_did_change": {
+    "cavity_wall_insulation": -0.1084,
+    "loft_insulation": -0.0303,
+    "solar_pv": -0.155
+  },
+  "train_val_median_change_kwh": {
+    "cavity_wall_insulation": -2150.0,
+    "loft_insulation": -1150.0,
+    "solar_pv": -600.0
+  },
+  "test_medians": "withheld until the final savings evaluation"
+}

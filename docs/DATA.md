@@ -2,7 +2,7 @@
 
 ## Real data in one command
 
-`make build` (`python -m greenhome.data.build --seed 42`, about 2 min) runs the whole real data layer in dependency order: EPC ingest → synthetic parts → Price Paid join → valuation. Each step is described below and can also be run alone (`make epc`, `make real`, `make sales`, `make value`). The calibration tables (`make calibrate`) are a separate step because their outputs are committed to `config/`. `make data` still builds the interim synthetic dataset, which needs no raw data.
+`make build` (`python -m greenhome.data.build --seed 42`, about 2 min) runs the whole real data layer in dependency order: EPC ingest → synthetic parts → Price Paid join → valuation → NEED retrofit labels. Each step is described below and can also be run alone (`make epc`, `make real`, `make sales`, `make value`, `make labels`). The calibration tables (`make calibrate`) are a separate step because their outputs are committed to `config/`. `make data` still builds the interim synthetic dataset, which needs no raw data.
 
 ## Sources and licences
 
@@ -127,3 +127,13 @@ Known limitations:
 - **The other 72% stay unavailable** (no sale since 2018). Nothing is imputed; the value model (ARCHITECTURE 3.8) is what predicts them.
 - **Loans:** 71,491 of 222,973 mortgages now have an `outstanding_balance`, so the lender view's financed emissions work for them.
 - Limitations: works done since the sale aren't reflected, and 14,676 values come from new-build sales, which carry a new-build premium that fades over time.
+
+## Observed retrofit labels from NEED (`make labels`, ~1 s)
+
+`greenhome.data.need_labels` gives each NEED home with a real loft insulation, cavity wall insulation or solar PV install (2010-2020) its own before/after label, for validating the savings simulator on held-out real installs. Output: `data/processed/need_retrofit_labels.parquet` (gitignored). Aggregates are in `eval/results/need_retrofit_labels_summary.json`.
+
+- **Label:** `pre_kwh` / `post_kwh` = mean annual use over the 2 years before and the 2 years after the install year (the install year is dropped, and all four readings must be valid). `change` = post / pre − 1. `did_change` divides out the same-years trend of never-treated homes (computed from non-test homes only).
+- **Rules** (same as the pooled effects in `need_calibration.yaml`): gas labels only for gas-heated homes, solar on electricity, and homes with another install within 2 years are dropped.
+- **Counts (train / val / test):** loft 1,512 / 303 / 319, cavity wall 960 / 193 / 225, solar 193 / 57 / 29. Each home keeps its fixed NEED split, so the test labels belong to homes the energy model never trains on.
+- **Train + val medians (DiD):** loft −3.0% gas, cavity wall −10.8% gas, solar −15.5% electricity. These are close to the pooled effects (−2.5%, −10.2%, −12.4%). **Test medians are withheld** until the final savings evaluation.
+- Limitation: only 29 solar labels in test, so the solar savings check has wide uncertainty. Report it with a bootstrap interval.

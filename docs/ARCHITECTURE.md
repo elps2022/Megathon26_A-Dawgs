@@ -100,7 +100,7 @@ LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S 
 
 **Avoiding circular evaluation.** The synthetic bills are generated from NEED-fitted distributions, so a model scored on them would partly be scored on our own assumptions. **The headline energy-model metrics come only from NEED's real consumption on a held-out NEED test set** (3.5). The synthetic bills are used to exercise annualisation, data-quality flags and the dashboard, never to report accuracy.
 
-Reproducible: `python -m greenhome.data.build --seed 42` (`make build`: EPC ingest → synthetic parts → Price Paid join → valuation, ~2 min). Calibration (`make calibrate`) stays separate because its outputs are committed.
+Reproducible: `python -m greenhome.data.build --seed 42` (`make build`: EPC ingest → synthetic parts → Price Paid join → valuation → NEED retrofit labels, ~2 min). Calibration (`make calibrate`) stays separate because its outputs are committed.
 
 ### 3.2 Annualisation
 `annual = Σ observed_months / Σ seasonal_share(observed_months)` using separate monthly profiles for gas (strongly seasonal) and electricity. If coverage < 6 months or share < 40%, mark `annual_estimate_quality = "low"`; if no data, `null` + "unavailable". Never fill with 0.
@@ -415,7 +415,7 @@ data/              generated/ (gitignored if large), splits/
 src/greenhome/
   schema.py
   data/            generate.py, annualise.py, degree_day_fit.py, split.py, epc_ingest.py, synthetic_parts.py,
-                   sales_join.py, valuation.py, calibrate.py, build.py
+                   sales_join.py, valuation.py, need_labels.py, calibrate.py, build.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
   models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py,

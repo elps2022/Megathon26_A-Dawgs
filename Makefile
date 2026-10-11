@@ -1,4 +1,4 @@
-.PHONY: data calibrate build epc real sales value train test eval app api
+.PHONY: data calibrate build epc real sales value labels train test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -42,6 +42,10 @@ sales:
 value:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.valuation
 
-# The whole real data layer in one go: epc -> real -> sales -> value (~2 min, needs data/raw/).
+# The whole real data layer in one go: epc -> real -> sales -> value -> labels (~2 min, needs data/raw/).
 build:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.build --seed 42
+
+# Observed per-home retrofit before/after labels from NEED, with the fixed NEED split (held-out savings validation).
+labels:
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.data.need_labels
