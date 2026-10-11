@@ -102,6 +102,24 @@ def build_pdf(output_path: str, team_number: str = "73"):
     b = lambda text: Paragraph(text, st["bullet"], bulletText="•")
     w = m1.CONTENT_W
     R2 = "R<super>2</super>"
+    model_rows = [
+        ["Model", "Predicts", "Method", "Training data and split"],
+        ["<b>Energy V1 (shipped)</b>", "Annual gas and electricity from the home's description",
+         "Heat-loss physics x LightGBM residual (Huber loss, Optuna-tuned); physics elasticity fitted on real installs",
+         "50,000 metered homes (2023); fixed 70/15/15 split stratified by region x fuel; 5-fold CV on train"],
+        ["Energy V2", "Same", "LightGBM direct, same tuning, monotone constraints", "Same split and folds"],
+        ["Bill model", "Next year's use for a customer with bills",
+         "LightGBM on log(this year / last year), L1 loss; one or two years of history", "Same homes, 2021-2023"],
+        ["80% ranges", "p10 / p90 for every prediction", "Quantile LightGBM + split-conformal correction (CQR)",
+         "Fitted on train, calibrated on validation"],
+        ["<b>Value</b>", "Price range today, before vs after",
+         "LightGBM on log price indexed to the valuation date, monotone in rating; CQR range",
+         "151,587 real resales 2018-2025; 106k / 23k / 22k by customer; CV grouped by home"],
+        ["Rating premium", "% value per rating band", "Hedonic log-linear, 259 postcode-sector fixed effects, clustered errors",
+         "Train-split sales"],
+        ["Rating after retrofit", "SAP score after a measure", "Linear regression on fabric fields",
+         "376,769 real certificates (train customers)"],
+    ]
     story = [
         Paragraph("Green Home Score & Retrofit Recommendation Engine", st["title"]),
         Paragraph("A deterministic engine that scores a home, recommends feasible retrofits in the right order and "
@@ -131,7 +149,26 @@ def build_pdf(output_path: str, team_number: str = "73"):
 
     # 2. Approach: what is new
     story += [
-        Paragraph("2. Approach: What Is New", st["h1"]),
+        Paragraph("2. Approach", st["h1"]),
+        Paragraph("Data, models and training", st["h2"]),
+        KeepTogether([m1.grid_table(model_rows, [0.17 * w, 0.20 * w, 0.33 * w, 0.30 * w], st)]),
+        Spacer(1, 3),
+        b("<b>Inputs and leakage rules.</b> One feature function serves training and deployment, using only what a "
+          "certificate also gives: property type, age band, floor area, rating band, region, heating fuel, deprivation "
+          "quintile and retrofit flags (tested to match). Targets are log annual kWh per fuel. Installs count only "
+          "before the target year, sales use only the certificate lodged before the sale, and splits are by home or "
+          "customer, fixed and versioned. Every choice (objective, Optuna search, monotone constraints, features, "
+          "LightGBM vs CatBoost) was made on 5-fold CV of the train split; validation calibrates the ranges; the test "
+          "split was scored once."),
+        b("<b>Deterministic engine (non-ML).</b> Monthly bills are annualised with seasonal weights and flagged when "
+          "coverage is low; a per-home degree-day regression (PRISM) weather-corrects them and splits heating from "
+          "base load. Heat loss uses RdSAP-style U-values and geometry with SAP hot-water and appliance formulas. "
+          "The score combines seven monotone sub-scores with the fixed weights; feasibility rules come from a sourced "
+          "retrofit catalogue; the savings simulator applies measures in order (fabric, controls, heating, solar), "
+          "each re-predicting from what the last left, per fuel; carbon uses official 2026 factors and bills the "
+          "current price cap. Every constant lives in config with its source. The assistant is Gemini 2.5 Flash with "
+          "tool calling behind a grounding gate; FastAPI and Streamlit serve the API and dashboards."),
+        Paragraph("What is new", st["h2"]),
         b("<b>A grey-box energy model calibrated on real retrofits, not on its own equations.</b> V1 computes heat loss "
           "per element (roof, walls, windows, floor, air) times regional degree days, then log(use) = &beta; &middot; "
           "log(physics) + GBDT(home description). Steady-state physics over-predicts metered gas about 2&times; (the "
@@ -139,11 +176,9 @@ def build_pdf(output_path: str, team_number: str = "73"):
           "We fit the elasticity &beta; = 0.38 on the observed installs in the train split only, so a retrofit's effect "
           "is (physics after / before)<super>&beta;</super>: smooth, never the wrong sign, with diminishing returns "
           "and interactions from the physics, and a per-element heat-loss share for the house diagram."),
-        b("<b>Non-circular evaluation.</b> Headline accuracy comes only from real metered homes the model never saw, "
-          "on a fixed split with the <b>test set scored once</b>; every choice was made on 5-fold CV. Changes made after "
-          "that are labelled post-test and judged on validation. Synthetic bills carry hidden occupancy and behaviour "
-          "the engine never sees, and are used only to test the pipeline and the parts real data can't (controls, "
-          "heat pumps, glazing)."),
+        b("<b>Non-circular evaluation.</b> Headline accuracy comes only from real metered homes and real installs. "
+          "Synthetic bills carry hidden occupancy and behaviour the engine never sees, and are used only to test the "
+          "pipeline and the parts real data can't (controls, heat pumps, glazing), never to report accuracy."),
         b("<b>Two prediction modes, and a model that learns from the customer's own bills.</b> <i>Similar homes</i> "
           "(description only) for prospects and for the detector, which must not see the home's own use; <i>this home</i> "
           "for existing customers, a GBDT on the year-on-year change log(this year / last year). Since the bill alone "
@@ -222,9 +257,8 @@ def build_pdf(output_path: str, team_number: str = "73"):
         ["<b>Engine (payback suitability)</b>", "<b>0.978</b>", "<b>91.1%</b>", "<b>0.968</b>", "<b>89.2%</b>"],
     ]
     story += [
-        Paragraph("4. Results", st["h1"]),
-        Paragraph("Energy model", st["h2"]),
-        KeepTogether([m1.grid_table(energy_rows, [0.34 * w, 0.13 * w, 0.13 * w, 0.13 * w, 0.13 * w, 0.14 * w], st)]),
+        KeepTogether([Paragraph("4. Results", st["h1"]), Paragraph("Energy model", st["h2"]),
+                      m1.grid_table(energy_rows, [0.34 * w, 0.13 * w, 0.13 * w, 0.13 * w, 0.13 * w, 0.14 * w], st)]),
         Spacer(1, 3),
         b("<b>Accurate where it matters for a lender:</b> predicted totals for 1,000 homes are within <b>1.7%</b> of "
           f"metered use, gas {R2} is <b>0.79</b> across groups of similar homes, and with the customer's own bills the "
@@ -276,7 +310,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="deliverables/final_report.pdf")
     parser.add_argument("--team-number", default="73")
-    parser.add_argument("--text-scale", type=float, default=1.3)
+    parser.add_argument("--text-scale", type=float, default=1.22)
     args = parser.parse_args()
     m1.TEXT_SCALE = args.text_scale
     build_pdf(args.output, args.team_number)
