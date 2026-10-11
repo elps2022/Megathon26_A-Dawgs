@@ -100,8 +100,8 @@ def floor_area_band(area: pd.Series) -> pd.Series:
 def epc_features(p: pd.DataFrame) -> pd.DataFrame:
     """The same feature columns, codes and dtypes as features(), for EPC homes (real book or interim
     synthetic properties). Anything an EPC home can't supply is NaN / "unknown", never invented."""
-    import yaml
-    region_codes = yaml.safe_load((ROOT / "config" / "epc_mapping.yaml").read_text())["need_region_codes"]
+    from greenhome.models.physics import cfg   # cached config read (this runs per prediction)
+    region_codes = cfg("epc_mapping.yaml")["need_region_codes"]
     rating = p.energy_rating.where(p.energy_rating.isin(list("ABCDEFG")))
     need_band = rating.map({"A": "A/B", "B": "A/B", "C": "C", "D": "D", "E": "E", "F": "F/G", "G": "F/G"})
     x = pd.DataFrame(index=p.index)
@@ -114,7 +114,8 @@ def epc_features(p: pd.DataFrame) -> pd.DataFrame:
     x["conservatory"] = "unknown"                     # EPC has no conservatory field (81% unknown in NEED too)
     x["imd_quintile"] = p["imd_quintile"].astype(float) if "imd_quintile" in p else np.nan
     x["gas_heated"] = (p.gas_meter.astype(bool) & p.heating.isin(["gas_condensing", "gas_non_condensing"])).astype(int)
-    x["cavity_installed"] = (p["cavity_filled_retrofit"].astype(bool).astype(int)
+    # None / NaN (unknown, e.g. a Property without the field) stays NaN; astype(bool) would turn NaN into True
+    x["cavity_installed"] = (p["cavity_filled_retrofit"].map({True: 1, False: 0}).astype(float)
                              if "cavity_filled_retrofit" in p else np.nan)
     x["pv_installed"] = (p.solar_kwp.fillna(0) > 0).astype(int)
     return _categorise(x)[PARITY_FEATURES]

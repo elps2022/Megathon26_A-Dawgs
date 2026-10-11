@@ -5,22 +5,22 @@
     "share_with_prior_bill_val": 0.9614,
     "cv": {
       "last_year": {
-        "mae_kwh": 2024.18,
-        "mape_pct": 25.976,
-        "median_ape_pct": 11.418,
-        "r2_log": 0.6523,
-        "within_20pct": 0.6979,
+        "mae_kwh": 2024.84,
+        "mape_pct": 26.006,
+        "median_ape_pct": 11.396,
+        "r2_log": 0.6519,
+        "within_20pct": 0.6987,
         "within_30pct": 0.8151,
-        "mae_kwh_sd": 28.3
+        "mae_kwh_sd": 28.6
       },
       "last_year_x_trend": {
-        "mae_kwh": 2018.6,
-        "mape_pct": 26.418,
-        "median_ape_pct": 10.974,
-        "r2_log": 0.6547,
-        "within_20pct": 0.7004,
+        "mae_kwh": 2019.24,
+        "mape_pct": 26.446,
+        "median_ape_pct": 10.958,
+        "r2_log": 0.6543,
+        "within_20pct": 0.7012,
         "within_30pct": 0.8093,
-        "mae_kwh_sd": 27.5
+        "mae_kwh_sd": 27.9
       },
       "v2_with_own_bill": {
         "mae_kwh": 2052.16,
@@ -32,49 +32,49 @@
         "mae_kwh_sd": 32.4
       },
       "v1_with_own_bill": {
-        "mae_kwh": 2036.66,
-        "mape_pct": 26.3,
-        "median_ape_pct": 11.686,
-        "r2_log": 0.683,
-        "within_20pct": 0.6948,
-        "within_30pct": 0.808,
-        "mae_kwh_sd": 17.6
+        "mae_kwh": 2214.36,
+        "mape_pct": 27.71,
+        "median_ape_pct": 13.732,
+        "r2_log": 0.6722,
+        "within_20pct": 0.6494,
+        "within_30pct": 0.7933,
+        "mae_kwh_sd": 31.2
       },
       "change_model_l1": {
-        "mae_kwh": 1971.1,
-        "mape_pct": 26.238,
-        "median_ape_pct": 10.938,
-        "r2_log": 0.6784,
-        "within_20pct": 0.7057,
+        "mae_kwh": 1971.74,
+        "mape_pct": 26.262,
+        "median_ape_pct": 10.92,
+        "r2_log": 0.678,
+        "within_20pct": 0.7065,
         "within_30pct": 0.8132,
-        "mae_kwh_sd": 27.0
+        "mae_kwh_sd": 27.3
       },
       "description_only_v1": {
-        "mae_kwh": 4085.2,
-        "mape_pct": 52.118,
-        "median_ape_pct": 29.724,
-        "r2_log": 0.2744,
-        "within_20pct": 0.3463,
-        "within_30pct": 0.5036,
-        "mae_kwh_sd": 24.7
+        "mae_kwh": 4088.64,
+        "mape_pct": 52.212,
+        "median_ape_pct": 29.858,
+        "r2_log": 0.2732,
+        "within_20pct": 0.3472,
+        "within_30pct": 0.502,
+        "mae_kwh_sd": 28.3
       }
     },
     "val": {
       "last_year": {
-        "mae_kwh": 1973.8,
-        "mape_pct": 23.93,
+        "mae_kwh": 1975.2,
+        "mape_pct": 23.98,
         "median_ape_pct": 11.11,
-        "r2_log": 0.6846,
-        "within_20pct": 0.7067,
-        "within_30pct": 0.8179
+        "r2_log": 0.6837,
+        "within_20pct": 0.7053,
+        "within_30pct": 0.8188
       },
       "last_year_x_trend": {
-        "mae_kwh": 1975.5,
-        "mape_pct": 24.38,
-        "median_ape_pct": 10.72,
-        "r2_log": 0.6862,
-        "within_20pct": 0.7046,
-        "within_30pct": 0.8121
+        "mae_kwh": 1976.9,
+        "mape_pct": 24.43,
+        "median_ape_pct": 10.7,
+        "r2_log": 0.6853,
+        "within_20pct": 0.7031,
+        "within_30pct": 0.813
       },
       "v2_with_own_bill": {
         "mae_kwh": 1995.9,
@@ -85,28 +85,28 @@
         "within_30pct": 0.8089
       },
       "v1_with_own_bill": {
-        "mae_kwh": 1974.1,
-        "mape_pct": 24.15,
-        "median_ape_pct": 11.4,
-        "r2_log": 0.7123,
-        "within_20pct": 0.7006,
-        "within_30pct": 0.8116
+        "mae_kwh": 2177.4,
+        "mape_pct": 25.71,
+        "median_ape_pct": 13.88,
+        "r2_log": 0.7005,
+        "within_20pct": 0.6536,
+        "within_30pct": 0.7949
       },
       "change_model_l1": {
-        "mae_kwh": 1922.6,
-        "mape_pct": 24.15,
-        "median_ape_pct": 10.58,
-        "r2_log": 0.7081,
-        "within_20pct": 0.7116,
-        "within_30pct": 0.8148
+        "mae_kwh": 1924.1,
+        "mape_pct": 24.2,
+        "median_ape_pct": 10.57,
+        "r2_log": 0.7072,
+        "within_20pct": 0.7102,
+        "within_30pct": 0.8157
       },
       "description_only_v1": {
-        "mae_kwh": 3966.7,
-        "mape_pct": 49.11,
-        "median_ape_pct": 28.96,
-        "r2_log": 0.302,
-        "within_20pct": 0.3489,
-        "within_30pct": 0.518
+        "mae_kwh": 3987.0,
+        "mape_pct": 49.43,
+        "median_ape_pct": 28.89,
+        "r2_log": 0.2965,
+        "within_20pct": 0.3462,
+        "within_30pct": 0.5181
       }
     }
   },
@@ -116,22 +116,22 @@
     "share_with_prior_bill_val": 0.944,
     "cv": {
       "last_year": {
-        "mae_kwh": 924.44,
-        "mape_pct": 33.292,
-        "median_ape_pct": 15.536,
+        "mae_kwh": 924.52,
+        "mape_pct": 33.288,
+        "median_ape_pct": 15.51,
         "r2_log": 0.528,
-        "within_20pct": 0.5859,
-        "within_30pct": 0.7159,
+        "within_20pct": 0.5863,
+        "within_30pct": 0.7164,
         "mae_kwh_sd": 17.0
       },
       "last_year_x_trend": {
-        "mae_kwh": 932.74,
-        "mape_pct": 34.036,
-        "median_ape_pct": 15.434,
+        "mae_kwh": 932.82,
+        "mape_pct": 34.034,
+        "median_ape_pct": 15.416,
         "r2_log": 0.5291,
-        "within_20pct": 0.5861,
-        "within_30pct": 0.7128,
-        "mae_kwh_sd": 15.7
+        "within_20pct": 0.5864,
+        "within_30pct": 0.7133,
+        "mae_kwh_sd": 15.8
       },
       "v2_with_own_bill": {
         "mae_kwh": 918.62,
@@ -143,49 +143,49 @@
         "mae_kwh_sd": 21.8
       },
       "v1_with_own_bill": {
-        "mae_kwh": 921.48,
-        "mape_pct": 32.174,
-        "median_ape_pct": 16.836,
-        "r2_log": 0.5838,
-        "within_20pct": 0.5627,
-        "within_30pct": 0.7054,
-        "mae_kwh_sd": 21.5
+        "mae_kwh": 930.78,
+        "mape_pct": 32.526,
+        "median_ape_pct": 17.41,
+        "r2_log": 0.579,
+        "within_20pct": 0.5543,
+        "within_30pct": 0.6989,
+        "mae_kwh_sd": 24.1
       },
       "change_model_l1": {
-        "mae_kwh": 900.64,
-        "mape_pct": 32.722,
-        "median_ape_pct": 15.636,
+        "mae_kwh": 900.72,
+        "mape_pct": 32.718,
+        "median_ape_pct": 15.634,
         "r2_log": 0.5714,
-        "within_20pct": 0.5872,
-        "within_30pct": 0.7172,
+        "within_20pct": 0.5876,
+        "within_30pct": 0.7177,
         "mae_kwh_sd": 19.6
       },
       "description_only_v1": {
-        "mae_kwh": 1549.68,
-        "mape_pct": 53.916,
-        "median_ape_pct": 37.64,
-        "r2_log": 0.1466,
-        "within_20pct": 0.2763,
-        "within_30pct": 0.4072,
-        "mae_kwh_sd": 23.1
+        "mae_kwh": 1548.78,
+        "mape_pct": 53.878,
+        "median_ape_pct": 37.544,
+        "r2_log": 0.1479,
+        "within_20pct": 0.2769,
+        "within_30pct": 0.4092,
+        "mae_kwh_sd": 22.9
       }
     },
     "val": {
       "last_year": {
-        "mae_kwh": 968.8,
-        "mape_pct": 33.3,
+        "mae_kwh": 969.1,
+        "mape_pct": 33.31,
         "median_ape_pct": 15.79,
-        "r2_log": 0.5312,
-        "within_20pct": 0.5846,
-        "within_30pct": 0.7188
+        "r2_log": 0.5307,
+        "within_20pct": 0.584,
+        "within_30pct": 0.7197
       },
       "last_year_x_trend": {
-        "mae_kwh": 977.0,
-        "mape_pct": 34.02,
-        "median_ape_pct": 15.56,
-        "r2_log": 0.5321,
-        "within_20pct": 0.5849,
-        "within_30pct": 0.7167
+        "mae_kwh": 977.4,
+        "mape_pct": 34.04,
+        "median_ape_pct": 15.59,
+        "r2_log": 0.5317,
+        "within_20pct": 0.5843,
+        "within_30pct": 0.7176
       },
       "v2_with_own_bill": {
         "mae_kwh": 958.8,
@@ -196,28 +196,28 @@
         "within_30pct": 0.7147
       },
       "v1_with_own_bill": {
-        "mae_kwh": 961.9,
-        "mape_pct": 32.54,
-        "median_ape_pct": 16.52,
-        "r2_log": 0.571,
-        "within_20pct": 0.5712,
-        "within_30pct": 0.71
+        "mae_kwh": 968.7,
+        "mape_pct": 32.74,
+        "median_ape_pct": 17.05,
+        "r2_log": 0.5691,
+        "within_20pct": 0.5648,
+        "within_30pct": 0.7056
       },
       "change_model_l1": {
-        "mae_kwh": 941.8,
-        "mape_pct": 32.88,
-        "median_ape_pct": 15.55,
-        "r2_log": 0.5677,
-        "within_20pct": 0.5903,
-        "within_30pct": 0.7212
+        "mae_kwh": 942.2,
+        "mape_pct": 32.89,
+        "median_ape_pct": 15.57,
+        "r2_log": 0.5673,
+        "within_20pct": 0.5897,
+        "within_30pct": 0.722
       },
       "description_only_v1": {
-        "mae_kwh": 1578.1,
-        "mape_pct": 53.95,
-        "median_ape_pct": 37.88,
-        "r2_log": 0.1631,
-        "within_20pct": 0.2761,
-        "within_30pct": 0.4051
+        "mae_kwh": 1580.5,
+        "mape_pct": 54.02,
+        "median_ape_pct": 37.66,
+        "r2_log": 0.1617,
+        "within_20pct": 0.2765,
+        "within_30pct": 0.4039
       }
     }
   }

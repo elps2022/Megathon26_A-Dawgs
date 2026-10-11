@@ -78,7 +78,7 @@ def need_fabric(x: pd.DataFrame) -> pd.DataFrame:
 
 def property_fabric(props: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     """EPC homes / Property rows -> fabric inputs from their own fields; unknowns -> age default (flagged)."""
-    codes = yaml.safe_load((CONFIG / "epc_mapping.yaml").read_text())["need_region_codes"]
+    codes = cfg("epc_mapping.yaml")["need_region_codes"]
     f = props[FABRIC_COLS].copy()
     f = f.astype({"wall_type": object, "wall_insulation": object, "glazing": object})
     f["loft_insulation_mm"] = pd.to_numeric(f.loft_insulation_mm, errors="coerce")

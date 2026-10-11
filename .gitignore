@@ -11,3 +11,4 @@ CLAUDE.md
 .vscode/
 .agents/
 skills-lock.json
+src/greenhome/models/artifacts/

@@ -1,5 +1,5 @@
 version: 1
-note: "Interim savings-simulator assumptions used until the V1 grey-box energy model (ARCHITECTURE 3.5) is wired in."
+note: "Savings-simulator assumptions the energy model does not cover: heating vs base-load shares, heat pump hot water, solar (fabric retrofits use models/energy.py)."
 gas_heating_share:
   value: 0.78
   source: "Space-heating share of domestic gas; 1 - 0.22 hot water/cooking, as config/synthetic.yaml consumption.gas_base_share (BRE/EST 20-25%, VERIFY)"

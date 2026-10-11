@@ -21,11 +21,13 @@ app:
 api:
 	@PYTHONPATH="src:." .venv/bin/uvicorn api.main:app --reload --port 8000
 
-# Energy model first cut on NEED: baselines vs LightGBM, 5-fold CV + val (test split untouched).
+# Energy models on NEED: baselines, V2, V1, mode 1 (5-fold CV + val, test untouched), then save the shipped
+# V1/V2 artifacts to src/greenhome/models/artifacts/ (needs data/raw/need and make labels).
 train:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_ml
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_greybox
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_bills
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy
 
 
 # Real property book from EPC certificates (needs data/raw/epc, onspd, imd). Writes data/processed/*.parquet.

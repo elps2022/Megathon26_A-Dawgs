@@ -130,11 +130,15 @@ Unit tests: weights sum to 1, each mapping monotonic, P10001-style example gives
 Model accuracy is the main judging criterion. There are two versions behind one interface, both evaluated on the same held-out **real** NEED consumption, plus a zero-training physics-only baseline. The savings simulator, detector and dashboard don't care which one runs:
 
 ```python
-class EnergyModel(Protocol):
-    def predict(self, state: HomeState) -> EnergyBreakdown   # per fuel, heat demand, base load, per-element heat loss
+class EnergyModel(Protocol):                                    # models/energy.py
+    version: str
+    def predict(self, p: Property) -> EnergyBreakdown            # per fuel, heat demand, base load, per-element heat loss
+    def predict_frame(self, props: pd.DataFrame) -> pd.DataFrame # many homes at once (portfolio, evaluation)
+
+model = load_model("greybox" | "ml" | "physics")                 # the energy_model switch
 ```
 
-`HomeState` (schema.py) is the home's physical state: envelope elements with U-values and areas, air changes, heating system and efficiency, controls, solar and region. A retrofit edits the state, and the model predicts again.
+The input is the (post-retrofit) `Property`, not a `HomeState`: V1 and V2 need the parity features, which a `HomeState` doesn't carry, and V1 builds its physical state (envelope elements with U-values and areas, air changes, heating, region) from the `Property` itself (`physics.property_fabric`). A retrofit edits the `Property` (`savings.apply_retrofits_to_property`), and the model predicts again. Trained artifacts (LightGBM text models + `meta.json`) live in `models/artifacts/`, gitignored and hosted externally; `make train` rebuilds them in seconds. Without them the engine falls back to physics deltas and the NEED log-linear estimate, and says so in `assumptions`.
 
 **V1, grey box (physics + calibration + ML residual): handles every retrofit physically**
 1. *Physics.* Heat loss coefficient HLC (W/K) = Σ U_element × area_element + 0.33 × air_changes × volume.
@@ -146,8 +150,8 @@ class EnergyModel(Protocol):
    - Calibration factor k = actual slope / physics slope. It captures occupancy, setpoint and hidden draughts.
    - Fewer than 6 usable months, or a poor fit → k = 1 and flag `uncalibrated`. k is clipped to a documented range, so one bad bill can't dominate.
    - NEED has annual readings only, so NEED evaluation runs with k = 1. Calibration is a bonus for real customers with bills, not part of the headline metric.
-3. *ML residual.* A tuned GBDT, trained on NEED, predicts log(actual / physics) per fuel from the parity-safe features below. It corrects what physics misses: electric base load, hot water, occupancy patterns, and systematic bias in default U-values.
-4. *Retrofit effect* = change the state and predict again. Diminishing returns (topping up an insulated loft saves less) and interactions fall out of the physics:
+3. *ML residual.* log(use) = β × log(physics) + GBDT(parity features). A tuned GBDT, trained on NEED, predicts log(actual) − β log(physics) per fuel from the parity-safe features below; it corrects what physics misses (electric base load, hot water, occupancy patterns, systematic bias in default U-values). The residual model does **not** see the physics value: when it did, its retrofit deltas were step-shaped and, for ~18% of gas homes, said insulation raises use. β is the elasticity of real use to the physics change. For gas it is fitted on the observed loft and cavity installs in the NEED **train** split (β = 0.38: real homes show well under half the change steady-state physics predicts, the prebound effect) and checked on the val-split installs; for electricity, which retrofits don't change, it is picked by CV (0.3).
+4. *Retrofit effect* = change the state and predict again, which gives exactly (physics after / before)^β: smooth, never the wrong sign. The low / high band uses the β implied by loft vs cavity installs separately. Diminishing returns (topping up an insulated loft saves less) and interactions fall out of the physics:
 
    | Retrofit | State change |
    |---|---|
@@ -190,7 +194,7 @@ class EnergyModel(Protocol):
 Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml` (area rules), `config/efficiencies.yaml` (boiler / heat pump), each with a source. `config/degree_days.csv` already exists (Met Office HDD).
 
 ### 3.6 Savings simulator (per fuel, sequential)
-1. Start from the baseline `HomeState`. Apply retrofits **in priority order** (fabric → controls → heating → generation). Each one edits the state, and `EnergyModel.predict` runs again, so every step acts on what the previous steps left.
+1. Start from the baseline property. Apply retrofits **in priority order** (fabric → controls → heating → generation). Each one edits the property, and the energy model predicts again, so every step acts on what the previous steps left. The model's relative change is applied to the home's own use (calibrated to its bills, k = actual / expected). Fabric in a gas-heated home uses the selected model (V2 only sees cavity walls; other measures use physics^β). Electric heating, which the NEED electricity model can't separate, uses the physics space-heat change^β, labelled physics-based. Controls still use the catalogue range (no physics hook yet); a home the model can't place (floor area unknown) falls back to the catalogue range, labelled.
 2. Solar is applied after the energy model: kWp × regional yield (~850–1000 kWh/kWp) × self-consumption ratio → reduces grid import only, not demand.
 3. In a gas-heated home a heat pump lowers gas (space heating + hot water; cooking gas stays) and **raises electricity**, which shows as a negative electricity saving. In an electrically heated home it lowers electricity, since it replaces resistance heating at SCOP × the efficiency. Savings only ever come off the fuel the heating system actually uses (`config/efficiencies.yaml` `fuel`), so a gas cooker in an electrically heated home is untouched.
 4. Report per retrofit the **marginal** saving in package order (these add up to the package total), plus the package's elec/gas/total and a low/high band (from U-value / SCOP ranges and the model's p10/p90).
@@ -360,6 +364,7 @@ class Property(BaseModel):            # inputs, prediction-time-safe only
     property_id: str; customer_id: str
     property_type: str; age_band: str; floor_area_m2: float | None
     bedrooms: int | None; region: str
+    imd_quintile: float | None; cavity_filled_retrofit: bool | None   # energy-model parity features (optional)
     energy_rating: str | None; sap_score: int | None
     heating: str; loft_insulation_mm: int | None; wall_insulation: str | None
     glazing: str; solar_kwp: float; smart_controls: str
@@ -377,6 +382,7 @@ class HomeState(BaseModel):           # physical state; retrofits edit this
 class EnergyBreakdown(BaseModel):
     elec_kwh: float; gas_kwh: float; heat_demand_kwh: float; base_load_kwh: float
     hlc_w_per_k: float | None; calibration_k: float | None; calibrated: bool; model_version: str
+    elements: list[Element]   # per-element heat loss (house diagram), default []
     # planned (optional, default None): elec_p10, elec_p90, gas_p10, gas_p90 from conformal bands (3.5)
 
 class SubScore(BaseModel):  component: str; weight: float; score: float; contribution: float; inputs_used: dict; flags: list[str]
@@ -421,8 +427,9 @@ src/greenhome/
                    sales_join.py, valuation.py, need_labels.py, features.py, calibrate.py, build.py
   score/           score.py
   engine/          feasibility.py, savings.py, carbon.py, recommend.py, report.py, portfolio.py
-  models/          physics.py, energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), need_data.py,
-                   expected_use.py (NEED similar-home fallback for missing bills), value_model.py, artifacts/
+  models/          energy.py (EnergyModel interface, load_model, train -> artifacts/), physics.py,
+                   energy_greybox.py (V1), energy_ml.py (V2 + residual tuning), energy_bills.py (mode 1), tune.py,
+                   need_data.py, expected_use.py (log-linear fallback when artifacts are missing), value_model.py
   llm/             agent.py, tools.py, grounding.py, prompts/
   memory/          store.py
 api/               main.py (FastAPI)

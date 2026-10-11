@@ -2,6 +2,7 @@
   "gas": {
     "n_train": 25732,
     "n_val": 5514,
+    "physics_elasticity": 0.381,
     "cv": {
       "global_median": {
         "mae_kwh": 5002.74,
@@ -46,11 +47,11 @@
         "mae_kwh_sd": 38.6
       },
       "v1_greybox": {
-        "mae_kwh": 4085.2,
-        "mape_pct": 52.118,
-        "median_ape_pct": 29.724,
-        "r2_log": 0.2744,
-        "mae_kwh_sd": 24.7
+        "mae_kwh": 4088.64,
+        "mape_pct": 52.212,
+        "median_ape_pct": 29.858,
+        "r2_log": 0.2732,
+        "mae_kwh_sd": 28.3
       }
     },
     "val": {
@@ -91,19 +92,50 @@
         "r2_log": 0.1624
       },
       "v1_greybox": {
-        "mae_kwh": 3966.7,
-        "mape_pct": 49.11,
-        "median_ape_pct": 28.96,
-        "r2_log": 0.302
+        "mae_kwh": 3987.0,
+        "mape_pct": 49.43,
+        "median_ape_pct": 28.89,
+        "r2_log": 0.2965
       }
     },
     "physics_scale_factor": 0.505,
-    "v1_iterations": 670,
-    "v1_smearing_factor": 1.0872
+    "v1_iterations": 1286,
+    "v1_smearing_factor": 1.0878,
+    "retrofit_check": {
+      "loft_insulation": {
+        "train": {
+          "n": 1512,
+          "observed_median_change": -0.0307,
+          "physics_only_median_change": -0.0523,
+          "v1_median_change": -0.0203
+        },
+        "val": {
+          "n": 303,
+          "observed_median_change": -0.0236,
+          "physics_only_median_change": -0.053,
+          "v1_median_change": -0.0205
+        }
+      },
+      "cavity_wall_insulation": {
+        "train": {
+          "n": 960,
+          "observed_median_change": -0.104,
+          "physics_only_median_change": -0.2831,
+          "v1_median_change": -0.1191
+        },
+        "val": {
+          "n": 193,
+          "observed_median_change": -0.1224,
+          "physics_only_median_change": -0.2814,
+          "v1_median_change": -0.1183
+        }
+      }
+    }
   },
   "elec": {
     "n_train": 31721,
     "n_val": 6803,
+    "physics_elasticity": 0.3,
     "cv": {
       "global_median": {
         "mae_kwh": 1671.82,
@@ -148,11 +180,11 @@
         "mae_kwh_sd": 27.2
       },
       "v1_greybox": {
-        "mae_kwh": 1549.68,
-        "mape_pct": 53.916,
-        "median_ape_pct": 37.64,
-        "r2_log": 0.1466,
-        "mae_kwh_sd": 23.1
+        "mae_kwh": 1548.78,
+        "mape_pct": 53.878,
+        "median_ape_pct": 37.544,
+        "r2_log": 0.1479,
+        "mae_kwh_sd": 22.9
       }
     },
     "val": {
@@ -193,14 +225,14 @@
         "r2_log": 0.0346
       },
       "v1_greybox": {
-        "mae_kwh": 1578.1,
-        "mape_pct": 53.95,
-        "median_ape_pct": 37.88,
-        "r2_log": 0.1631
+        "mae_kwh": 1580.5,
+        "mape_pct": 54.02,
+        "median_ape_pct": 37.66,
+        "r2_log": 0.1617
       }
     },
     "physics_scale_factor": 0.892,
-    "v1_iterations": 160,
-    "v1_smearing_factor": 1.2046
+    "v1_iterations": 169,
+    "v1_smearing_factor": 1.2057
   }
 }

@@ -2,17 +2,32 @@
 Implements sequential interaction order: Fabric -> Controls -> Heating -> Generation.
 Defined in docs/ARCHITECTURE.md section 3.6.
 
-Every constant is read from config/ (with a source). Missing bills fall back to the flagged NEED estimate for
-similar homes; if that is impossible too, EnergyUnavailable is raised so the report can say "unavailable".
-Interim: per-retrofit cuts use catalogue ranges until the V1 grey-box energy model (3.5) is wired in.
+Every constant is read from config/ (with a source). Missing bills fall back to the energy model's flagged
+estimate for similar homes; if that is impossible too, EnergyUnavailable is raised so the report can say
+"unavailable".
+
+Fabric retrofits go through the energy model (models/energy.py): the retrofit edits the property, the model
+predicts again, and the predicted change is applied to the home's own use (calibrated to its bills):
+  - gas-heated home, V1: saving = current gas x (1 - V1(after) / V1(before)), which is the physics change
+    raised to the elasticity real installs show (energy_greybox); V2 only for cavity walls, the one fabric
+    measure it can see.
+  - other cases (electric heating, which the NEED electricity model can't separate, or a measure the model
+    can't see): saving = current heating demand x (1 - (physics space heat after / before)^elasticity).
+  - band: the same physics change at the low / high elasticity implied by loft vs cavity installs.
+  - no prediction possible (e.g. floor area unknown): the catalogue's % range, labelled.
+Controls use the catalogue range (no physics hook yet); heat pumps and solar use the simulator rules below.
+If the trained models aren't on disk (`make train`), physics deltas and the log-linear estimate are used.
 """
 from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import yaml
 
 from greenhome.engine.carbon import calculate_carbon_kg
 from greenhome.engine.feasibility import RETROFIT_CATALOGUE
+from greenhome.models.energy import ModelUnavailable, load_model, physics_elasticity
 from greenhome.models.expected_use import expected_annual_kwh
 from greenhome.schema import (
     Element,
@@ -23,8 +38,19 @@ from greenhome.schema import (
 )
 
 _CONFIG = Path(__file__).resolve().parents[3] / "config"
-FABRIC_AND_CONTROLS = ("loft_insulation", "cavity_wall_insulation", "solid_wall_insulation",
-                       "double_glazing", "smart_thermostat")
+FABRIC = ("loft_insulation", "cavity_wall_insulation", "solid_wall_insulation", "double_glazing")
+FABRIC_AND_CONTROLS = (*FABRIC, "smart_thermostat")
+# Fabric measures each trained model responds to (V2 only sees cavity walls, via cavity_installed); for the rest
+# the simulator uses physics deltas (ARCHITECTURE 3.5).
+MODEL_LEARNS = {"greybox": set(FABRIC), "ml": {"cavity_wall_insulation"}, "physics": set()}
+METHOD_NOTE = {
+    "model": "Saving estimated by the {model} energy model (trained on metered use), calibrated to this home.",
+    "physics": "Saving estimated from the physics heat-loss model, scaled to what real installs achieve, "
+               "calibrated to this home.",
+    "catalogue": "Saving estimated from the catalogue's typical % range (too little data for the energy model).",
+    "controls": "Saving estimated from the catalogue's typical % range for heating controls.",
+}
+MODEL_NAMES = {"greybox_v1": "V1 grey-box", "ml_v2": "V2 machine-learning", "physics": "physics-only"}
 REASONS = {
     "loft_insulation": "Loft insulation top-up cuts heat escaping through the roof.",
     "cavity_wall_insulation": "Cavity wall insulation fills unfilled cavities, cutting heat loss through the walls.",
@@ -53,6 +79,8 @@ def apply_retrofits_to_property(p: Property, retrofits: list[str]) -> Property:
         clone.loft_insulation_mm = 300.0
     if "cavity_wall_insulation" in r_set or "solid_wall_insulation" in r_set:
         clone.wall_insulation = "full"
+    if "cavity_wall_insulation" in r_set:
+        clone.cavity_filled_retrofit = True  # what the energy model sees as a cavity fill
     if "double_glazing" in r_set:
         clone.glazing = "double_new"
     if "smart_thermostat" in r_set:
@@ -75,15 +103,34 @@ def build_home_elements(p: Property) -> list[Element]:
     return [Element(**e) for e in elements(envelope(fabric).iloc[0])]
 
 
-def baseline_energy(p: Property) -> tuple[float, float, list[str]]:
-    """(elec, gas, flags): bills first, then the flagged NEED estimate for similar homes."""
+def energy_model(name: str = "greybox"):
+    """(model, fallback): the selected energy model, or physics only when its artifacts aren't trained."""
+    try:
+        return load_model(name), False
+    except ModelUnavailable:
+        return load_model("physics"), name != "physics"
+
+
+def _expected(p: Property, model, fallback: bool) -> dict[str, float | None]:
+    """Expected annual use for similar homes: the energy model, or the NEED log-linear table when the model is
+    a fallback or can't place the home (gas for a home whose gas isn't its heating fuel, unknown floor area)."""
+    table = expected_annual_kwh(p)
+    if fallback:
+        return table
+    pred = model.predict_frame(pd.DataFrame([p.model_dump()])).iloc[0]
+    out = {f: (None if np.isnan(pred[f"{f}_kwh"]) else round(float(pred[f"{f}_kwh"]), 1)) for f in ("elec", "gas")}
+    return {f: out[f] if out[f] is not None else table[f] for f in out}
+
+
+def baseline_energy(p: Property, energy_model_name: str = "greybox") -> tuple[float, float, list[str]]:
+    """(elec, gas, flags): bills first, then the flagged energy-model estimate for similar homes."""
     flags: list[str] = []
     expected = None
     elec, gas = p.annual_elec_kwh, p.annual_gas_kwh
     if gas is None and not p.gas_meter:
         gas = 0.0  # no gas supply: a real zero, not missing data
     if elec is None or gas is None:
-        expected = expected_annual_kwh(p)
+        expected = _expected(p, *energy_model(energy_model_name))
     if elec is None:
         elec = expected["elec"]
         flags.append("elec_estimated_from_similar_homes")
@@ -112,9 +159,26 @@ def _heating_fuel(p: Property) -> str | None:
     return fuel if fuel in ("gas", "electricity") else None
 
 
+def _fabric_ratios(model, fallback: bool, p: Property, ordered: list[str]) -> tuple[list[dict], pd.Series]:
+    """Per retrofit in package order, the model's gas ratio after / before (NaN if it can't predict) and the
+    physics space-heat ratio after / before, each step applied on top of the previous ones; plus the model's
+    prediction for the home as it is."""
+    states = [p] + [apply_retrofits_to_property(p, ordered[:i + 1]) for i in range(len(ordered))]
+    pred = model.predict_frame(pd.DataFrame([s.model_dump() for s in states]))
+    gas, space = pred.gas_kwh.to_numpy(), pred.physics_space_heat_kwh.to_numpy()
+    phys_gas = space + pred.physics_hot_water_kwh.to_numpy()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        model_ratio = np.full(len(ordered), np.nan) if fallback else gas[1:] / gas[:-1]
+        physics_ratio = space[1:] / space[:-1]
+        physics_gas_ratio = phys_gas[1:] / phys_gas[:-1]
+    return [{"model": float(m), "physics": float(ph), "physics_gas": float(pg)}
+            for m, ph, pg in zip(model_ratio, physics_ratio, physics_gas_ratio)], pred.iloc[0]
+
+
 def simulate_package_savings(
     p: Property,
     retrofits: list[str],
+    energy_model_name: str = "greybox",
 ) -> tuple[EnergyBreakdown, EnergyBreakdown, list[RetrofitRec], FuelDelta, float]:
     """Run sequential simulation across selected retrofits in priority order.
 
@@ -124,7 +188,8 @@ def simulate_package_savings(
     Raises EnergyUnavailable when the baseline can't be established.
     """
     sim = _cfg("simulator.yaml")
-    base_elec, base_gas, baseline_flags = baseline_energy(p)
+    model, fallback = energy_model(energy_model_name)
+    base_elec, base_gas, baseline_flags = baseline_energy(p, energy_model_name)
 
     # Split each fuel into space heating vs base load (hot water, cooking, appliances). Only the fuel the
     # heating system actually uses carries heating demand: a gas meter in an electrically heated home is cooking.
@@ -143,20 +208,41 @@ def simulate_package_savings(
         key=lambda r: RETROFIT_CATALOGUE[r]["priority"],
     )
 
+    ratios, pred_now = _fabric_ratios(model, fallback, p, ordered_retrofits)
+    learns = set() if fallback else MODEL_LEARNS.get(energy_model_name, set())
+    # Physics-only (explicitly chosen) keeps the raw physics change; every other path uses the observed elasticity.
+    el = ({"beta": 1.0, "low": 1.0, "high": 1.0} if energy_model_name == "physics" and not fallback
+          else physics_elasticity())
+    model_label = MODEL_NAMES.get(model.version, model.version)
+
     recs: list[RetrofitRec] = []
     tot_saved_elec = tot_saved_gas = 0.0
     tot_low = tot_high = 0.0
 
-    for r in ordered_retrofits:
+    for i, r in enumerate(ordered_retrofits):
         delta_elec = delta_gas = 0.0
         band = None  # (low, high) total-kWh range; defaults to the point estimate
+        method = None
 
         if r in FABRIC_AND_CONTROLS:
-            # Fractional cut to the heating demand left by earlier steps (catalogue range, sourced).
-            lo, hi = RETROFIT_CATALOGUE[r]["saving_pct_heating"]
-            mid = (lo + hi) / 2
-            saved_heat = current_heat_demand * mid / 100
-            band = (saved_heat * lo / mid, saved_heat * hi / mid)
+            ratio = ratios[i]
+            clip = lambda kwh: min(max(kwh, 0.0), current_heat_demand)
+            if r in FABRIC and heating_fuel == "gas" and r in learns and np.isfinite(ratio["model"]):
+                # Change the home, predict again: the model's relative change, applied to this home's gas.
+                saved_heat = clip(current_gas * (1 - ratio["model"]))
+                band = tuple(clip(current_gas * (1 - ratio["physics_gas"] ** el[s])) for s in ("low", "high"))
+                method = "model"
+            elif r in FABRIC and np.isfinite(ratio["physics"]):
+                saved_heat = clip(current_heat_demand * (1 - ratio["physics"] ** el["beta"]))
+                band = tuple(clip(current_heat_demand * (1 - ratio["physics"] ** el[s])) for s in ("low", "high"))
+                method = "physics"
+            else:
+                # Fractional cut to the heating demand left by earlier steps (catalogue range, sourced).
+                lo, hi = RETROFIT_CATALOGUE[r]["saving_pct_heating"]
+                mid = (lo + hi) / 2
+                saved_heat = current_heat_demand * mid / 100
+                band = (saved_heat * lo / mid, saved_heat * hi / mid)
+                method = "catalogue" if r in FABRIC else "controls"
             current_heat_demand -= saved_heat
             if heating_fuel == "gas":
                 delta_gas = saved_heat
@@ -198,6 +284,7 @@ def simulate_package_savings(
 
         tot_kwh = delta_elec + delta_gas
         low, high = sorted(band) if band else (tot_kwh, tot_kwh)
+        low, high = min(low, tot_kwh), max(high, tot_kwh)  # the band always contains the point estimate
         tot_low, tot_high = tot_low + low, tot_high + high
         carbon_cut = calculate_carbon_kg(delta_elec, delta_gas)
         cost_range = RETROFIT_CATALOGUE[r]["indicative_cost"]
@@ -210,7 +297,7 @@ def simulate_package_savings(
         recs.append(RetrofitRec(
             retrofit=r,
             suitability=suitability,  # type: ignore
-            reason=REASONS[r],
+            reason=REASONS[r] + (" " + METHOD_NOTE[method].format(model=model_label) if method else ""),
             marginal_saving=FuelDelta(elec_kwh=round(delta_elec, 1), gas_kwh=round(delta_gas, 1),
                                       total_kwh=round(tot_kwh, 1), low=round(low, 1), high=round(high, 1)),
             carbon_kg=round(carbon_cut, 1),
@@ -225,18 +312,26 @@ def simulate_package_savings(
     elements_before = build_home_elements(p)
     elements_after = build_home_elements(apply_retrofits_to_property(p, ordered_retrofits))
     hlc = lambda els: round(sum(e.heat_loss_w_per_k for e in els), 1) if els else None
-    version = "simulator_v0" + ("+need_expected_use" if baseline_flags else "")
+    version = model.version + ("_fallback" if fallback else "")
+    # Calibration k = this home's use / the model's expected use for it (heating fuel), when it has bills.
+    k = None
+    if not fallback and heating_fuel in ("gas", "electricity") and not baseline_flags:
+        expected = pred_now.gas_kwh if heating_fuel == "gas" else pred_now.elec_kwh
+        actual = base_gas if heating_fuel == "gas" else base_elec
+        k = round(float(actual / expected), 3) if np.isfinite(expected) and expected > 0 else None
 
     energy_before = EnergyBreakdown(
         elec_kwh=round(base_elec, 1), gas_kwh=round(base_gas, 1),
         heat_demand_kwh=round(gas_heat_demand + elec_heat_demand, 1),
         base_load_kwh=round(gas_base_load + elec_base_load, 1),
-        hlc_w_per_k=hlc(elements_before), calibration_k=None, calibrated=False, model_version=version,
+        hlc_w_per_k=hlc(elements_before), calibration_k=k, calibrated=k is not None, model_version=version,
+        elements=elements_before,
     )
     energy_after = EnergyBreakdown(
         elec_kwh=round(current_elec, 1), gas_kwh=round(current_gas, 1),
         heat_demand_kwh=round(current_heat_demand, 1),
         base_load_kwh=round(gas_base_load + elec_base_load, 1),
-        hlc_w_per_k=hlc(elements_after), calibration_k=None, calibrated=False, model_version=version,
+        hlc_w_per_k=hlc(elements_after), calibration_k=k, calibrated=k is not None, model_version=version,
+        elements=elements_after,
     )
     return energy_before, energy_after, recs, package_saving, package_carbon

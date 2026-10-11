@@ -51,18 +51,37 @@ Reproduce with `python -m greenhome.models.energy_greybox` (part of `make train`
 | Gas | Physics only (no training) | 10,731 | −1.21 | 10,578 | −1.19 |
 | Gas | Physics × one scale factor (fitted on train) | 4,548 | 0.14 | 4,439 | 0.16 |
 | Gas | V2: LightGBM (untuned) | 4,119 | 0.28 | 4,015 | 0.30 |
-| Gas | V1: physics × LightGBM residual (untuned) | 4,118 | 0.28 | 4,010 | 0.30 |
-| Gas | **V1, tuned settings** | **4,085** | **0.27** | **3,967** | **0.30** |
+| Gas | V1, first form: residual that also saw log physics (untuned) | 4,118 | 0.28 | 4,010 | 0.30 |
+| Gas | V1, first form, tuned | 4,085 | 0.27 | 3,967 | 0.30 |
+| Gas | V2: LightGBM, tuned | 4,079 ± 26 | 0.28 | 3,972 | 0.30 |
+| Gas | **V1 shipped: physics^β × residual on the description, tuned (β = 0.38)** | **4,089 ± 28** | **0.27** | **3,987** | **0.30** |
 | Elec | Physics only (no training) | 1,659 | 0.01 | 1,680 | 0.03 |
 | Elec | Physics × one scale factor | 1,621 | 0.02 | 1,653 | 0.03 |
 | Elec | V2: LightGBM (untuned) | 1,550 | 0.15 | 1,581 | 0.16 |
-| Elec | V1: physics × LightGBM residual (untuned) | 1,549 | 0.15 | 1,578 | 0.16 |
-| Elec | **V1, tuned settings** | **1,550** | **0.15** | **1,578** | **0.16** |
+| Elec | V1, first form (untuned) | 1,549 | 0.15 | 1,578 | 0.16 |
+| Elec | V2: LightGBM, tuned | 1,549 ± 23 | 0.15 | 1,580 | 0.16 |
+| Elec | **V1 shipped: physics^β × residual, tuned (β = 0.3)** | **1,549 ± 23** | **0.15** | **1,581** | **0.16** |
 
 **Reading the numbers**
 - **Physics overpredicts NEED gas about 2×** (median 20,400 vs 10,100 kWh; the fitted scale factor is 0.51). This is the documented *prebound effect*: real homes, especially older and poorly rated ones, are heated less, and to lower temperatures, than steady-state physics assumes (Sunikka-Blank & Galvin, 2012). NEED homes have no fabric fields, so their physics uses age-band default fabric, which adds to the gap. Electricity physics (SAP lighting and appliances) is close: scale factor 0.89.
 - **V1 ties V2 on NEED, as expected.** For NEED homes the physics prediction is a fixed function of the same bands the residual model already sees, so it can't add accuracy there. V1 is shipped anyway (ARCHITECTURE §3.5 default: V2 isn't clearly better). Its value is elsewhere: retrofits act through U-values and efficiencies with diminishing returns, it gives per-element heat loss for the house diagram, and real customers' bills calibrate it (k).
 - Physics-only beats the global median only after one scale factor. Uncalibrated, it is worse than every baseline for gas, which is why the residual and calibration steps exist.
+- **Why the shipped V1 changed form.** The first V1 fed log physics to the residual trees as a feature. Its levels were good, but its *retrofit deltas* weren't: trees are step functions and were free to move against physics, so on 3,000 real homes about 18% of loft and glazing recommendations in gas homes came out as an *increase* in use (clipped to 0). The shipped form is log(use) = β log(physics) + GBDT(description): the residual never sees physics, so a retrofit changes the prediction by exactly (physics after / before)^β, smooth and never the wrong sign. It costs 10 kWh of CV MAE on gas (well inside the fold sd of 28) and nothing on electricity. V2 is not clearly better beyond fold noise, so V1 still ships (ARCHITECTURE §3.5).
+
+## Retrofit validity on observed installs
+
+`energy_greybox` also writes `retrofit_check` to `energy_v1.json`. β for gas is fitted on the observed loft and cavity installs in the NEED **train** split only (`data/need_labels.py`: per-home use 2 years before vs after, difference-in-differences against never-treated homes); the val-split installs are held out. The test-split installs are unseen.
+
+| Measure (gas-heated homes) | Split | Installs | Observed median change | Physics only | **V1 (physics^β)** |
+|---|---|---|---|---|---|
+| Loft insulation | train (fitted) | 1,512 | −3.1% | −5.2% | −2.0% |
+| Loft insulation | **val (held out)** | 303 | **−2.4%** | −5.3% | **−2.1%** |
+| Cavity wall insulation | train (fitted) | 960 | −10.4% | −28.3% | −11.9% |
+| Cavity wall insulation | **val (held out)** | 193 | **−12.2%** | −28.1% | **−11.8%** |
+
+- Physics alone overstates retrofit savings 2–3× (the prebound effect again); one elasticity, β = 0.38, brings both measures to within ~1 point of the observed median on held-out installs. The first-form V1 got loft right (−3.3%) but cavity badly wrong (−4.7%).
+- Loft installs alone imply β ≈ 0.57 and cavity installs ≈ 0.35. The simulator uses that range as each fabric saving's low / high band.
+- In the engine (3,000 real homes, `engine/savings.py`), the median V1 saving is 3.2% of gas for loft, 14.9% for cavity walls (these homes have fully empty cavities), 20% for solid walls and 5% for glazing; none is zero or negative. Glazing and solid-wall insulation have no NEED installs to check against, so they rest on the same β.
 
 ## Two prediction modes: description only vs the home's own bills
 
@@ -70,13 +89,13 @@ Reproduce with `python -m greenhome.models.energy_bills` (part of `make train`) 
 
 | Fuel | Model | CV MAE (kWh) | Val MAE (kWh) | Val R² (log) | Val within ±20% | Val within ±30% |
 |---|---|---|---|---|---|---|
-| Gas | Mode 2: V1, description only | 4,118 ± 27 | 4,010 | 0.30 | 34.1% | 51.0% |
-| Gas | Last year's bill (no model) | 2,024 ± 28 | 1,976 | 0.69 | 70.6% | 81.7% |
-| Gas | Last year × median trend (no model) | 2,019 ± 28 | 1,978 | 0.69 | 70.4% | 81.1% |
-| Gas | **Mode 1: change model (GBDT, L1)** | **1,971 ± 27** | **1,925** | **0.71** | **71.1%** | **81.4%** |
-| Elec | Mode 2: V1, description only | 1,549 ± 23 | 1,578 | 0.16 | 27.7% | 40.0% |
-| Elec | Last year's bill (no model) | 925 ± 17 | 969 | 0.53 | 58.5% | 71.9% |
-| Elec | **Mode 1: change model (GBDT, L1)** | **901 ± 20** | **942** | **0.57** | **59.1%** | **72.1%** |
+| Gas | Mode 2: V1, description only | 4,089 ± 28 | 3,987 | 0.30 | 34.6% | 51.8% |
+| Gas | Last year's bill (no model) | 2,025 ± 29 | 1,975 | 0.68 | 70.5% | 81.9% |
+| Gas | Last year × median trend (no model) | 2,019 ± 28 | 1,977 | 0.69 | 70.3% | 81.3% |
+| Gas | **Mode 1: change model (GBDT, L1)** | **1,972 ± 27** | **1,924** | **0.71** | **71.0%** | **81.6%** |
+| Elec | Mode 2: V1, description only | 1,549 ± 23 | 1,581 | 0.16 | 27.7% | 40.4% |
+| Elec | Last year's bill (no model) | 925 ± 17 | 969 | 0.53 | 58.4% | 72.0% |
+| Elec | **Mode 1: change model (GBDT, L1)** | **901 ± 20** | **942** | **0.57** | **59.0%** | **72.2%** |
 
 **Reading the numbers**
 - **Description-only accuracy is capped by the inputs.** Among homes with identical type, age, size, EPC band and region, use still varies so much that these bands explain at most R² ≈ 0.25 (gas) / 0.12 (electricity); V1 reaches 0.30 / 0.16 with the extra parity features. Occupants, not buildings, drive most of the rest (building factors explain ~40% of domestic energy variation in Huebner et al., 2015).
@@ -96,4 +115,6 @@ Tuning bought ~1% on gas and nothing on electricity, consistent with the feature
 
 **Totals vs single homes (smearing).** Log-scale models predict the *typical* home, which sits below the average because use is skewed. Summed over a portfolio that undercounts by ~12–15% (gas) and ~18–31% (electricity). Duan's smearing factor, mean(exp(residual)) on the training data, corrects it: 1.15 (gas), 1.18 / 1.31 (electricity in gas / other homes) for the NEED fallback (`config/need_calibration.yaml`, applied in `models/expected_use.py`), and recorded per model in `energy_v1.json`. With it, description-only totals are within ~3% for 100 homes and ~1% for 1,000 homes (val), while single homes stay at ~29% median error.
 
-**Next (§3.5 steps 5–7):** Optuna tuning, the LightGBM vs CatBoost bake-off, feature work (interactions; IMD quintile is already in), conformal p10/p90, subgroup errors, and checking loft/cavity/PV toggles against NEED's observed DiD effects. Then a single scoring of the test split.
+**Deployment.** `models/energy.py` is the one interface (`load_model("greybox" | "ml" | "physics")`). `python -m greenhome.models.energy` (end of `make train`) refits V1 and V2 on the train split, saves them to `src/greenhome/models/artifacts/` (gitignored), and checks the saved models reproduce the val scores above exactly. The savings simulator calls it for every fabric retrofit.
+
+**Next:** conformal p10/p90, subgroup errors, then a single scoring of the test split (including the test-split installs). The LightGBM vs CatBoost bake-off is dropped for time: tuning showed the settings aren't the limit.

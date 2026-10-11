@@ -126,7 +126,7 @@ def build_report(
     # 4. Sequential savings simulation (unavailable, never 0, when the baseline can't be established)
     try:
         energy_before, energy_after, recs, package_saving, package_carbon = simulate_package_savings(
-            p, active_retrofits
+            p, active_retrofits, energy_model
         )
     except EnergyUnavailable as exc:
         energy_before = energy_after = package_saving = package_carbon = None
@@ -136,11 +136,17 @@ def build_report(
         assumptions.append(f"Energy savings unavailable: {exc}")
         p_after.annual_elec_kwh = p_after.annual_gas_kwh = None
     else:
-        flags = baseline_energy(p)[2]
+        flags = baseline_energy(p, energy_model)[2]
         if flags:
             p = p.model_copy(update={"data_flags": [*p.data_flags, *flags]})
-            assumptions.append("Missing bills replaced by expected use for similar homes "
-                               "(NEED log-linear model, config/need_calibration.yaml); flagged in data_flags")
+            source = ("NEED log-linear model, config/need_calibration.yaml"
+                      if energy_before.model_version.endswith("_fallback")
+                      else f"{energy_before.model_version} energy model trained on metered use (NEED)")
+            assumptions.append(f"Missing bills replaced by expected use for similar homes ({source}); "
+                               "flagged in data_flags")
+        if energy_before.model_version.endswith("_fallback"):
+            assumptions.append(f"Trained energy model '{energy_model}' not found (run `make train`); fabric "
+                               "savings use the physics heat-loss model instead")
 
         # 5. Improvement potential: 100 * (E_baseline - E_after) / E_baseline
         purchased_base = energy_before.elec_kwh + energy_before.gas_kwh

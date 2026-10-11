@@ -29,6 +29,8 @@ class Property(BaseModel):
     solar_kwp: float = 0.0
     smart_controls: str = "none"  # none | programmer | smart_thermostat | smart_trvs
     gas_meter: bool = True
+    imd_quintile: float | None = None  # 1 = most deprived (energy-model feature, NaN-safe)
+    cavity_filled_retrofit: bool | None = None  # EPC "filled cavity": a retrofit fill (energy-model feature)
     current_value_estimate: float | None = None
     annual_elec_kwh: float | None = None
     annual_gas_kwh: float | None = None
@@ -77,6 +79,7 @@ class EnergyBreakdown(BaseModel):
     calibration_k: float | None = None
     calibrated: bool = False
     model_version: str = "greybox"
+    elements: list[Element] = Field(default_factory=list)  # per-element heat loss (house diagram)
 
 
 class SubScore(BaseModel):
