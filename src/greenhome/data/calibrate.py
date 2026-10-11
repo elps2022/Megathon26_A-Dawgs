@@ -119,15 +119,22 @@ def calibrate_degree_days() -> None:
     for la, (region, fname) in LA_REGIONS.items():
         lines = (RAW / "metoffice" / fname).read_text().splitlines()
         start = next(i for i, l in enumerate(lines) if l.startswith("year"))
+        header = lines[start]
+        # Fixed-width columns, values right-aligned under each month label. Months not yet reported are
+        # blank, so splitting on whitespace would shift the seasonal means (win/spr/sum) into Oct-Dec.
+        ends = [header.index(name) + len(name) for name in
+                ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")]
         for line in lines[start + 1:]:
-            parts = line.split()
-            year = int(parts[0])
+            if not line.strip():
+                continue
+            year = int(line.split()[0])
             if year < 2015:
                 continue
-            for m in range(1, 13):
-                if m >= len(parts) or parts[m] == "---":
+            for m, end in enumerate(ends, start=1):
+                cell = line[end - 6:end].strip()
+                if cell in ("", "---"):
                     continue
-                t = float(parts[m])
+                t = float(cell)
                 days = calendar.monthrange(year, m)[1]
                 rows.append({"region": region, "local_authority": la, "year": year, "month": m,
                              "tmean_c": t, "hdd": round(days * max(0.0, HDD_BASE_C - t), 1)})
