@@ -1,4 +1,4 @@
-.PHONY: data calibrate build epc real sales value labels features train eval-test models package-models need-raw test eval app api
+.PHONY: data calibrate build epc real sales value labels features train train-value eval-value eval-test models package-models need-raw test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -32,6 +32,16 @@ train: need-raw
 
 need-raw:
 	@test -f data/raw/need/anon2025_50k.csv || { echo "data/raw/need/anon2025_50k.csv not found. Training needs the raw NEED file (see docs/DATA.md). Without it, install the trained models: make models SRC=<energy_models.zip or its link>"; exit 1; }
+
+# Value model on real matched sales (needs data/raw/hpi and the raw-derived data/processed/real/properties.parquet):
+# level GBDT + conformal band, rating premium with postcode-sector fixed effects, SAP gain per retrofit.
+train-value:
+	@test -f data/raw/hpi/UK-HPI-full-file-2026-07.csv || { echo "Training the value model needs data/raw/hpi (see docs/DATA.md); without it: make models SRC=..."; exit 1; }
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.value_model
+
+# The single test scoring of the value model (after make train-value).
+eval-value:
+	@PYTHONPATH="src:." .venv/bin/python eval/eval_value.py
 
 # Install trained energy models from a zip or a (Google Drive) link: make models SRC=...
 models:

@@ -1,5 +1,5 @@
 version: 1
-note: "Interim rating-uplift rule used until the value model (ARCHITECTURE 3.8: GBDT level + hedonic EPC-band uplift) exists."
+note: "Fallback rating-uplift rule, used only when the value model (models/value_model.py, ARCHITECTURE 3.8) is not installed."
 score_points_per_band: 12
 pct_per_band: {low: 1.5, high: 3.5}
 min_pct_if_any_retrofit: {low: 0.5, high: 1.5}

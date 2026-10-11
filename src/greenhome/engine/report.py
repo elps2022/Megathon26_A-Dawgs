@@ -17,6 +17,7 @@ from greenhome.engine.savings import (
     simulate_package_savings,
 )
 from greenhome.schema import Infeasible, Property, PropertyReport
+from greenhome.models.energy import ModelUnavailable
 
 from greenhome.score.score import calculate_green_home_score
 
@@ -170,13 +171,19 @@ def build_report(
     # 6. Post-scenario Green Home Score
     score_after = calculate_green_home_score(p_after)
 
-    # 7. Indicative value uplift range
-    val_estimate = estimate_indicative_value_uplift(
-        p.current_value_estimate,
-        score_before.total,
-        score_after.total,
-        active_retrofits,
-    )
+    # 7. Indicative value range: the value model (real matched sales; rating-band premium with postcode-sector
+    # fixed effects, models/value_model.py), or the interim rating-band rule if it isn't trained.
+    try:
+        from greenhome.models.value_model import value_estimate
+        val_estimate = value_estimate(p.model_dump(), p_after.model_dump(), active_retrofits)
+    except ModelUnavailable:
+        val_estimate = estimate_indicative_value_uplift(
+            p.current_value_estimate,
+            score_before.total,
+            score_after.total,
+            active_retrofits,
+        )
+        assumptions.append("Value model not installed (make models SRC=...); value impact uses the interim rule")
 
     return PropertyReport(
         property=p,

@@ -67,6 +67,10 @@ def install(src: str) -> None:
         meta = json.loads((Path(tmp) / "meta.json").read_text())
         from greenhome.models.energy import GreyboxModel, MLModel
         GreyboxModel(Path(tmp)), MLModel(Path(tmp))   # every referenced model file loads
+        if "value_meta.json" in names:
+            import lightgbm as lgb
+            for f in json.loads((Path(tmp) / "value_meta.json").read_text())["files"].values():
+                lgb.Booster(model_file=str(Path(tmp) / f))
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         for n in names:
             shutil.copy(Path(tmp) / n, ARTIFACTS / n)

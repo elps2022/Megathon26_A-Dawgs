@@ -8,7 +8,7 @@
 | D | `docs/SCORING.md` | C | [ ] |
 | E | `docs/LLM.md` (prompts, model, how tested) | B | [ ] |
 | F | Architecture diagram | B | [ ] |
-| G | `docs/EVALUATION.md` (validation vs baselines, limitations) | A + B | [ ] |
+| G | `docs/EVALUATION.md` (validation vs baselines, limitations) | A + B | [~] energy + value done (A); LLM + recs pending (B) |
 | H | `docs/RESPONSIBLE_AI.md` | C | [ ] |
 | I | Held-out test predictions + data documentation (`docs/DATA.md`) | A | [x] `eval/results/test_predictions.csv` |
 

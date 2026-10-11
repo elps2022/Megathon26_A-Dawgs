@@ -168,3 +168,34 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
 - **Catalogue ranges** (1,000 real homes): model-based savings as % of heating demand are inside the catalogue's typical range for cavity walls (median 19%), solid walls (26%) and glazing (7%), with 3–6% of homes below. **Loft is below the catalogue's 10–25% for 83% of homes** (median 4.2%). Here the real installs side with the model: NEED loft installs cut gas by ~1–3% (above). The catalogue range is a placeholder (VERIFY) and should be lowered for loft top-ups.
 
 **Figures** (`eval/eda_energy.py` → `eval/figures/`, data figures from the train split): target distributions (log-normal, truncated by NEED at 1,000–50,000 kWh gas and 500–25,000 kWh electricity), gas by EPC and age band, the within-cell spread (p10–p90 of use / identical-home median: 0.48–1.73 gas, 0.48–2.23 electricity, the noise ceiling), physics vs metered gas (median ratio 0.505, the prebound effect), the retrofit check, and test calibration by decile.
+
+## Value model (ARCHITECTURE §3.8)
+
+`make train-value` → `eval/results/value_v1.json` (5-fold CV grouped by home, val) and the artifacts; `make eval-value` → `eval/results/value_test.json`, the single test scoring. Data: real Price Paid resales 2018–2025 matched to the certificate lodged **before** each sale (new builds excluded), each indexed to Jul 2026 with the UK HPI for its type and local authority. Fixed customer split: 106,140 train / 22,970 val / 22,477 test sales.
+
+| Model (test split unless noted) | Median error | Within ±10% | Within ±20% | R² (log) | MAE (£) |
+|---|---|---|---|---|---|
+| LA median × fixed rating premium (the spec's baseline) | 32.6% | 16.5% | 32.0% | 0.17 | 150,200 |
+| LA × type median | 24.6% | 22.0% | 41.7% | 0.48 | 117,600 |
+| Hedonic log-linear, no location (CV) | 22.2% | 23.7% | 45.6% | 0.37 | 110,800 |
+| **Value model (LightGBM level)** | **14.9% [14.6–15.1]** | **35.3%** | **62.8%** | **0.76 [0.75–0.77]** | **73,900** |
+| *Homes sold before (2,466 test sales):* indexed last sale | 8.5% | 55.6% | 81.3% | 0.85 | 45,400 |
+| *Homes sold before:* **85% indexed last sale + 15% value model** | **8.2%** | **56.8%** | **82.9%** | **0.87** | **44,100** |
+
+- **80% band:** test coverage 79.3% (val 80.0%), misses split evenly (10.3% below, 10.5% above); median width 59% of the estimate. Coverage is 78–81% in every local authority, property type and rating band with ≥ 50 sales.
+- **Errors by group:** median error 12.9% Southwark, 13.6% Leeds, 17.4% Cornwall (more rural, more varied homes); 16.5% flats; 20.9–21.0% for F and G homes (few, varied sales). These go to the fairness audit (`value_test.json` `subgroups`).
+- **Location is the missing input.** Inside a local authority, the only location signal is the deprivation quintile; a postcode-level feature would be the biggest single improvement (the shared property file carries no postcodes, by design).
+
+**Rating premium (the value uplift).** Hedonic log-linear model on train sales, postcode-sector fixed effects (259 sectors, within-sector R² 0.68), standard errors clustered by sector:
+
+| Band vs D | Premium (95% CI) | Same model without location | Re-estimated on test sales only |
+|---|---|---|---|
+| A/B | +1.0% (−1.0 to +3.0) | −1.5% | +0.6% |
+| C | +0.7% (+0.1 to +1.3) | −0.7% | +0.7% |
+| E | −2.7% (−3.4 to −2.0) | +1.9% | −4.1% |
+| F/G | −5.1% (−6.6 to −3.7) | +6.9% | −5.5% |
+
+- Without location controls the premium is **backwards**: within an LA, poorly rated homes are often expensive central period houses and A/B homes newer flats in cheaper areas. Comparing homes on the same streets fixes the order, and the test-only refit agrees.
+- **Repeat sales** (the same home sold twice with a newer certificate in between, 2,587 train pairs): +6.4% per band gained (5.5–7.4%). This is an upper bound, because homes re-rated between sales have often been renovated as well. The shipped sector model is the conservative estimate.
+- The uplift in a report is premium(band after) − premium(band before) for the same home on the same date, with the CI of the difference, so it is 0 when a retrofit doesn't change the band, and the range can include 0 (e.g. C → B, since A/B homes are rare). On 500 real homes the median range is 0% to +2.1%, at most +8%. Always labelled indicative, an association in historical sales, not a causal effect.
+- **Rating after a retrofit:** SAP score regressed on the fabric fields over 376,769 real certificates (train-split customers, R² 0.70). Gains vs the base case: loft from < 50 mm +10.7, cavity fill +6.7, solid-wall insulation +8.1, single → new double glazing +6.6, old non-condensing → condensing boiler +14.3, solar +9.1; a smart thermostat vs a programmer ≈ 0 (SAP doesn't credit it).

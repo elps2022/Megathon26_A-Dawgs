@@ -210,6 +210,13 @@ Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml`
 - Rating after retrofit comes from a simple documented SAP-delta rule per retrofit.
 - Always labelled "indicative estimate based on associations in our dataset, not a causal guarantee".
 - Baseline for comparison: regional median × fixed rating premium lookup.
+- **As built** (`models/value_model.py`, `make train-value`, `make eval-value`; results in `docs/EVALUATION.md`):
+  - *Target:* each real resale (new builds excluded) indexed to the valuation month with the UK HPI for its type and LA, so a prediction is today's value and deployment needs no HPI file. Fixed customer split, so all sales of a home are on one side.
+  - *Level:* LightGBM on LA, type, floor area, bedrooms, age, SAP score / band, deprivation; monotone in rating; CQR 80% band (quantile models can't take monotone constraints in LightGBM, so only the band edges go without). Tenure is left out: it is unknown for unsold homes.
+  - *This home:* the indexed last sale, blended 85 / 15 with the level model (weight fitted on val), is the baseline value for homes sold before.
+  - *Rating premium:* the hedonic model needs **postcode-sector fixed effects** (homes compared with others on the same streets, sector-clustered SEs). Without them the premium came out backwards (F/G +6.9% vs D): within an LA, poorly rated homes are often expensive central period houses. A repeat-sales estimate (+6.4% per band) is reported as an upper bound, since re-rated homes have often been renovated.
+  - *Rating after a retrofit:* a linear model of SAP score on the fabric fields (loft depth, wall, glazing, heating, controls, solar) fitted on the real certificates of train-split customers, so the SAP gain per retrofit comes from data, not a hand-typed rule.
+  - Without the trained model the report falls back to the interim rule (`config/value_uplift.yaml`) and says so in `assumptions`.
 
 ### 3.9 Recommendations
 - Feasibility = hard rules from the catalogue (no cavity insulation on solid walls, no solar on flats without roof access/listed buildings, no double glazing if already double, heat pump needs insulation ≥ threshold or is recommended *after* fabric).

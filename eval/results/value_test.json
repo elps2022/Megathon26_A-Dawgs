@@ -1,0 +1,288 @@
+{
+  "split": "test-split customers (data/processed/real/splits.parquet); scored once",
+  "valuation_month": "2026-07-01",
+  "n_test_sales": 22477,
+  "models": {
+    "value_model": {
+      "mae_gbp": 73900.0,
+      "median_ape_pct": 14.88,
+      "within_10pct": 0.3528,
+      "within_20pct": 0.6276,
+      "r2_log": 0.7626,
+      "median_ape_pct_95ci": [
+        14.64,
+        15.11
+      ],
+      "r2_log_95ci": [
+        0.7549,
+        0.7707
+      ]
+    },
+    "la_median_x_fixed_premium": {
+      "mae_gbp": 150200.0,
+      "median_ape_pct": 32.58,
+      "within_10pct": 0.1647,
+      "within_20pct": 0.3201,
+      "r2_log": 0.1685
+    },
+    "la_type_median": {
+      "mae_gbp": 117600.0,
+      "median_ape_pct": 24.63,
+      "within_10pct": 0.2197,
+      "within_20pct": 0.4169,
+      "r2_log": 0.4783
+    }
+  },
+  "band": {
+    "target": 0.8,
+    "test_coverage": 0.7925,
+    "below_p10": 0.1028,
+    "above_p90": 0.1047,
+    "median_width_pct_of_p50": 59.3,
+    "val_coverage": 0.8
+  },
+  "repeat_sales": {
+    "n": 2466,
+    "indexed_last_sale": {
+      "mae_gbp": 45400.0,
+      "median_ape_pct": 8.54,
+      "within_10pct": 0.556,
+      "within_20pct": 0.8127,
+      "r2_log": 0.854
+    },
+    "value_model": {
+      "mae_gbp": 63600.0,
+      "median_ape_pct": 14.63,
+      "within_10pct": 0.3536,
+      "within_20pct": 0.6582,
+      "r2_log": 0.7565
+    },
+    "blend": {
+      "mae_gbp": 44100.0,
+      "median_ape_pct": 8.24,
+      "within_10pct": 0.5681,
+      "within_20pct": 0.8285,
+      "r2_log": 0.8735
+    },
+    "blend_weight_last_sale": 0.85
+  },
+  "subgroups": {
+    "local_authority": {
+      "Cornwall": {
+        "n": 8971,
+        "median_ape_pct": 17.39,
+        "within_20pct": 0.5587,
+        "median_bias_pct": 0.05,
+        "band_coverage": 0.7884
+      },
+      "Leeds": {
+        "n": 10730,
+        "median_ape_pct": 13.61,
+        "within_20pct": 0.6714,
+        "median_bias_pct": -0.47,
+        "band_coverage": 0.7977
+      },
+      "Southwark": {
+        "n": 2776,
+        "median_ape_pct": 12.93,
+        "within_20pct": 0.6808,
+        "median_bias_pct": -0.26,
+        "band_coverage": 0.786
+      }
+    },
+    "property_type": {
+      "Bungalow": {
+        "n": 2667,
+        "median_ape_pct": 14.56,
+        "within_20pct": 0.6348,
+        "median_bias_pct": -0.92,
+        "band_coverage": 0.8073
+      },
+      "Detached": {
+        "n": 3475,
+        "median_ape_pct": 15.48,
+        "within_20pct": 0.6072,
+        "median_bias_pct": 0.4,
+        "band_coverage": 0.7776
+      },
+      "End terrace": {
+        "n": 2132,
+        "median_ape_pct": 14.83,
+        "within_20pct": 0.637,
+        "median_bias_pct": -1.15,
+        "band_coverage": 0.7969
+      },
+      "Flat": {
+        "n": 4219,
+        "median_ape_pct": 16.48,
+        "within_20pct": 0.5817,
+        "median_bias_pct": -0.39,
+        "band_coverage": 0.7829
+      },
+      "Mid terrace": {
+        "n": 4183,
+        "median_ape_pct": 14.98,
+        "within_20pct": 0.6235,
+        "median_bias_pct": -0.09,
+        "band_coverage": 0.7906
+      },
+      "Semi detached": {
+        "n": 5744,
+        "median_ape_pct": 13.8,
+        "within_20pct": 0.6687,
+        "median_bias_pct": 0.05,
+        "band_coverage": 0.8019
+      },
+      "unknown": {
+        "n": 57,
+        "median_ape_pct": 10.07,
+        "within_20pct": 0.7368,
+        "median_bias_pct": -1.33,
+        "band_coverage": 0.7719
+      }
+    },
+    "energy_rating": {
+      "A": {
+        "n": 76,
+        "median_ape_pct": 9.54,
+        "within_20pct": 0.7237,
+        "median_bias_pct": 0.92,
+        "band_coverage": 0.8158
+      },
+      "B": {
+        "n": 2108,
+        "median_ape_pct": 14.56,
+        "within_20pct": 0.6271,
+        "median_bias_pct": -0.95,
+        "band_coverage": 0.7766
+      },
+      "C": {
+        "n": 6113,
+        "median_ape_pct": 13.88,
+        "within_20pct": 0.6501,
+        "median_bias_pct": 0.49,
+        "band_coverage": 0.7913
+      },
+      "D": {
+        "n": 9306,
+        "median_ape_pct": 14.29,
+        "within_20pct": 0.653,
+        "median_bias_pct": -0.59,
+        "band_coverage": 0.7969
+      },
+      "E": {
+        "n": 3553,
+        "median_ape_pct": 17.03,
+        "within_20pct": 0.5722,
+        "median_bias_pct": 0.23,
+        "band_coverage": 0.7954
+      },
+      "F": {
+        "n": 983,
+        "median_ape_pct": 20.87,
+        "within_20pct": 0.4893,
+        "median_bias_pct": -2.07,
+        "band_coverage": 0.7772
+      },
+      "G": {
+        "n": 338,
+        "median_ape_pct": 21.0,
+        "within_20pct": 0.4852,
+        "median_bias_pct": -0.53,
+        "band_coverage": 0.8047
+      }
+    }
+  },
+  "premia_refit_on_test_only": {
+    "A/B": {
+      "log_premium": 0.00631,
+      "se": 0.01583,
+      "pct": 0.63,
+      "pct_95ci": [
+        -2.44,
+        3.8
+      ]
+    },
+    "C": {
+      "log_premium": 0.00696,
+      "se": 0.00489,
+      "pct": 0.7,
+      "pct_95ci": [
+        -0.26,
+        1.67
+      ]
+    },
+    "D": {
+      "log_premium": 0.0,
+      "pct": 0.0,
+      "pct_95ci": [
+        0.0,
+        0.0
+      ]
+    },
+    "E": {
+      "log_premium": -0.04157,
+      "se": 0.00676,
+      "pct": -4.07,
+      "pct_95ci": [
+        -5.33,
+        -2.79
+      ]
+    },
+    "F/G": {
+      "log_premium": -0.05619,
+      "se": 0.01056,
+      "pct": -5.46,
+      "pct_95ci": [
+        -7.4,
+        -3.49
+      ]
+    }
+  },
+  "premia_shipped_train": {
+    "A/B": {
+      "log_premium": 0.00998,
+      "se": 0.01011,
+      "pct": 1.0,
+      "pct_95ci": [
+        -0.98,
+        3.03
+      ]
+    },
+    "C": {
+      "log_premium": 0.00728,
+      "se": 0.0031,
+      "pct": 0.73,
+      "pct_95ci": [
+        0.12,
+        1.34
+      ]
+    },
+    "D": {
+      "log_premium": 0.0,
+      "pct": 0.0,
+      "pct_95ci": [
+        0.0,
+        0.0
+      ]
+    },
+    "E": {
+      "log_premium": -0.02773,
+      "se": 0.00374,
+      "pct": -2.74,
+      "pct_95ci": [
+        -3.44,
+        -2.02
+      ]
+    },
+    "F/G": {
+      "log_premium": -0.05273,
+      "se": 0.00781,
+      "pct": -5.14,
+      "pct_95ci": [
+        -6.58,
+        -3.67
+      ]
+    }
+  }
+}
