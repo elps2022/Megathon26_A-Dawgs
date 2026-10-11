@@ -15,14 +15,15 @@
     "Southwark": 0.8987
   },
   "matched_by_tier": {
-    "numbers_ordered": 160798,
+    "numbers_ordered": 160797,
     "numbers_any": 8,
     "name": 14652
   },
   "unmatched": {
     "no_epc_in_postcode": 346,
     "ambiguous": 3390,
-    "no_address_fit": 11178
+    "home_not_in_book": 1,
+    "no_address_fit": 11177
   },
   "with_pre_sale_epc": 168351,
   "type_agreement_by_tier": {

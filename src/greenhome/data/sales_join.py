@@ -154,6 +154,7 @@ def join() -> tuple[pd.DataFrame, dict]:
     m = m.merge(sales[["sale_id", "sale_date", "price", "ptype", "new_build", "tenure", "district"]], on="sale_id")
     m["property_id"] = property_id(m.uprn)
     in_book = set(pd.read_parquet(BOOK, columns=["property_id"]).property_id)
+    not_in_book = int((~m.property_id.isin(in_book)).sum())  # UPRN whose latest certificate isn't in the book
     m = m[m.property_id.isin(in_book)]
     out = pre_sale_features(m, certs)
     out = out.rename(columns={"ptype": "ppd_property_type", "tenure": "ppd_tenure"})
@@ -169,9 +170,10 @@ def join() -> tuple[pd.DataFrame, dict]:
         "matched_sales": len(out),
         "match_rate": round(len(out) / n, 4),
         "match_rate_by_local_authority": {k.title(): round(float(v), 4) for k, v in by_la.items()},
-        "matched_by_tier": stats["by_tier"],
+        "matched_by_tier": {t: int((out.match_tier == t).sum()) for t in stats["by_tier"]},
         "unmatched": {"no_epc_in_postcode": stats["no_epc_in_postcode"], "ambiguous": stats["ambiguous"],
-                      "no_address_fit": n - len(out) - stats["no_epc_in_postcode"] - stats["ambiguous"]},
+                      "home_not_in_book": not_in_book,
+                      "no_address_fit": n - sum(stats["by_tier"].values()) - stats["no_epc_in_postcode"] - stats["ambiguous"]},
         "with_pre_sale_epc": int(out.has_pre_sale_epc.sum()),
         "type_agreement_by_tier": {t: round(float(g.type_agrees.mean()), 4)
                                    for t, g in out[out.has_pre_sale_epc].groupby("match_tier")},
