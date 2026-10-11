@@ -33,7 +33,7 @@ All constants are in `config/synthetic.yaml`, each block with a `source`. The ca
 |---|---|---|
 | `config/need_calibration.yaml` | NEED 50k (2023) | Log-linear models of annual gas and electricity by type × floor-area band × age band × EPC band; **observed retrofit effects** (difference-in-differences, 2 years each side): loft −2.5% gas, cavity wall −10.2% gas, PV −12.4% electricity |
 | `config/degree_days.csv` | Met Office HadUK-Grid | Monthly HDD (base 15.5 °C, monthly-mean approximation) per LA |
-| `config/price_calibration.yaml` | Price Paid 2018–2021 | Median price by LA × type |
+| `config/price_calibration.yaml` | Price Paid 2018–2025 | Median price by LA × type |
 | `config/hpi_index.csv` | UK HPI Jul 2026 | Monthly index per LA |
 
 Consumption = the NEED model × hidden occupancy × behaviour × idiosyncratic noise (the NEED residual variance split across these), times smart-control and retrofit multipliers. This is then spread over months with real HDD. Electric heating converts gas-equivalent heat demand via efficiency (heat pump SCOP 2.6–3.3). Solar reduces grid import through a self-consumption share. Because the bills are built from the NEED-fitted model, **never report energy-model accuracy on them**: headline accuracy comes from the held-out NEED test set (ARCHITECTURE §3.5). SAP points come from a separate synthetic rule.
