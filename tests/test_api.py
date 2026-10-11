@@ -63,3 +63,42 @@ def test_grounding_verifier() -> None:
     data2 = res2.json()
     assert data2["grounded"] is False
     assert len(data2["unsupported_claims"]) > 0
+
+
+def test_root_endpoint() -> None:
+    res = client.get("/")
+    assert res.status_code == 200
+    data = res.json()
+    assert "Lloyds" in data["service"]
+    assert "endpoints" in data
+
+
+def test_real_property_and_portfolio() -> None:
+    # Test looking up real property from 542k parquet
+    res = client.get("/property/Ede8ce7401b")
+    assert res.status_code == 200
+    assert res.json()["property_id"] == "Ede8ce7401b"
+
+    # Test real portfolio
+    port_res = client.get("/portfolio?sample=25&source=real")
+    assert port_res.status_code == 200
+    assert port_res.json()["total_properties"] == 25
+
+
+def test_assess_and_chat_endpoints() -> None:
+    # 1. Direct assessment with custom property payload
+    prop_data = client.get("/property/P00001").json()
+    assess_res = client.post("/assess", json=prop_data)
+    assert assess_res.status_code == 200
+    rep = assess_res.json()
+    assert "score" in rep
+    assert "recommendations" in rep
+
+    # 2. Chat with AI advisor
+    chat_res = client.post("/chat", json={"property_id": "P00001", "query": "What are my recommended retrofits?"})
+    assert chat_res.status_code == 200
+    chat_data = chat_res.json()
+    assert "response" in chat_data
+    assert chat_data["grounded"] is True
+    assert "audit" in chat_data
+

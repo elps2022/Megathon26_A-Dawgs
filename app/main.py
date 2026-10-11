@@ -7,6 +7,7 @@ Multi-view interactive application:
 """
 
 from pathlib import Path
+import html
 import json
 import pandas as pd
 import streamlit as st
@@ -15,7 +16,8 @@ import streamlit.components.v1 as components
 from greenhome.engine.portfolio import build_portfolio
 from greenhome.engine.report import build_report
 from greenhome.engine.savings import apply_retrofits_to_property, build_home_elements
-from greenhome.llm.grounding import extract_numbers_from_text, verify_grounding
+from greenhome.llm.client import LLMAdvisor, generate_rule_fallback
+from greenhome.llm.grounding import GroundingResult, extract_numbers_from_text, verify_grounding
 from greenhome.memory.store import CustomerMemoryStore
 from greenhome.schema import Property, PropertyReport
 
@@ -40,6 +42,162 @@ st.markdown(
       font-family: 'JetBrains Mono', monospace !important;
     }
 
+    /* ═══════════════════════════════════════════════════════════════════
+       SHADCN DUAL COLOR SCHEME ARCHITECTURE
+       Light & Dark palettes defined in :root.
+       Active tokens bind to light or dark opposites.
+       Toggleable via single variable or class / data-theme attribute.
+       ═══════════════════════════════════════════════════════════════════ */
+    :root {
+      color-scheme: light dark;
+
+      /* ── Light Mode Palette (Bright/Clean Backgrounds, Deep Slate Text) ── */
+      --light-card-bg: #ffffff;
+      --light-card-border: #e2e8f0;
+      --light-card-hover-border: #cbd5e1;
+      --light-card-header-border: #f1f5f9;
+      --light-subcard-bg: #f8fafc;
+      --light-subcard-border: #e2e8f0;
+      --light-text-primary: #0f172a;
+      --light-text-sub: #334155;
+      --light-text-muted: #64748b;
+      --light-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+      --light-shadow-hover: 0 4px 10px -2px rgba(0, 0, 0, 0.07);
+      --light-cashflow-grad: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%);
+      --light-badge-slate-bg: rgba(100, 116, 139, 0.12);
+      --light-badge-slate-text: #334155;
+      --light-badge-shield-bg: #ecfdf5;
+      --light-badge-shield-text: #065f46;
+      --light-badge-shield-border: #6ee7b7;
+
+      /* ── Dark Mode Palette (Deep Slate/Navy Backgrounds, Crisp Bright Text) ── */
+      --dark-card-bg: #1e293b;
+      --dark-card-border: rgba(255, 255, 255, 0.12);
+      --dark-card-hover-border: rgba(255, 255, 255, 0.28);
+      --dark-card-header-border: rgba(255, 255, 255, 0.08);
+      --dark-subcard-bg: rgba(15, 23, 42, 0.65);
+      --dark-subcard-border: rgba(255, 255, 255, 0.1);
+      --dark-text-primary: #f8fafc;
+      --dark-text-sub: #cbd5e1;
+      --dark-text-muted: #94a3b8;
+      --dark-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.35);
+      --dark-shadow-hover: 0 6px 14px 0 rgba(0, 0, 0, 0.45);
+      --dark-cashflow-grad: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, #1e293b 100%);
+      --dark-badge-slate-bg: rgba(148, 163, 184, 0.16);
+      --dark-badge-slate-text: #cbd5e1;
+      --dark-badge-shield-bg: rgba(6, 95, 70, 0.35);
+      --dark-badge-shield-text: #6ee7b7;
+      --dark-badge-shield-border: rgba(110, 231, 183, 0.4);
+
+      /* ── Active Theme Tokens (Default: Light Mode) ── */
+      --card-bg: var(--light-card-bg);
+      --card-border: var(--light-card-border);
+      --card-hover-border: var(--light-card-hover-border);
+      --card-header-border: var(--light-card-header-border);
+      --subcard-bg: var(--light-subcard-bg);
+      --subcard-border: var(--light-subcard-border);
+      --text-primary: var(--light-text-primary);
+      --text-sub: var(--light-text-sub);
+      --text-muted: var(--light-text-muted);
+      --card-shadow: var(--light-shadow);
+      --card-shadow-hover: var(--light-shadow-hover);
+      --cashflow-grad: var(--light-cashflow-grad);
+      --badge-slate-bg: var(--light-badge-slate-bg);
+      --badge-slate-text: var(--light-badge-slate-text);
+      --badge-shield-bg: var(--light-badge-shield-bg);
+      --badge-shield-text: var(--light-badge-shield-text);
+      --badge-shield-border: var(--light-badge-shield-border);
+
+      /* Aliases for backwards compatibility */
+      --shadcn-card-bg: var(--card-bg);
+      --shadcn-card-border: var(--card-border);
+      --shadcn-card-hover-border: var(--card-hover-border);
+      --shadcn-card-header-border: var(--card-header-border);
+      --shadcn-subcard-bg: var(--subcard-bg);
+      --shadcn-subcard-border: var(--subcard-border);
+      --shadcn-card-text: var(--text-primary);
+      --shadcn-card-text-sub: var(--text-sub);
+      --shadcn-card-text-muted: var(--text-muted);
+      --shadcn-card-shadow: var(--card-shadow);
+      --shadcn-card-shadow-hover: var(--card-shadow-hover);
+      --shadcn-cashflow-grad: var(--cashflow-grad);
+    }
+
+    /* Media query dark mode switch */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --card-bg: var(--dark-card-bg);
+        --card-border: var(--dark-card-border);
+        --card-hover-border: var(--dark-card-hover-border);
+        --card-header-border: var(--dark-card-header-border);
+        --subcard-bg: var(--dark-subcard-bg);
+        --subcard-border: var(--dark-subcard-border);
+        --text-primary: var(--dark-text-primary);
+        --text-sub: var(--dark-text-sub);
+        --text-muted: var(--dark-text-muted);
+        --card-shadow: var(--dark-shadow);
+        --card-shadow-hover: var(--dark-shadow-hover);
+        --cashflow-grad: var(--dark-cashflow-grad);
+        --badge-slate-bg: var(--dark-badge-slate-bg);
+        --badge-slate-text: var(--dark-badge-slate-text);
+        --badge-shield-bg: var(--dark-badge-shield-bg);
+        --badge-shield-text: var(--dark-badge-shield-text);
+        --badge-shield-border: var(--dark-badge-shield-border);
+      }
+    }
+
+    /* Explicit Dark Theme selector */
+    [data-theme="dark"],
+    [data-base-theme="dark"],
+    .dark,
+    .stApp[data-theme="dark"],
+    .stApp[data-test-theme="dark"],
+    [data-testid="stAppViewContainer"][data-theme="dark"] {
+      --card-bg: var(--dark-card-bg) !important;
+      --card-border: var(--dark-card-border) !important;
+      --card-hover-border: var(--dark-card-hover-border) !important;
+      --card-header-border: var(--dark-card-header-border) !important;
+      --subcard-bg: var(--dark-subcard-bg) !important;
+      --subcard-border: var(--dark-subcard-border) !important;
+      --text-primary: var(--dark-text-primary) !important;
+      --text-sub: var(--dark-text-sub) !important;
+      --text-muted: var(--dark-text-muted) !important;
+      --card-shadow: var(--dark-shadow) !important;
+      --card-shadow-hover: var(--dark-shadow-hover) !important;
+      --cashflow-grad: var(--dark-cashflow-grad) !important;
+      --badge-slate-bg: var(--dark-badge-slate-bg) !important;
+      --badge-slate-text: var(--dark-badge-slate-text) !important;
+      --badge-shield-bg: var(--dark-badge-shield-bg) !important;
+      --badge-shield-text: var(--dark-badge-shield-text) !important;
+      --badge-shield-border: var(--dark-badge-shield-border) !important;
+    }
+
+    /* Explicit Light Theme selector */
+    [data-theme="light"],
+    [data-base-theme="light"],
+    .light,
+    .stApp[data-theme="light"],
+    .stApp[data-test-theme="light"],
+    [data-testid="stAppViewContainer"][data-theme="light"] {
+      --card-bg: var(--light-card-bg) !important;
+      --card-border: var(--light-card-border) !important;
+      --card-hover-border: var(--light-card-hover-border) !important;
+      --card-header-border: var(--light-card-header-border) !important;
+      --subcard-bg: var(--light-subcard-bg) !important;
+      --subcard-border: var(--light-subcard-border) !important;
+      --text-primary: var(--light-text-primary) !important;
+      --text-sub: var(--light-text-sub) !important;
+      --text-muted: var(--light-text-muted) !important;
+      --card-shadow: var(--light-shadow) !important;
+      --card-shadow-hover: var(--light-shadow-hover) !important;
+      --cashflow-grad: var(--light-cashflow-grad) !important;
+      --badge-slate-bg: var(--light-badge-slate-bg) !important;
+      --badge-slate-text: var(--light-badge-slate-text) !important;
+      --badge-shield-bg: var(--light-badge-shield-bg) !important;
+      --badge-shield-text: var(--light-badge-shield-text) !important;
+      --badge-shield-border: var(--light-badge-shield-border) !important;
+    }
+
     /* Container respects Streamlit native theme background */
     .main, .block-container {
       background: transparent !important;
@@ -61,70 +219,169 @@ st.markdown(
     }
 
     .badge-shield {
-      background: #ecfdf5 !important;
-      color: #065f46 !important;
-      border: 1px solid #6ee7b7 !important;
+      background: var(--badge-shield-bg) !important;
+      color: var(--badge-shield-text) !important;
+      border: 1px solid var(--badge-shield-border) !important;
       font-weight: 700 !important;
     }
 
-    .sidebar-brand-name {
+    /* Permanent Lloyds Green Gradient for Sidebar (Invariant across light/dark modes) */
+    section[data-testid="stSidebar"],
+    [data-testid="stSidebar"],
+    [data-testid="stSidebar"] > div:first-child,
+    [data-testid="stSidebarContent"],
+    [data-testid="stSidebarUserContent"] {
+      background: linear-gradient(180deg, #004d38 0%, #006a4e 55%, #008764 100%) !important;
+      color: #ffffff !important;
+    }
+
+    /* All text, headings and labels in sidebar strictly crisp and visible */
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] h4,
+    [data-testid="stSidebar"] h5,
+    [data-testid="stSidebar"] h6,
+    [data-testid="stSidebar"] .stSubheader,
+    [data-testid="stSidebar"] [data-testid="stHeadingWithActionElements"] {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.2px;
+    }
+
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] b,
+    [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] label {
+      color: #ffffff !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-brand-name {
       font-weight: 800;
       font-size: 18px;
       letter-spacing: -0.4px;
       line-height: 1.2;
-      color: inherit !important;
+      color: #ffffff !important;
     }
 
-    [data-testid="stSidebar"] .sidebar-brand-name {
-      color: var(--text-color, #fafafa) !important;
+    [data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+    [data-testid="stSidebar"] .stCaption,
+    [data-testid="stSidebar"] small {
+      color: #a7f3d0 !important;
+      opacity: 0.95 !important;
     }
 
-    /* Metric Cards - Reverted to clean white cards as before */
+    /* Radio buttons in sidebar */
+    [data-testid="stSidebar"] [data-testid="stRadio"] label {
+      color: #ffffff !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] label {
+      background: rgba(255, 255, 255, 0.1) !important;
+      padding: 6px 12px !important;
+      border-radius: 8px !important;
+      border: 1px solid rgba(255, 255, 255, 0.16) !important;
+      color: #ffffff !important;
+      margin-bottom: 4px !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stRadio"] div[role="radiogroup"] label:hover {
+      background: rgba(255, 255, 255, 0.18) !important;
+      border-color: rgba(255, 255, 255, 0.35) !important;
+    }
+
+    /* Checkboxes in sidebar */
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label {
+      background: rgba(255, 255, 255, 0.1) !important;
+      padding: 7px 12px !important;
+      border-radius: 8px !important;
+      border: 1px solid rgba(255, 255, 255, 0.16) !important;
+      color: #ffffff !important;
+      margin-bottom: 6px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label:hover {
+      background: rgba(255, 255, 255, 0.18) !important;
+      border-color: #34d399 !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label span {
+      color: #ffffff !important;
+      font-weight: 500 !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] [data-baseweb="checkbox"] span {
+      border-color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    /* Divider in sidebar */
+    [data-testid="stSidebar"] hr {
+      border-color: rgba(255, 255, 255, 0.22) !important;
+      margin: 16px 0 !important;
+    }
+
+    /* Collapse icon / button in sidebar */
+    [data-testid="stSidebarCollapseButton"] button,
+    [data-testid="stSidebarCollapseButton"] button svg {
+      color: #ffffff !important;
+      fill: #ffffff !important;
+    }
+
+    /* Metric Cards - Shadcn Styled with Theme Adaptation */
     [data-testid="stMetric"] {
-      background: #ffffff !important;
-      border: 1px solid #e2e8f0 !important;
+      background: var(--card-bg) !important;
+      border: 1px solid var(--card-border) !important;
       border-radius: 12px !important;
       padding: 14px 18px !important;
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+      box-shadow: var(--card-shadow) !important;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     [data-testid="stMetric"]:hover {
-      border-color: #cbd5e1 !important;
-      box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.07) !important;
+      border-color: var(--card-hover-border) !important;
+      box-shadow: var(--card-shadow-hover) !important;
       transform: translateY(-1px) !important;
     }
 
-    [data-testid="stMetricLabel"] {
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] *,
+    [data-testid="stMetricLabel"] p {
       font-size: 12px !important;
       font-weight: 600 !important;
-      color: #64748b !important;
+      color: var(--text-muted) !important;
       text-transform: uppercase !important;
       letter-spacing: 0.5px !important;
     }
 
-    [data-testid="stMetricValue"] {
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] *,
+    [data-testid="stMetricValue"] div {
       font-size: 25px !important;
       font-weight: 800 !important;
-      color: #0f172a !important;
+      color: var(--text-primary) !important;
       letter-spacing: -0.5px !important;
     }
 
     /* Shadcn Cards */
     .shadcn-card {
-      background: #ffffff !important;
-      border: 1px solid #e2e8f0 !important;
+      background: var(--card-bg) !important;
+      border: 1px solid var(--card-border) !important;
       border-radius: 12px;
       padding: 18px 20px;
       margin-bottom: 14px;
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+      box-shadow: var(--card-shadow);
       transition: all 0.2s ease;
-      color: #0f172a !important;
+      color: var(--text-primary) !important;
     }
 
     .shadcn-card:hover {
-      border-color: #cbd5e1 !important;
-      box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.06);
+      border-color: var(--card-hover-border) !important;
+      box-shadow: var(--card-shadow-hover);
     }
 
     .shadcn-card-header {
@@ -133,18 +390,33 @@ st.markdown(
       align-items: center;
       margin-bottom: 10px;
       padding-bottom: 10px;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--card-header-border);
+    }
+
+    .shadcn-subcard {
+      background: var(--subcard-bg) !important;
+      border: 1px solid var(--subcard-border) !important;
+      border-radius: 8px;
     }
 
     .prop-summary-box {
-      background: #ffffff !important;
-      border: 1px solid #e2e8f0 !important;
+      background: var(--card-bg) !important;
+      border: 1px solid var(--card-border) !important;
       border-radius: 10px !important;
       padding: 8px 14px !important;
       margin-top: 5px !important;
       display: flex !important;
       justify-content: space-between !important;
       align-items: center !important;
+      color: var(--text-primary) !important;
+    }
+
+    .prop-label {
+      color: var(--text-muted) !important;
+    }
+
+    .prop-val {
+      color: var(--text-primary) !important;
     }
 
     /* Badges & Pills - High Contrast in both Light and Dark Themes */
@@ -162,11 +434,11 @@ st.markdown(
     .badge-amber { background: rgba(245, 158, 11, 0.16); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
     .badge-red { background: rgba(239, 68, 68, 0.16); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
     .badge-blue { background: rgba(59, 130, 246, 0.16); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.4); }
-    .badge-slate { background: rgba(148, 163, 184, 0.16); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); }
+    .badge-slate { background: var(--badge-slate-bg) !important; color: var(--badge-slate-text) !important; border: 1px solid var(--card-border) !important; }
 
     .pill-high { background: rgba(16, 185, 129, 0.18); color: #10b981; font-weight: 700; padding: 4px 10px; border-radius: 6px; font-size: 11px; border: 1px solid rgba(16, 185, 129, 0.4); }
     .pill-med { background: rgba(245, 158, 11, 0.18); color: #f59e0b; font-weight: 700; padding: 4px 10px; border-radius: 6px; font-size: 11px; border: 1px solid rgba(245, 158, 11, 0.4); }
-    .pill-low { background: rgba(148, 163, 184, 0.18); color: #94a3b8; font-weight: 700; padding: 4px 10px; border-radius: 6px; font-size: 11px; border: 1px solid rgba(148, 163, 184, 0.4); }
+    .pill-low { background: var(--badge-slate-bg) !important; color: var(--badge-slate-text) !important; font-weight: 700; padding: 4px 10px; border-radius: 6px; font-size: 11px; border: 1px solid var(--card-border) !important; }
 
     /* Progress bar */
     .stProgress > div > div > div > div {
@@ -182,10 +454,10 @@ st.markdown(
     /* Tabs - Clean contrast in Dark and Light mode */
     .stTabs [data-baseweb="tab-list"] {
       gap: 6px;
-      background-color: var(--secondary-background-color, rgba(128, 128, 128, 0.12));
+      background-color: var(--subcard-bg) !important;
       padding: 5px;
       border-radius: 10px;
-      border: 1px solid rgba(128, 128, 128, 0.2);
+      border: 1px solid var(--card-border) !important;
       margin-bottom: 16px;
     }
 
@@ -195,8 +467,8 @@ st.markdown(
       padding: 0 16px;
       font-weight: 600;
       font-size: 13px;
-      color: var(--text-color, #64748b) !important;
-      opacity: 0.75;
+      color: var(--text-muted) !important;
+      opacity: 0.85;
       border: none !important;
     }
 
@@ -209,13 +481,13 @@ st.markdown(
 
     /* Chat bubble styling */
     .chat-bubble-assistant {
-      background: var(--secondary-background-color, #ffffff);
-      border: 1px solid rgba(128, 128, 128, 0.22);
+      background: var(--card-bg) !important;
+      border: 1px solid var(--card-border) !important;
       border-radius: 12px 12px 12px 2px;
       padding: 16px 20px;
-      color: var(--text-color, #0f172a);
+      color: var(--text-primary) !important;
       margin-bottom: 14px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-shadow);
       line-height: 1.55;
     }
 
@@ -231,6 +503,74 @@ st.markdown(
       font-size: 11px;
       font-weight: 700;
       margin-top: 10px;
+    }
+
+    /* Hover-only Verified Tag Symbol & Tooltip */
+    .verified-symbol-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .verified-icon-symbol {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1.5px solid rgba(16, 185, 129, 0.5);
+      color: #10b981;
+      font-size: 12px;
+      font-weight: 800;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .verified-symbol-wrapper:hover .verified-icon-symbol {
+      background: #10b981;
+      color: #ffffff;
+      transform: scale(1.1);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.45);
+    }
+
+    .verified-hover-tooltip {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
+      background: #064e3b;
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      transform: translateY(4px);
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .verified-hover-tooltip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      right: 8px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #064e3b transparent transparent transparent;
+    }
+
+    .verified-symbol-wrapper:hover .verified-hover-tooltip {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
     }
     </style>
     """,
@@ -250,15 +590,16 @@ def load_datasets():
 df_properties, df_loans = load_datasets()
 DEFAULT_FACTORS_YEAR = pd.read_csv(Path(__file__).resolve().parents[1] / "config" / "emission_factors.csv")["year"].iloc[0]
 memory_store = CustomerMemoryStore()
+llm_advisor = LLMAdvisor()
 
 # Sidebar Navigation with reliable vector branding
 st.sidebar.markdown(
     """
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 4px 0;">
-      <div style="background: linear-gradient(135deg, #004d38 0%, #006a4e 100%); color: white; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0, 106, 78, 0.25);">🏛️</div>
+      <div style="background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); color: white; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">🏛️</div>
       <div>
         <div class="sidebar-brand-name">Lloyds Bank</div>
-        <div style="font-size: 11px; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;">Green Intelligence</div>
+        <div style="font-size: 11px; color: #a7f3d0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;">Green Intelligence</div>
       </div>
     </div>
     """,
@@ -268,6 +609,69 @@ view_mode = st.sidebar.radio(
     "Select Portal View",
     ["Customer Experience", "Lender Portfolio (Bank View)", "AI Grounding Inspector"],
 )
+
+theme_mode = st.sidebar.radio(
+    "Theme Mode",
+    ["Auto (System)", "Light Mode", "Dark Mode"],
+    horizontal=True,
+    index=0,
+    help="Switches active tokens between light and dark palettes.",
+)
+
+if theme_mode == "Dark Mode":
+    st.markdown(
+        """
+        <style>
+        :root, .stApp {
+          --card-bg: var(--dark-card-bg) !important;
+          --card-border: var(--dark-card-border) !important;
+          --card-hover-border: var(--dark-card-hover-border) !important;
+          --card-header-border: var(--dark-card-header-border) !important;
+          --subcard-bg: var(--dark-subcard-bg) !important;
+          --subcard-border: var(--dark-subcard-border) !important;
+          --text-primary: var(--dark-text-primary) !important;
+          --text-sub: var(--dark-text-sub) !important;
+          --text-muted: var(--dark-text-muted) !important;
+          --card-shadow: var(--dark-shadow) !important;
+          --card-shadow-hover: var(--dark-shadow-hover) !important;
+          --cashflow-grad: var(--dark-cashflow-grad) !important;
+          --badge-slate-bg: var(--dark-badge-slate-bg) !important;
+          --badge-slate-text: var(--dark-badge-slate-text) !important;
+          --badge-shield-bg: var(--dark-badge-shield-bg) !important;
+          --badge-shield-text: var(--dark-badge-shield-text) !important;
+          --badge-shield-border: var(--dark-badge-shield-border) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+elif theme_mode == "Light Mode":
+    st.markdown(
+        """
+        <style>
+        :root, .stApp {
+          --card-bg: var(--light-card-bg) !important;
+          --card-border: var(--light-card-border) !important;
+          --card-hover-border: var(--light-card-hover-border) !important;
+          --card-header-border: var(--light-card-header-border) !important;
+          --subcard-bg: var(--light-subcard-bg) !important;
+          --subcard-border: var(--light-subcard-border) !important;
+          --text-primary: var(--light-text-primary) !important;
+          --text-sub: var(--light-text-sub) !important;
+          --text-muted: var(--light-text-muted) !important;
+          --card-shadow: var(--light-shadow) !important;
+          --card-shadow-hover: var(--light-shadow-hover) !important;
+          --cashflow-grad: var(--light-cashflow-grad) !important;
+          --badge-slate-bg: var(--light-badge-slate-bg) !important;
+          --badge-slate-text: var(--light-badge-slate-text) !important;
+          --badge-shield-bg: var(--light-badge-shield-bg) !important;
+          --badge-shield-text: var(--light-badge-shield-text) !important;
+          --badge-shield-border: var(--light-badge-shield-border) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Megathon X | Lloyds PS2 | Team 73")
@@ -1022,57 +1426,14 @@ def render_thermal_house_svg(elements: list, score: int):
     st.markdown(svg, unsafe_allow_html=True)
 
 
-def generate_grounded_advisor_response(query: str, report: PropertyReport, p: Property) -> str:
-    """Generate deterministic, grounded explanation for customer queries."""
-    q = query.lower()
-    score = report.score.total
-    cls = report.score.classification
-
-    if "epc" in q or "band c" in q or "reach" in q or "upgrade" in q:
-        top_recs = [r.retrofit.replace("_", " ").title() for r in report.recommendations[:2]]
-        recs_str = " and ".join(top_recs) if top_recs else "envelope insulation"
-        return (
-            f"Your home currently has a Green Home Score of {score}/100 ({cls}). "
-            f"To improve towards Band C standards, the engine recommends prioritising {recs_str}. "
-            + (f"This package can save up to {report.package_saving.total_kwh:,.0f} kWh/yr with an annual carbon cut of {report.package_carbon_kg:,.0f} kg CO2e."
-               if report.package_saving else "Savings estimates require meter data.")
-        )
-    elif "grant" in q or "bus" in q or "subsidy" in q or "cashback" in q or "help" in q:
-        has_hp = any(r.retrofit == "heat_pump" for r in report.recommendations)
-        hp_note = " You are eligible for the £7,500 Boiler Upgrade Scheme (BUS) grant for heat pump installation." if has_hp else ""
-        return (
-            f"Based on your score of {score}/100 ({cls}), you may qualify for the Great British Insulation Scheme (GBIS) or ECO4.{hp_note} "
-            f"Lloyds Bank also provides up to £1,000 cashback via the Eco Home Reward scheme on qualifying retrofits."
-        )
-    elif "saving" in q or "bill" in q or "cost" in q or "energy" in q:
-        if report.package_saving:
-            cost_min = sum(r.indicative_cost[0] for r in report.recommendations) if report.recommendations else 0.0
-            cost_max = sum(r.indicative_cost[1] for r in report.recommendations) if report.recommendations else 0.0
-            return (
-                f"Implementing the recommended retrofit package could yield estimated fuel savings of "
-                f"{report.package_saving.total_kwh:,.0f} kWh per year ({report.package_saving.gas_kwh:,.0f} kWh gas, {report.package_saving.elec_kwh:,.0f} kWh electricity). "
-                f"The indicative installation cost range is £{cost_min:,.0f} – £{cost_max:,.0f}. "
-                + (f"Indicative property value impact is £{report.value['low']:,.0f} – £{report.value['high']:,.0f}."
-                   if report.value.get("status") != "unavailable" else "Valuation impact is unavailable.")
-            )
-        else:
-            return f"Your current Green Home Score is {score}/100 ({cls}). Detailed energy savings require recorded billing meters."
-    elif "carbon" in q or "emission" in q or "co2" in q:
-        if report.package_carbon_kg:
-            return (
-                f"Your recommended retrofit package can eliminate approximately {report.package_carbon_kg:,.0f} kg CO2e per year "
-                f"({report.package_carbon_kg / 1000.0:.2f} tonnes). This helps reduce your home's operational carbon footprint significantly."
-            )
-        else:
-            return f"Your home score is {score}/100 ({cls}). Carbon reduction figures are calculated upon selecting feasible retrofits."
-    else:
-        return (
-            f"Your home received a Green Home Score of {score}/100 ({cls}). "
-            + (f"By completing recommended retrofits, you could save {report.package_saving.total_kwh:,.0f} kWh per year and reduce carbon by {report.package_carbon_kg:,.0f} kg CO2e. "
-               if report.package_saving is not None else "Energy savings are not available for this property. ")
-            + (f"Indicative value uplift ranges between £{report.value['low']:,.0f} and £{report.value['high']:,.0f}."
-               if report.value.get("status") != "unavailable" else "The property-value impact is unavailable (no current valuation).")
-        )
+def generate_grounded_advisor_response(
+    query: str,
+    report: PropertyReport,
+    p: Property,
+    history: list[dict[str, str]] | None = None,
+) -> tuple[str, GroundingResult, str]:
+    """Generate grounded explanation using LLMAdvisor with deterministic grounding shield."""
+    return llm_advisor.query(query, report, p, history=history)
 
 
 # Top App Header Banner
@@ -1126,14 +1487,14 @@ if view_mode == "Customer Experience":
         epc_color = "#059669" if p.energy_rating in ["A", "B", "C"] else ("#f59e0b" if p.energy_rating == "D" else "#ef4444")
         st.markdown(
             f"""
-            <div class="prop-summary-box" style="border-radius: 10px; padding: 8px 14px; margin-top: 5px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="prop-summary-box">
               <div>
-                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b;">EPC RATING</div>
+                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--shadcn-card-text-muted, #64748b);">EPC RATING</div>
                 <div style="font-size: 16px; font-weight: 800; color: {epc_color};">Band {p.energy_rating or 'N/A'} ({p.sap_score or '—'} SAP)</div>
               </div>
               <div style="text-align: right;">
-                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b;">TYPE & FUEL</div>
-                <div class="prop-val" style="font-size: 12px; font-weight: 700; color: #0f172a;">{p.property_type.title()} • {p.heating.replace('_', ' ').title()}</div>
+                <div class="prop-label" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--shadcn-card-text-muted, #64748b);">TYPE & FUEL</div>
+                <div class="prop-val" style="font-size: 12px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{p.property_type.title()} • {p.heating.replace('_', ' ').title()}</div>
               </div>
             </div>
             """,
@@ -1290,30 +1651,30 @@ if view_mode == "Customer Experience":
                       <div class="shadcn-card-header">
                         <div style="display: flex; align-items: center; gap: 8px;">
                           <span style="font-size: 18px;">{icon}</span>
-                          <span style="font-size: 16px; font-weight: 700; color: #0f172a;">{r.retrofit.replace('_', ' ').title()}</span>
+                          <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.retrofit.replace('_', ' ').title()}</span>
                           <span class="{badge_class}">{r.suitability} Suitability</span>
                         </div>
                         <div style="font-size: 12px; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 8px; border-radius: 4px;">
                           Priority #{idx + 1}
                         </div>
                       </div>
-                      <p style="color: #475569; font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
-                      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px;">
+                      <p style="color: var(--shadcn-card-text-muted, #64748b); font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
+                      <div class="shadcn-subcard" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: var(--shadcn-subcard-bg, #f8fafc); border: 1px solid var(--shadcn-subcard-border, #e2e8f0); padding: 10px 14px; border-radius: 8px;">
                         <div>
-                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">ELEC SAVING</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #0f172a;">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: #64748b;">kWh/yr</span></div>
+                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">ELEC SAVING</div>
+                          <div style="font-size: 14px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
                         </div>
                         <div>
-                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">GAS SAVING</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #0f172a;">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: #64748b;">kWh/yr</span></div>
+                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">GAS SAVING</div>
+                          <div style="font-size: 14px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
                         </div>
                         <div>
-                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">CARBON CUT</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 11px; font-weight: normal; color: #64748b;">kg CO₂e</span></div>
+                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">CARBON CUT</div>
+                          <div style="font-size: 14px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 11px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kg CO₂e</span></div>
                         </div>
                         <div>
-                          <div style="font-size: 11px; color: #64748b; font-weight: 600;">INDICATIVE COST</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #0f172a;">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
+                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">INDICATIVE COST</div>
+                          <div style="font-size: 14px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
                         </div>
                       </div>
                     </div>
@@ -1336,18 +1697,18 @@ if view_mode == "Customer Experience":
                 """
                 <div class="shadcn-card">
                   <div class="shadcn-card-header">
-                    <span style="font-size: 16px; font-weight: 700; color: #0f172a;">🇬🇧 UK Government Grant Programs</span>
+                    <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">🇬🇧 UK Government Grant Programs</span>
                     <span class="badge badge-green">Verified Eligible</span>
                   </div>
-                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: #334155; line-height: 1.55;">
+                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: var(--shadcn-card-text-sub, #334155); line-height: 1.55;">
                     <div>
-                      <b style="color: #0f172a;">• Boiler Upgrade Scheme (BUS):</b> <b style="color: #059669;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Boiler Upgrade Scheme (BUS):</b> <b style="color: #059669;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.
                     </div>
                     <div>
-                      <b style="color: #0f172a;">• ECO4 & Great British Insulation Scheme (GBIS):</b> Free or heavily subsidized cavity/loft insulation for homes in EPC Bands D–G.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• ECO4 & Great British Insulation Scheme (GBIS):</b> Free or heavily subsidized cavity/loft insulation for homes in EPC Bands D–G.
                     </div>
                     <div>
-                      <b style="color: #0f172a;">• 0% VAT on Energy Saving Materials:</b> Government zero-rate VAT on heat pumps, solar PV, and insulation installations through 2027.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• 0% VAT on Energy Saving Materials:</b> Government zero-rate VAT on heat pumps, solar PV, and insulation installations through 2027.
                     </div>
                   </div>
                 </div>
@@ -1360,18 +1721,18 @@ if view_mode == "Customer Experience":
                 """
                 <div class="shadcn-card">
                   <div class="shadcn-card-header">
-                    <span style="font-size: 16px; font-weight: 700; color: #0f172a;">🏦 Lloyds Eco Home Advantage</span>
+                    <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">🏦 Lloyds Eco Home Advantage</span>
                     <span class="badge badge-blue">Preferential Terms</span>
                   </div>
-                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: #334155; line-height: 1.55;">
+                  <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: var(--shadcn-card-text-sub, #334155); line-height: 1.55;">
                     <div>
-                      <b style="color: #0f172a;">• £1,000 Cashback:</b> Cash reward paid directly into your account on qualifying clean energy improvements.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• £1,000 Cashback:</b> Cash reward paid directly into your account on qualifying clean energy improvements.
                     </div>
                     <div>
-                      <b style="color: #0f172a;">• Green Additional Borrowing:</b> Preferential 0% / low-interest borrowing rate for retrofit capital expenditures.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Green Additional Borrowing:</b> Preferential 0% / low-interest borrowing rate for retrofit capital expenditures.
                     </div>
                     <div>
-                      <b style="color: #0f172a;">• Mortgage Rate Discount:</b> 0.10% – 0.25% interest discount upon reaching EPC Band C certification.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Mortgage Rate Discount:</b> 0.10% – 0.25% interest discount upon reaching EPC Band C certification.
                     </div>
                   </div>
                 </div>
@@ -1381,11 +1742,11 @@ if view_mode == "Customer Experience":
 
         st.markdown(
             """
-            <div class="shadcn-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%); border: 1px solid rgba(16, 185, 129, 0.35);">
+            <div class="shadcn-card" style="background: var(--shadcn-cashflow-grad, linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%)); border: 1px solid rgba(16, 185, 129, 0.35);">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                   <div style="font-size: 15px; font-weight: 700; color: #10b981;">Net Monthly Household Cashflow Impact</div>
-                  <div style="font-size: 13px; color: #475569; margin-top: 2px;">Estimated monthly fuel savings exceed green loan borrowing costs.</div>
+                  <div style="font-size: 13px; color: var(--shadcn-card-text-muted, #64748b); margin-top: 2px;">Estimated monthly fuel savings exceed green loan borrowing costs.</div>
                 </div>
                 <div style="text-align: right;">
                   <span style="font-size: 24px; font-weight: 800; color: #10b981;">+£18 / mo</span>
@@ -1399,50 +1760,121 @@ if view_mode == "Customer Experience":
 
     with tab_advisor:
         st.markdown("### Lloyds AI Green Advisor")
+
+        backend_title = f"{llm_advisor.provider.title()} ({llm_advisor.model})" if llm_advisor.provider != "offline" else "Deterministic Rule Engine (Offline)"
         st.markdown(
-            """
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-              <span class="chat-shield-badge">🛡️ 100% Deterministic Grounding Shield Active</span>
-              <span style="font-size: 12px; color: #64748b;">Every numerical claim is verified against single-source-of-truth engine JSON.</span>
+            f"""
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="chat-shield-badge">🛡️ 100% Deterministic Grounding Shield Active</span>
+                <span style="font-size: 12px; color: var(--shadcn-card-text-muted, #64748b);">Every claim is cross-checked against PropertyReport JSON.</span>
+              </div>
+              <span class="badge badge-slate" style="font-size: 11px; padding: 4px 10px;">Backend: {backend_title}</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        col_q1, col_q2, col_q3 = st.columns(3)
-        if col_q1.button("💡 How do I reach EPC Band C?"):
-            st.session_state["chat_query"] = "How do I upgrade my home to reach EPC Band C?"
-        if col_q2.button("⚡ What are my fuel bill savings?"):
-            st.session_state["chat_query"] = "What are my total fuel bill and carbon savings?"
-        if col_q3.button("💰 Which grants can I claim?"):
-            st.session_state["chat_query"] = "Which government grants and subsidies can I claim?"
-
-        user_query = st.text_input(
-            "Ask a question about your home's decarbonisation plan:",
-            value=st.session_state.get("chat_query", "How do I upgrade my home to reach EPC Band C?"),
-        )
-
-        if user_query:
-            response_text = generate_grounded_advisor_response(user_query, report, p)
-            grounding_audit = verify_grounding(response_text, report)
-            audit_dict = grounding_audit.to_dict()
-
-            st.markdown(
-                f"""
-                <div class="chat-bubble-assistant">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-weight: 700; color: #10b981; font-size: 14px;">🏛️ Lloyds AI Advisor</span>
-                    <span class="badge badge-green">✓ Verified Grounded</span>
-                  </div>
-                  <div style="font-size: 14px; color: #0f172a; line-height: 1.6;">{response_text}</div>
-                  <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128, 128, 128, 0.16); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; color: #64748b;">Claims verified: {audit_dict['total_claims']} numeric values</span>
-                    <span style="font-size: 11px; color: #10b981; font-weight: 600;">Grounding Score: {audit_dict.get('grounding_score_pct', 100.0):.0f}%</span>
-                  </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+        chat_key = f"chat_history_{p.property_id}"
+        if chat_key not in st.session_state:
+            init_msg, init_audit, init_label = llm_advisor.query(
+                "Summarise my home's Green Home Score and priority retrofits.", report, p
             )
+            st.session_state[chat_key] = [
+                {
+                    "role": "assistant",
+                    "content": init_msg,
+                    "model": init_label,
+                    "audit": init_audit.to_dict(),
+                }
+            ]
+
+        # Preset suggestion chips + Clear button
+        c_p1, c_p2, c_p3, c_p4 = st.columns([1, 1, 1, 0.4])
+        query_to_submit = None
+        if c_p1.button("💡 Reach EPC Band C"):
+            query_to_submit = "How do I upgrade my home to reach EPC Band C?"
+        if c_p2.button("⚡ Fuel Bill Savings"):
+            query_to_submit = "What are my total fuel bill and carbon savings?"
+        if c_p3.button("💰 Grant Matching"):
+            query_to_submit = "Which government grants and subsidies can I claim?"
+        if c_p4.button("🗑️ Clear", help="Reset conversation"):
+            st.session_state[chat_key] = []
+            st.rerun()
+
+        # Render conversation history
+        for msg in st.session_state[chat_key]:
+            if msg["role"] == "user":
+                st.markdown(
+                    f"""
+                    <div style="display: flex; justify-content: flex-end; margin: 10px 0;">
+                      <div style="background: #006a4e; color: #ffffff; padding: 10px 16px; border-radius: 12px 12px 2px 12px; max-width: 80%; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        {html.escape(msg["content"])}
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                audit_data = msg.get("audit", {})
+                grounded_pct = audit_data.get("grounding_score_pct", 100.0)
+                verified_count = len(audit_data.get("verified_claims", []))
+                model_name = msg.get("model", "Lloyds Advisor")
+                st.markdown(
+                    f"""
+                    <div class="chat-bubble-assistant">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 700; color: #10b981; font-size: 13.5px;">🏛️ {html.escape(model_name)}</span>
+                        <div class="verified-symbol-wrapper">
+                          <span class="verified-icon-symbol">🛡️✓</span>
+                          <div class="verified-hover-tooltip">✓ {grounded_pct:.0f}% Verified Grounded</div>
+                        </div>
+                      </div>
+                      <div style="font-size: 14px; color: var(--shadcn-card-text, var(--text-color, #0f172a)); line-height: 1.6; white-space: pre-wrap;">{html.escape(msg["content"])}</div>
+                      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(128, 128, 128, 0.16); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b);">Claims verified: {verified_count} numeric values</span>
+                        <span style="font-size: 11px; color: #10b981; font-weight: 600;">Grounding Shield: ACTIVE</span>
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if audit_data.get("verified_claims"):
+                    with st.expander(f"🔍 Grounding Audit Details ({verified_count} verified numbers)", expanded=False):
+                        st.caption(f"Verified against PropertyReport JSON for {p.property_id}:")
+                        for claim in audit_data["verified_claims"]:
+                            st.markdown(f"- ✅ **Verified:** `{claim}`")
+                        if audit_data.get("unsupported_claims"):
+                            for unsupp in audit_data["unsupported_claims"]:
+                                st.markdown(f"- ⚠️ **Flagged / Blocked:** `{unsupp}`")
+
+        # Input form
+        with st.form("advisor_chat_form", clear_on_submit=True):
+            user_input = st.text_input(
+                "Ask a question about your home's decarbonisation plan:",
+                placeholder="e.g. Which insulation measure is best value, and what grants help?",
+            )
+            submit_btn = st.form_submit_button("Send Question", use_container_width=True)
+
+        if submit_btn and user_input.strip():
+            query_to_submit = user_input.strip()
+
+        if query_to_submit:
+            st.session_state[chat_key].append({"role": "user", "content": query_to_submit})
+            history_tuples = [
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state[chat_key][:-1]
+            ]
+            resp_text, audit, model_label = llm_advisor.query(
+                query_to_submit, report, p, history=history_tuples
+            )
+            st.session_state[chat_key].append({
+                "role": "assistant",
+                "content": resp_text,
+                "model": model_label,
+                "audit": audit.to_dict(),
+            })
+            st.rerun()
 
 
 elif view_mode == "Lender Portfolio (Bank View)":

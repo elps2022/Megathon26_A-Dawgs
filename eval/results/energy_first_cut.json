@@ -11,11 +11,11 @@
         "mae_kwh_sd": 29.6
       },
       "cell_median": {
-        "mae_kwh": 4241.04,
-        "mape_pct": 52.844,
-        "median_ape_pct": 30.936,
-        "r2_log": 0.2416,
-        "mae_kwh_sd": 17.2
+        "mae_kwh": 4195.82,
+        "mape_pct": 54.076,
+        "median_ape_pct": 30.586,
+        "r2_log": 0.2437,
+        "mae_kwh_sd": 29.8
       },
       "log_linear": {
         "mae_kwh": 4118.18,
@@ -40,10 +40,10 @@
         "r2_log": -0.0069
       },
       "cell_median": {
-        "mae_kwh": 4130.7,
-        "mape_pct": 50.44,
-        "median_ape_pct": 30.3,
-        "r2_log": 0.2611
+        "mae_kwh": 4068.9,
+        "mape_pct": 51.27,
+        "median_ape_pct": 29.75,
+        "r2_log": 0.2675
       },
       "log_linear": {
         "mae_kwh": 4028.7,
@@ -98,11 +98,11 @@
         "mae_kwh_sd": 26.9
       },
       "cell_median": {
-        "mae_kwh": 1587.42,
-        "mape_pct": 54.378,
-        "median_ape_pct": 38.4,
-        "r2_log": 0.0924,
-        "mae_kwh_sd": 25.4
+        "mae_kwh": 1589.58,
+        "mape_pct": 54.444,
+        "median_ape_pct": 38.428,
+        "r2_log": 0.0881,
+        "mae_kwh_sd": 25.5
       },
       "log_linear": {
         "mae_kwh": 1588.94,
@@ -127,10 +127,10 @@
         "r2_log": -0.0035
       },
       "cell_median": {
-        "mae_kwh": 1614.2,
-        "mape_pct": 54.33,
-        "median_ape_pct": 38.62,
-        "r2_log": 0.1063
+        "mae_kwh": 1621.9,
+        "mape_pct": 54.65,
+        "median_ape_pct": 38.89,
+        "r2_log": 0.0969
       },
       "log_linear": {
         "mae_kwh": 1617.6,
