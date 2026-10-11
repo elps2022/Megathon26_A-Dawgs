@@ -1,0 +1,415 @@
+{
+  "note": "post-test experiment: train 5-fold CV and val only; test untouched",
+  "gas": {
+    "n_train": 25732,
+    "n_val": 5514,
+    "val_share_with": {
+      "1yr": 0.9614,
+      "2yr": 0.9182,
+      "3yr": 0.907
+    },
+    "cv": {
+      "last_year": {
+        "mae_kwh": 2024.84,
+        "mape_pct": 26.006,
+        "median_ape_pct": 11.396,
+        "r2_log": 0.6519,
+        "within_20pct": 0.6987,
+        "within_30pct": 0.8151,
+        "mae_kwh_sd": 28.6
+      },
+      "last_year_x_trend": {
+        "mae_kwh": 2019.24,
+        "mape_pct": 26.446,
+        "median_ape_pct": 10.958,
+        "r2_log": 0.6543,
+        "within_20pct": 0.7012,
+        "within_30pct": 0.8093,
+        "mae_kwh_sd": 27.9
+      },
+      "change_1yr_shipped": {
+        "mae_kwh": 1971.74,
+        "mape_pct": 26.262,
+        "median_ape_pct": 10.92,
+        "r2_log": 0.678,
+        "within_20pct": 0.7065,
+        "within_30pct": 0.8132,
+        "mae_kwh_sd": 27.3
+      },
+      "mean_2yr_x_trend": {
+        "mae_kwh": 2069.86,
+        "mape_pct": 27.492,
+        "median_ape_pct": 11.702,
+        "r2_log": 0.6642,
+        "within_20pct": 0.6788,
+        "within_30pct": 0.792,
+        "mae_kwh_sd": 32.9
+      },
+      "change_2yr": {
+        "mae_kwh": 1945.52,
+        "mape_pct": 26.128,
+        "median_ape_pct": 10.656,
+        "r2_log": 0.6875,
+        "within_20pct": 0.7097,
+        "within_30pct": 0.8138,
+        "mae_kwh_sd": 27.5
+      },
+      "mean_3yr_x_trend": {
+        "mae_kwh": 2190.36,
+        "mape_pct": 28.914,
+        "median_ape_pct": 13.114,
+        "r2_log": 0.6515,
+        "within_20pct": 0.6493,
+        "within_30pct": 0.7725,
+        "mae_kwh_sd": 32.0
+      },
+      "change_3yr": {
+        "mae_kwh": 1939.62,
+        "mape_pct": 26.064,
+        "median_ape_pct": 10.658,
+        "r2_log": 0.6888,
+        "within_20pct": 0.7109,
+        "within_30pct": 0.8152,
+        "mae_kwh_sd": 24.1
+      }
+    },
+    "val": {
+      "last_year": {
+        "mae_kwh": 1975.2,
+        "mape_pct": 23.98,
+        "median_ape_pct": 11.11,
+        "r2_log": 0.6837,
+        "within_20pct": 0.7053,
+        "within_30pct": 0.8188
+      },
+      "last_year_x_trend": {
+        "mae_kwh": 1976.9,
+        "mape_pct": 24.43,
+        "median_ape_pct": 10.7,
+        "r2_log": 0.6853,
+        "within_20pct": 0.7031,
+        "within_30pct": 0.813
+      },
+      "change_1yr_shipped": {
+        "mae_kwh": 1924.1,
+        "mape_pct": 24.2,
+        "median_ape_pct": 10.57,
+        "r2_log": 0.7072,
+        "within_20pct": 0.7102,
+        "within_30pct": 0.8157
+      },
+      "mean_2yr_x_trend": {
+        "mae_kwh": 2022.9,
+        "mape_pct": 25.39,
+        "median_ape_pct": 11.2,
+        "r2_log": 0.6959,
+        "within_20pct": 0.6877,
+        "within_30pct": 0.7987
+      },
+      "change_2yr": {
+        "mae_kwh": 1900.5,
+        "mape_pct": 24.11,
+        "median_ape_pct": 10.49,
+        "r2_log": 0.7171,
+        "within_20pct": 0.718,
+        "within_30pct": 0.8192
+      },
+      "mean_3yr_x_trend": {
+        "mae_kwh": 2144.7,
+        "mape_pct": 26.91,
+        "median_ape_pct": 12.53,
+        "r2_log": 0.6805,
+        "within_20pct": 0.6609,
+        "within_30pct": 0.7804
+      },
+      "change_3yr": {
+        "mae_kwh": 1898.2,
+        "mape_pct": 24.07,
+        "median_ape_pct": 10.58,
+        "r2_log": 0.7181,
+        "within_20pct": 0.7149,
+        "within_30pct": 0.8186
+      }
+    },
+    "val_only_homes_with_3yr": {
+      "last_year": {
+        "mae_kwh": 1779.4,
+        "mape_pct": 20.6,
+        "median_ape_pct": 10.5,
+        "r2_log": 0.7262
+      },
+      "last_year_x_trend": {
+        "mae_kwh": 1773.6,
+        "mape_pct": 21.01,
+        "median_ape_pct": 10.0,
+        "r2_log": 0.7283
+      },
+      "change_1yr_shipped": {
+        "mae_kwh": 1726.0,
+        "mape_pct": 20.85,
+        "median_ape_pct": 9.92,
+        "r2_log": 0.7496
+      },
+      "mean_2yr_x_trend": {
+        "mae_kwh": 1828.8,
+        "mape_pct": 22.11,
+        "median_ape_pct": 10.53,
+        "r2_log": 0.7371
+      },
+      "change_2yr": {
+        "mae_kwh": 1701.2,
+        "mape_pct": 20.77,
+        "median_ape_pct": 9.88,
+        "r2_log": 0.7608
+      },
+      "mean_3yr_x_trend": {
+        "mae_kwh": 1969.3,
+        "mape_pct": 23.85,
+        "median_ape_pct": 11.99,
+        "r2_log": 0.7179
+      },
+      "change_3yr": {
+        "mae_kwh": 1697.4,
+        "mape_pct": 20.71,
+        "median_ape_pct": 10.03,
+        "r2_log": 0.7626
+      }
+    },
+    "val_mae_change_vs_shipped_pct": {
+      "change_2yr": {
+        "mean": -1.22,
+        "ci95": [
+          -1.81,
+          -0.62
+        ]
+      },
+      "change_3yr": {
+        "mean": -1.35,
+        "ci95": [
+          -1.94,
+          -0.72
+        ]
+      },
+      "mean_2yr_x_trend": {
+        "mean": 5.14,
+        "ci95": [
+          3.37,
+          6.96
+        ]
+      },
+      "last_year": {
+        "mean": 2.66,
+        "ci95": [
+          2.05,
+          3.24
+        ]
+      }
+    }
+  },
+  "elec": {
+    "n_train": 31721,
+    "n_val": 6803,
+    "val_share_with": {
+      "1yr": 0.944,
+      "2yr": 0.9031,
+      "3yr": 0.8565
+    },
+    "cv": {
+      "last_year": {
+        "mae_kwh": 924.52,
+        "mape_pct": 33.288,
+        "median_ape_pct": 15.51,
+        "r2_log": 0.528,
+        "within_20pct": 0.5863,
+        "within_30pct": 0.7164,
+        "mae_kwh_sd": 17.0
+      },
+      "last_year_x_trend": {
+        "mae_kwh": 932.82,
+        "mape_pct": 34.034,
+        "median_ape_pct": 15.416,
+        "r2_log": 0.5291,
+        "within_20pct": 0.5864,
+        "within_30pct": 0.7133,
+        "mae_kwh_sd": 15.8
+      },
+      "change_1yr_shipped": {
+        "mae_kwh": 900.72,
+        "mape_pct": 32.718,
+        "median_ape_pct": 15.634,
+        "r2_log": 0.5714,
+        "within_20pct": 0.5876,
+        "within_30pct": 0.7177,
+        "mae_kwh_sd": 19.6
+      },
+      "mean_2yr_x_trend": {
+        "mae_kwh": 924.94,
+        "mape_pct": 33.188,
+        "median_ape_pct": 16.452,
+        "r2_log": 0.574,
+        "within_20pct": 0.5673,
+        "within_30pct": 0.7036,
+        "mae_kwh_sd": 25.7
+      },
+      "change_2yr": {
+        "mae_kwh": 878.6,
+        "mape_pct": 32.006,
+        "median_ape_pct": 15.308,
+        "r2_log": 0.6016,
+        "within_20pct": 0.5921,
+        "within_30pct": 0.7243,
+        "mae_kwh_sd": 22.2
+      },
+      "mean_3yr_x_trend": {
+        "mae_kwh": 948.26,
+        "mape_pct": 33.882,
+        "median_ape_pct": 17.59,
+        "r2_log": 0.5721,
+        "within_20pct": 0.5441,
+        "within_30pct": 0.6871,
+        "mae_kwh_sd": 22.1
+      },
+      "change_3yr": {
+        "mae_kwh": 875.92,
+        "mape_pct": 31.902,
+        "median_ape_pct": 15.282,
+        "r2_log": 0.6039,
+        "within_20pct": 0.5949,
+        "within_30pct": 0.726,
+        "mae_kwh_sd": 21.4
+      }
+    },
+    "val": {
+      "last_year": {
+        "mae_kwh": 969.1,
+        "mape_pct": 33.31,
+        "median_ape_pct": 15.79,
+        "r2_log": 0.5307,
+        "within_20pct": 0.584,
+        "within_30pct": 0.7197
+      },
+      "last_year_x_trend": {
+        "mae_kwh": 977.4,
+        "mape_pct": 34.04,
+        "median_ape_pct": 15.59,
+        "r2_log": 0.5317,
+        "within_20pct": 0.5843,
+        "within_30pct": 0.7176
+      },
+      "change_1yr_shipped": {
+        "mae_kwh": 942.2,
+        "mape_pct": 32.89,
+        "median_ape_pct": 15.57,
+        "r2_log": 0.5673,
+        "within_20pct": 0.5897,
+        "within_30pct": 0.722
+      },
+      "mean_2yr_x_trend": {
+        "mae_kwh": 973.5,
+        "mape_pct": 33.51,
+        "median_ape_pct": 16.74,
+        "r2_log": 0.5607,
+        "within_20pct": 0.5646,
+        "within_30pct": 0.7051
+      },
+      "change_2yr": {
+        "mae_kwh": 921.7,
+        "mape_pct": 32.28,
+        "median_ape_pct": 15.29,
+        "r2_log": 0.5896,
+        "within_20pct": 0.5949,
+        "within_30pct": 0.7301
+      },
+      "mean_3yr_x_trend": {
+        "mae_kwh": 996.3,
+        "mape_pct": 34.02,
+        "median_ape_pct": 18.04,
+        "r2_log": 0.5618,
+        "within_20pct": 0.5376,
+        "within_30pct": 0.6869
+      },
+      "change_3yr": {
+        "mae_kwh": 920.1,
+        "mape_pct": 32.19,
+        "median_ape_pct": 15.4,
+        "r2_log": 0.5929,
+        "within_20pct": 0.5941,
+        "within_30pct": 0.7301
+      }
+    },
+    "val_only_homes_with_3yr": {
+      "last_year": {
+        "mae_kwh": 878.2,
+        "mape_pct": 30.16,
+        "median_ape_pct": 14.81,
+        "r2_log": 0.5754
+      },
+      "last_year_x_trend": {
+        "mae_kwh": 886.3,
+        "mape_pct": 30.9,
+        "median_ape_pct": 14.55,
+        "r2_log": 0.5764
+      },
+      "change_1yr_shipped": {
+        "mae_kwh": 852.8,
+        "mape_pct": 29.75,
+        "median_ape_pct": 14.56,
+        "r2_log": 0.6118
+      },
+      "mean_2yr_x_trend": {
+        "mae_kwh": 878.7,
+        "mape_pct": 30.09,
+        "median_ape_pct": 15.44,
+        "r2_log": 0.6123
+      },
+      "change_2yr": {
+        "mae_kwh": 829.0,
+        "mape_pct": 29.02,
+        "median_ape_pct": 14.23,
+        "r2_log": 0.639
+      },
+      "mean_3yr_x_trend": {
+        "mae_kwh": 916.0,
+        "mape_pct": 31.07,
+        "median_ape_pct": 17.2,
+        "r2_log": 0.6051
+      },
+      "change_3yr": {
+        "mae_kwh": 827.0,
+        "mape_pct": 28.94,
+        "median_ape_pct": 14.25,
+        "r2_log": 0.6436
+      }
+    },
+    "val_mae_change_vs_shipped_pct": {
+      "change_2yr": {
+        "mean": -2.18,
+        "ci95": [
+          -2.82,
+          -1.47
+        ]
+      },
+      "change_3yr": {
+        "mean": -2.35,
+        "ci95": [
+          -3.04,
+          -1.63
+        ]
+      },
+      "mean_2yr_x_trend": {
+        "mean": 3.32,
+        "ci95": [
+          1.55,
+          5.23
+        ]
+      },
+      "last_year": {
+        "mean": 2.86,
+        "ci95": [
+          2.09,
+          3.65
+        ]
+      }
+    }
+  }
+}

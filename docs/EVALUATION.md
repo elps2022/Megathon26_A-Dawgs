@@ -243,3 +243,24 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
 - **Against the spec's baseline** (fabric, controls, heating, generation, in fixed order), the engine's top pick is right 53 points more often (CI 51–56). The fixed order is no better than random at choosing the first measure.
 - **Against cheapest first**, a strong no-model reference because costs differ far more than savings, the gain on bill value is small but real: +1.0 NDCG points (CI 0.4–1.6) and +2.2 top-1 points (0.4–4.1). On carbon per £ it is clear: +6.4 NDCG points (5.8–7.0) and +13.8 top-1 points (12.1–15.7), because the engine knows which measures actually cut emissions (heat pumps) rather than just which are cheap.
 - **Limitations:** synthetic truth only (no public data records several measures per home); costs are catalogue mid-points, the same for every home; solar counts only the grid-import cut (no export payments), so it ranks low; a heat pump rarely lowers the bill at October 2026 cap prices (gas 7.97p vs electricity 26.32p/kWh), so it ranks on its carbon cut.
+
+## Post-test experiment: more than one year of the home's own history (mode 1)
+
+`eval/exp_mode1_history.py` → `eval/results/exp_mode1_history.json`. Train 5-fold CV and val only; the test split is untouched. The shipped change model (log 2023 / 2022, L1) also given 2021 (deployable: customer bills cover 24 months) or 2021 + 2020 (exploratory: three years of bills aren't available for EPC homes).
+
+| Fuel | Model | CV MAE (sd) | Val MAE | Val median APE | Val R² (log) |
+|---|---|---|---|---|---|
+| Gas | Last year's bill | 2,025 (29) | 1,975 | 11.1% | 0.68 |
+| Gas | **Shipped, 1 year** | 1,972 (27) | 1,924 | 10.6% | 0.71 |
+| Gas | 2 years | 1,946 (28) | 1,901 | 10.5% | 0.72 |
+| Gas | 3 years | 1,940 (24) | 1,898 | 10.6% | 0.72 |
+| Gas | Mean of last 2 years × trend | 2,070 (33) | 2,023 | 11.2% | 0.70 |
+| Elec | Last year's bill | 925 (17) | 969 | 15.8% | 0.53 |
+| Elec | **Shipped, 1 year** | 901 (20) | 942 | 15.6% | 0.57 |
+| Elec | 2 years | 879 (22) | 922 | 15.3% | 0.59 |
+| Elec | 3 years | 876 (21) | 920 | 15.4% | 0.59 |
+| Elec | Mean of last 2 years × trend | 925 (26) | 974 | 16.7% | 0.56 |
+
+- A second year cuts val MAE by 1.2% for gas (paired bootstrap 95% CI −1.8% to −0.6%) and 2.2% for electricity (−2.8% to −1.5%); CV agrees. A third year adds ~0.1–0.2%.
+- Averaging past years is **worse** than last year alone (+5.1% gas, +3.3% electricity): the years are not exchangeable (2020–21 lockdowns raised home use, the 2022 price shock cut it), so history has to enter as separate features, not a mean.
+- **Not shipped.** The gain is real but small next to the cost (a second annual figure on `Property`, retraining and re-hosting the models). The home's own last bill is close to the ceiling for single-home accuracy.
