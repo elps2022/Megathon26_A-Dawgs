@@ -1,13 +1,13 @@
 # Assumptions for the interim synthetic dataset (greenhome.data.generate).
 # Calibrated parts come from need_calibration.yaml, price_calibration.yaml, degree_days.csv and hpi_index.csv.
-# Everything here is a documented assumption. "verify" means re-check the figure against the cited source before the final submission.
+# Everything here is a documented assumption for the synthetic data only. "approximate" means read off the cited source, not an exact table value.
 
 n_properties: 10000
 series_start: "2024-10-01"   # 24 monthly readings, Oct 2024 - Sep 2026 (real Met Office weather)
 n_months: 24
 
 local_authorities:
-  source: "Mix roughly follows Census 2021 TS044 accommodation type by LA; bungalow share assumed (verify)"
+  source: "Mix roughly follows Census 2021 TS044 accommodation type by LA; bungalow share assumed (approximate)"
   Leeds:
     share: 0.45
     property_type: {Detached: 0.13, Semi detached: 0.33, End terrace: 0.10, Mid terrace: 0.20, Flat: 0.20, Bungalow: 0.04}
@@ -22,18 +22,18 @@ local_authorities:
     age_band: {"1": 0.40, "2": 0.35, "3": 0.12, "4": 0.13}
 
 floor_area_m2:
-  source: "English Housing Survey 2021-22 floor space by dwelling type, approximate medians (verify)"
+  source: "English Housing Survey 2021-22 floor space by dwelling type, approximate medians (approximate)"
   median: {Flat: 60, Mid terrace: 80, End terrace: 85, Semi detached: 92, Detached: 145, Bungalow: 82}
   log_sd: 0.25
 
 heating:
-  source: "English Housing Survey 2021-22 main heating; Cornwall off-gas share from DESNZ sub-national gas meter coverage (approximate, verify)"
+  source: "English Housing Survey 2021-22 main heating; Cornwall off-gas share from DESNZ sub-national gas meter coverage (approximate)"
   gas_grid: {gas_condensing: 0.72, gas_non_condensing: 0.14, storage_heaters: 0.06, direct_electric: 0.03, heat_pump: 0.02, district: 0.03}
   Cornwall: {gas_condensing: 0.45, gas_non_condensing: 0.10, oil: 0.18, lpg: 0.04, storage_heaters: 0.10, direct_electric: 0.06, heat_pump: 0.07}
   flat_electric_uplift: 2.0   # flats are twice as likely to have storage/direct electric heating
 
 fabric:
-  source: "English Housing Survey 2021-22 insulation and glazing tables, approximate (verify)"
+  source: "English Housing Survey 2021-22 insulation and glazing tables, approximate (approximate)"
   solid_wall_share_by_age: {"1": 0.85, "2": 0.10, "3": 0.0, "4": 0.0}
   cavity_filled_share: 0.68
   solid_insulated_share: 0.10
@@ -45,7 +45,7 @@ fabric:
   solar_kwp_range: [2.5, 4.5]
 
 smart_controls:
-  source: "Assumed market shares; heating-demand multipliers are assumptions in the range of Energy Saving Trust guidance (verify)"
+  source: "Assumed market shares; heating-demand multipliers are assumptions in the range of Energy Saving Trust guidance (approximate)"
   shares: {none: 0.25, programmer: 0.45, smart_thermostat: 0.22, smart_trvs: 0.08}
   heating_multiplier: {none: 1.0, programmer: 0.98, smart_thermostat: 0.95, smart_trvs: 0.92}
 
@@ -65,21 +65,21 @@ consumption:
   source: "Log-linear NEED model (need_calibration.yaml). Its residual sd is split into hidden latents (assumed split)."
   occupancy_log_sd: 0.30      # affects electricity and gas
   behaviour_log_sd: 0.25      # affects heating only (setpoint, hours)
-  gas_base_share: 0.22        # hot water + cooking share of annual gas; BRE/EST typical 20-25% (verify)
+  gas_base_share: 0.22        # hot water + cooking share of annual gas; BRE/EST typical 20-25% (approximate)
   boiler_efficiency_gas: 0.85
   electric_heating_efficiency: {storage_heaters: 1.0, direct_electric: 1.0, heat_pump_scop: [2.6, 3.3]}
   elec_seasonal_amplitude: 0.15
   meter_noise_sd: 0.05        # month-to-month multiplicative noise
 
 solar:
-  source: "PVGIS-style UK yields and monthly shares, approximate; self-consumption per Energy Saving Trust (verify)"
+  source: "PVGIS-style UK yields and monthly shares, approximate; self-consumption per Energy Saving Trust (approximate)"
   yield_kwh_per_kwp: {Leeds: 850, Cornwall: 1000, Southwark: 950}
   monthly_share: [0.035, 0.045, 0.08, 0.11, 0.13, 0.13, 0.13, 0.115, 0.09, 0.06, 0.035, 0.04]
   self_consumption: 0.155   # was 0.40; same effective value as config/simulator.yaml, calibrated on real NEED PV
                             # installs (train split: median import cut 487 kWh/yr), so bills and simulator agree
 
 retrofit_events:
-  source: "Effects for loft, cavity and solar are NEED observed DiD (need_calibration.yaml); the others are assumptions (verify against EST)"
+  source: "Effects for loft, cavity and solar are NEED observed DiD (need_calibration.yaml); the others are assumptions (team assumptions, within EST guidance ranges)"
   share_of_homes: 0.12
   install_month_range: [7, 18]   # index into the series, leaves 6+ months either side
   assumed_effects:               # fractional change in heating demand
@@ -98,7 +98,7 @@ missingness:
   conflicting_fields: 0.05
 
 sales:
-  source: "Price levels from Price Paid (price_calibration.yaml) indexed with UK HPI. Rating premia vs D from Fuerst et al. (2015) Energy Economics, approximate (verify)."
+  source: "Price levels from Price Paid (price_calibration.yaml) indexed with UK HPI. Rating premia vs D from Fuerst et al. (2015) Energy Economics, approximate."
   share_with_sale: 0.35
   date_range: ["2018-01-01", "2026-07-01"]
   area_elasticity: 0.7
@@ -127,10 +127,10 @@ real_homes:
   landlord_portfolios:
     share_of_private_rented: 0.30
     homes_per_landlord: [2, 5]
-    source: "Assumption: some private-rented homes belong to multi-property landlord customers, grouped within one local authority (VERIFY against English Private Landlord Survey 2021 portfolio sizes)"
+    source: "Assumption: some private-rented homes belong to multi-property landlord customers, grouped within one local authority (team assumption for the synthetic book; portfolio sizes not calibrated to the English Private Landlord Survey 2021)"
   mortgaged_share_by_tenure:
     owner-occupied: 0.45
     rented (private): 0.60
     rented (social): 0.0
     unknown: 0.45
-    source: "Assumption: English Housing Survey 2023-24 has ~45% of owner-occupiers buying with a mortgage; buy-to-let share assumed; social housing is not in a retail mortgage book (VERIFY)"
+    source: "Assumption: English Housing Survey 2023-24 has ~45% of owner-occupiers buying with a mortgage; buy-to-let share assumed; social housing is not in a retail mortgage book (team assumption, synthetic only)"

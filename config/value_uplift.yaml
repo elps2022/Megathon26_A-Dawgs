@@ -4,4 +4,4 @@ score_points_per_band: 12
 pct_per_band: {low: 1.5, high: 3.5}
 min_pct_if_any_retrofit: {low: 0.5, high: 1.5}
 max_pct: {low: 8.0, high: 14.0}
-source: "Moved unchanged from engine/report.py; EPC-band price premia of ~1.5-3.5% per band, VERIFY against Fuerst et al. (2015) and DECC (2013) 'An investigation of the effect of EPC ratings on house prices'"
+source: "DECC (2013) 'An investigation of the effect of EPC ratings on house prices' (Fuerst et al.): vs band G, D sold for +8%, C +10%, A/B +14%, i.e. ~2% per band from D upward; Fuerst et al. (2016, Wales): C +3.5% vs D. Per-band range 1.5-3.5% spans those; floor and cap are team choices. Fallback only: the trained hedonic model (value_model.py) gives the deployed premium."

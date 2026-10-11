@@ -85,6 +85,6 @@ controls:   # mainheatcont_description -> Property.smart_controls (EPC has no sm
 solar:   # photo_supply = % of roof area covered by PV
   kwp_per_m2_covered: 0.15
   storeys: {Flat: 1, Bungalow: 1, default: 2}
-  source: "VERIFY: ~1 kWp per 6-7 m2 of panel (Energy Saving Trust); roof area approximated by ground-floor footprint"
+  source: "Panel rating: a 3.5 kWp system is ~10 x 350 W panels of ~1.7 m2 each (~0.2 kWp/m2, Energy Saving Trust figures as reported by Which? / MoneySuperMarket (EST site not reachable for direct check, accessed Oct 2026)); 0.15 kWp/m2 allows for gaps and older, less efficient panels. Roof area approximated by ground-floor footprint (team rule)."
 
 bedrooms_from_habitable_rooms_minus: 1   # EPC has habitable rooms only; bedrooms ~ rooms - 1 living room (flagged)

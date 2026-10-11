@@ -1,5 +1,5 @@
 version: 1
-source: "Simplified RdSAP-style envelope rules, moved unchanged from engine/savings.py. VERIFY against RdSAP 10 Appendix S (dimensions)."
+source: "Team simplification of RdSAP 2012 Appendix S dimension rules (BRE): storey height 2.6 m is close to the RdSAP default room height of 2.5 m plus floor depth; window area as 20% of floor area is the order of the RdSAP Table S4 window-area formulas. Simplified because EPC records lack plan dimensions."
 storeys: {flat: 1, house: 2}
 storey_height_m: 2.6
 glazing_ratio_of_floor_area: 0.20

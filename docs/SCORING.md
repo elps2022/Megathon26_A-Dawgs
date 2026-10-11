@@ -121,9 +121,9 @@ requires, and document this overlap here instead of hiding it.
 
 ## 8. Limitations and open items
 
-- The mapping values are team drafts based on the project architecture document. Items
-  marked VERIFY in `score_mappings.yaml` still need a published source (EPC band ranges,
-  NEED benchmarks, loft depth target, regional solar yield).
+- The mapping values are team drafts based on the project architecture document, anchored to
+  published figures where one exists (EPC SAP band ranges, the 270 mm loft depth, PVGIS solar
+  yield); each source is named in `score_mappings.yaml`.
 - Solar yield uses one flat 900 kWh/kWp, not a regional figure.
 - Consumption intensity adds the electricity and gas figures given on the property. It
   matches "purchased energy" only if `annual_elec_kwh` is grid import. Bills are compared with NEED's

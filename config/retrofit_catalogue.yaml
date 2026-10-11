@@ -7,49 +7,49 @@ note: >
 stages: [fabric, controls, heating, generation]
 
 thresholds:
-  loft_full_mm: 270            # VERIFY: commonly quoted full-depth loft target
-  heat_pump_min_loft_mm: 100   # VERIFY: below this, insulate before a heat pump
+  loft_full_mm: 270            # Energy Saving Trust recommended depth; RdSAP Table S9 roof U 0.16 at 270 mm
+  heat_pump_min_loft_mm: 100   # team rule (fabric first): the Boiler Upgrade Scheme dropped its insulation condition in May 2024 (gov.uk)
 
 retrofits:
   loft_insulation:
     name: "Loft Insulation Top-Up (300mm)"
     stage: fabric
     cost_gbp: [300, 1500]
-    typical_saving_pct_heating: [10, 25]
-    source: "VERIFY: placeholder ranges; check Energy Saving Trust loft insulation page"
+    typical_saving_pct_heating: [2, 25]
+    source: "Cost: ~£825-930 for a semi, 0 to 270 mm (Energy Saving Trust figures as reported by Which? / MoneySuperMarket (EST site not reachable for direct check, accessed Oct 2026)); top-ups cost less, detached more. Saving: 25% upper end from EST 0 to 270 mm; lower end 2% from observed NEED loft installs, median gas change -2.7% (config/need_calibration.yaml), as most installs are top-ups"
   cavity_wall_insulation:
     name: "Cavity Wall Insulation"
     stage: fabric
-    cost_gbp: [500, 1500]
+    cost_gbp: [1000, 4600]
     typical_saving_pct_heating: [10, 30]
-    source: "VERIFY: placeholder ranges; check Energy Saving Trust cavity wall page"
+    source: "Cost: ~£2,700 semi, ~£4,600 detached (Energy Saving Trust figures as reported by Which? / MoneySuperMarket (EST site not reachable for direct check, accessed Oct 2026)); flats and terraces less. Saving: up to ~30% of the heating bill (EST, as reported by The Eco Experts); NEED cavity installs observed in config/need_calibration.yaml"
   solid_wall_insulation:
     name: "External/Internal Solid Wall Insulation"
     stage: fabric
-    cost_gbp: [8000, 20000]
+    cost_gbp: [7000, 20000]
     typical_saving_pct_heating: [15, 35]
-    source: "VERIFY: placeholder ranges; check Energy Saving Trust solid wall page"
+    source: "Cost: ~£7,400-7,500 internal, ~£11,000-13,000 external for a semi (Energy Saving Trust figures as reported by Which? / MoneySuperMarket (EST site not reachable for direct check, accessed Oct 2026); BRE CPD notes); detached more. Saving: ~£260-410/yr for a gas-heated semi (EST, reported); % range is a team translation of that"
   double_glazing:
     name: "High-Performance Double Glazing (A-rated)"
     stage: fabric
     cost_gbp: [3000, 10000]
     typical_saving_pct_heating: [5, 15]
-    source: "VERIFY: placeholder ranges; check Energy Saving Trust glazing page"
+    source: "Cost: ~£4,800 for A-rated windows in a semi (Energy Saving Trust windows page); saving ~£85-145/yr from all single glazing (EST current and 2016 DECC factsheet); % range is a team translation of that"
   smart_thermostat:
     name: "Smart Thermostat & Heating Controls"
     stage: controls
     cost_gbp: [150, 400]
     typical_saving_pct_heating: [3, 10]
-    source: "VERIFY: placeholder ranges; check Energy Saving Trust heating controls page"
+    source: "Cost: smart thermostat unit ~£120-250 plus fitting (retailer prices, Oct 2026). Saving: room thermostat ~£70/yr and TRVs up to ~£75/yr (EST, as reported); BEAMA lab estimates are higher (18-31%), so the team range is deliberately conservative"
   heat_pump:
     name: "Air Source Heat Pump"
     stage: heating
     cost_gbp: [7000, 14000]
     typical_saving_pct_heating: null    # fuel switches gas -> electricity; use the simulator
-    source: "VERIFY: placeholder cost range; check MCS / Ofgem; grants go in config/grants.yaml"
+    source: "Cost: typical air source install ~£12,000 (Energy Saving Trust air source page); Which? reports £14,000-19,000 with radiator upgrades, so the range is indicative. Grants go in config/grants.yaml"
   solar_pv:
     name: "Rooftop Solar PV Array (3.5 kWp)"
     stage: generation
     cost_gbp: [5000, 9000]
     typical_saving_pct_heating: null    # reduces grid import, not demand
-    source: "VERIFY: placeholder cost range; check Energy Saving Trust solar PV page"
+    source: "Cost: ~£7,000 for a typical 3.5 kWp system, range £6,500-9,000 (Energy Saving Trust figures as reported by Which? / MoneySuperMarket (EST site not reachable for direct check, accessed Oct 2026))"

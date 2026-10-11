@@ -1,16 +1,16 @@
 version: 1
 unit: "W/m2K"
-source: "Values moved unchanged from engine/savings.py; RdSAP-style defaults. VERIFY against RdSAP 10 Tables S6-S10 (walls, roofs, windows, floors)."
+source: "RdSAP 2012 default U-values (BRE, Appendix S): roof Table S9 (none 2.3, 270 mm 0.16), walls Table S6 (solid brick as built 2.1, cavity as built 1.6), windows Table S14 (single 4.8, double pre-2002 2.8). Upgraded elements use the Approved Document L 2021 limits for work on existing dwellings (insulated solid wall 0.30, replacement window 1.4). Partial levels are team interpolations between those, marked below."
 roof:
   uninsulated: 2.3      # loft < 50 mm
   partial: 0.65         # loft 50-269 mm
   standard: 0.16        # loft >= 270 mm, or no own roof (heat loss to the flat above)
 wall:
   solid_uninsulated: 2.1
-  solid_partial: 1.0     # VERIFY: partly insulated solid wall (RdSAP 10 Table S6 range)
+  solid_partial: 1.0     # team interpolation between as built (2.1) and insulated (0.30)
   solid_insulated: 0.30
   cavity_uninsulated: 1.6
-  cavity_partial: 1.0    # VERIFY: as-built partial fill, RdSAP 1976-1982 band ~1.0
+  cavity_partial: 1.0    # RdSAP Table S6 cavity as built 1976-1982 (age band F), ~1.0
   cavity_insulated: 0.45
 window:
   single: 4.8

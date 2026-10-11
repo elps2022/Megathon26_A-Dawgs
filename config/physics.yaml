@@ -4,11 +4,11 @@ source: >
   config/u_values.yaml; heating at base-15.5 C degree days (config/region_hdd.csv), which already allows for
   internal and solar gains, so no separate gains term is subtracted. Hot water and lighting/appliance formulas
   follow SAP (BRE, SAP 10.2 Appendix J and SAP 2012 Appendix L). Age-band fabric defaults are RdSAP-style
-  as-built assumptions (VERIFY against RdSAP 10 Tables S6-S10); they are used for NEED homes (no fabric fields)
+  as-built assumptions (RdSAP 2012 Appendix S age-band defaults, simplified to our categories); they are used for NEED homes (no fabric fields)
   and for EPC homes whose field is unknown (flagged).
 
 need_floor_area_midpoint_m2: {1: 42, 2: 75, 3: 125, 4: 175, 5: 240}   # NEED FLOOR_AREA_BAND -> m2 (band 5 open-ended)
-need_flats_have_own_roof: false   # NEED doesn't say which flats are top-floor; most aren't (VERIFY)
+need_flats_have_own_roof: false   # NEED doesn't say which flats are top-floor; in blocks of 3+ storeys most aren't (team rule)
 
 age_band_defaults:   # as-built fabric when nothing better is known
   "pre-1930":  {wall_type: solid,  wall_insulation: none,    loft_insulation_mm: 100, glazing: double_old}
@@ -17,20 +17,20 @@ age_band_defaults:   # as-built fabric when nothing better is known
   "2000+":     {wall_type: cavity, wall_insulation: full,    loft_insulation_mm: 270, glazing: double_new}
 cavity_installed_wall_insulation: full   # NEED cavity_installed / EPC "filled cavity"
 
-air_changes_per_hour: 0.8          # VERIFY: RdSAP typical infiltration + ventilation for existing homes 0.5-1.0
+air_changes_per_hour: 0.8          # team value inside the SAP 10.2 section 2 range for existing homes (~0.5-1.0 ach); errors are absorbed by beta and the residual
 ventilation_w_per_m3k: 0.33        # heat capacity of air (0.33 Wh/m3K)
-need_gas_boiler_efficiency: 0.80   # NEED doesn't record boiler type: mix of condensing (0.85) and older (0.70) (VERIFY)
+need_gas_boiler_efficiency: 0.80   # NEED doesn't record boiler type: mix of SAP 10.2 Table 4b condensing (84%) and older (66-74%)
 
 hot_water:   # SAP 10.2 Appendix J: occupancy N from floor area; V = 25 N + 36 litres/day; energy = 4.18 V dT / 3600
   litres_per_person_per_day: 25
   litres_fixed_per_day: 36
-  mean_temperature_rise_k: 37      # annual mean of SAP Table J1 monthly rises (VERIFY)
+  mean_temperature_rise_k: 37      # SAP 10.2 Table J1 mains cold water averages 13.0 C over the year; delivered ~50 C
   distribution_loss_share: 0.15    # SAP: distribution loss = 0.15 x energy content
 appliances:  # SAP 2012 Appendix L: E_A = 207.8 (TFA x N)^0.4714 kWh/yr; lighting E_B = 59.73 (TFA x N)^0.4714 x C1
   appliance_coefficient: 207.8
   lighting_coefficient: 59.73
   exponent: 0.4714
-  lighting_low_energy_factor: 0.5  # C1 = 1 - 0.5 x share of low-energy lights; assume all low-energy now (VERIFY)
+  lighting_low_energy_factor: 0.5  # C1 = 1 - 0.5 x share of low-energy lights; assume all low-energy (halogen sales phased out 2021-23)
 
 # V1 grey box: log(use) = elasticity x log(physics) + GBDT(description), ARCHITECTURE 3.5. A retrofit's effect is
 # then (physics after / before)^elasticity: smooth and never the wrong sign. Gas: fitted by

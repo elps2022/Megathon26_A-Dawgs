@@ -2,7 +2,7 @@ version: 1
 source_note: >
   Weights and bands are fixed by the Lloyds PS2 problem statement. Mapping
   values are team drafts from docs/ARCHITECTURE.md section 3.3 unless a
-  specific source is named. Items marked VERIFY need a real source added.
+  specific source is named.
 
 weights:
   energy_efficiency: 0.25
@@ -25,7 +25,7 @@ default_score: 40
 
 energy_efficiency:
   rating_midpoints: {a: 96, b: 86, c: 75, d: 61, e: 46, f: 30, g: 10}
-  source: "Team draft; EPC band midpoints (VERIFY against EPC band ranges)"
+  source: "Midpoints of the EPC SAP-point bands (A 92-100, B 81-91, C 69-80, D 55-68, E 39-54, F 21-38, G 1-20; SAP 10.2 / gov.uk EPC guidance), rounded"
 
 consumption_intensity:
   # Scored relative to similar homes, so neither big nor small homes are penalised for their size: energy doesn't
@@ -42,7 +42,7 @@ insulation:
   wall_weight: 0.5
   loft_mm_points: [[0, 0], [100, 50], [270, 100]]   # mm -> score, linear
   wall: {none: 0, partial: 50, full: 100}
-  source: "Team draft; 270mm full-depth loft is a commonly quoted target (VERIFY)"
+  source: "Team mapping; 270 mm is the Energy Saving Trust recommended loft depth (RdSAP Table S9 roof U 0.16)"
 
 heating:
   scores:
@@ -68,7 +68,7 @@ glazing:
 
 renewables:
   solar_yield_kwh_per_kwp: 900     # ARCHITECTURE.md 3.6 quotes ~850-1000
-  source: "Team draft (VERIFY regional yield source)"
+  source: "EU JRC PVGIS: ~850-1000 kWh/kWp/yr for well-oriented roofs across the three areas; 900 is the middle (config/simulator.yaml has per-area values)"
 
 smart_controls:
   scores:

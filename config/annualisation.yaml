@@ -2,7 +2,8 @@ version: 1
 source: >
   Team profiles for annualising monthly bills (ARCHITECTURE 3.2): typical share of a year's use falling in each
   calendar month. Gas follows the heating season (Met Office HDD shape, base load spread evenly); electricity has
-  a mild winter peak. VERIFY against published monthly profiles (e.g. Elexon Profile Class 1, Xoserve gas demand).
+  a mild winter peak. Team profiles: the gas shape follows the Met Office HDD seasonality used for degree days,
+  and the result is checked empirically below rather than against Elexon / Xoserve profiles.
   Check: on bills driven by real Met Office HDD (make real), annualising with a 4-month winter gap is off by
   +2.0% (gas) / +0.7% (electricity); full or randomly gappy series by <=0.1%.
 low_coverage_if_fewer_distinct_months: 6
@@ -15,7 +16,8 @@ weather_normalisation:   # per-home degree-day regression on monthly bills (PRIS
     PRISM: monthly use = base + slope x HDD (Met Office regional HDD, base 15.5 C, config/degree_days.csv).
     Normalised annual = 12 x base + slope x typical-year HDD. Gas is normalised because NEED gas is weather
     corrected; electricity only for electrically heated homes (NEED electricity is not weather corrected).
-    Fit thresholds are team choices (VERIFY): too few months or a weak fit -> unnormalised + flagged.
+    Fit thresholds are team choices (min 6 months as in ARCHITECTURE 3.5; R2 >= 0.5): too few months or a weak fit
+    -> unnormalised + flagged.
   normal_years: [2015, 2024]
   min_months: 6
   min_r2: 0.5
