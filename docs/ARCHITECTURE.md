@@ -299,7 +299,7 @@ Each part of the system needs a different kind of model. Only the energy model a
 
 ## What makes us stand out
 
-*(Key innovations giving Team A-Dawgs a decisive edge across the judging criteria: 20% ML/Recommendations, 15% GenAI, 15% Green Home Score, 15% Savings/Carbon/Value, 10% Business Relevance, 10% Technical Architecture, 5% UX, 5% Innovation)*
+*(Key innovations giving the project a decisive edge across the judging criteria: 20% ML/Recommendations, 15% GenAI, 15% Green Home Score, 15% Savings/Carbon/Value, 10% Business Relevance, 10% Technical Architecture, 5% UX, 5% Innovation)*
 
 ### Person A (Person 1): Data & Machine Learning Innovations
 

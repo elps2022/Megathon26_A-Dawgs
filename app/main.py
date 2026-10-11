@@ -270,7 +270,7 @@ view_mode = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Megathon X | Lloyds PS2 | Team A-Dawgs")
+st.sidebar.caption("Megathon X | Lloyds PS2 | Team 73")
 
 
 def render_thermal_house_3d(elements: list, score: int, p: Property):
@@ -1085,7 +1085,7 @@ st.markdown(
             </div>
             <div>
                 <div style="font-size: 18px; font-weight: 800; letter-spacing: -0.3px;">Lloyds Banking Group • Green Home Intelligence</div>
-                <div style="font-size: 12px; color: #a7f3d0; opacity: 0.95;">Decarbonisation & Transition Finance Engine • Team A-Dawgs (73)</div>
+                <div style="font-size: 12px; color: #a7f3d0; opacity: 0.95;">Decarbonisation & Transition Finance Engine • Team 73</div>
             </div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">

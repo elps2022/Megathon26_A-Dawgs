@@ -1,7 +1,7 @@
 # LLM Layer & Deterministic Grounding Shield
 
 *Megathon X | Lloyds Banking Group PS2: Green Home Score & Retrofit Recommendation Engine*  
-*Team Number: 73 | A-Dawgs | Owner: Person B (Integration, AI Assistant, UI)*
+*Team Number: 73 | Owner: Person B (Integration, AI Assistant, UI)*
 
 ---
 
