@@ -16,8 +16,8 @@ Datasets and model weights are not in this repository. Both zips are in this Goo
 
 | What | File in the folder | Install |
 |---|---|---|
-| Trained models (energy V1 / V2 / mode 1 with bands, value model), 4.3 MB | `energy_models.zip` | `make models SRC=path/to/energy_models.zip` |
-| Processed real data (property book, loans, splits, features, matched sales, monthly bills), 105 MB | `real_data.zip` | `make real-data SRC=path/to/real_data.zip` |
+| Trained models (energy V1 / V2 / mode 1 with bands, value model), 4.8 MB | `energy_models.zip` | `make models SRC=path/to/energy_models.zip` |
+| Processed real data (property book, loans, splits, features, matched sales, monthly bills), 113 MB | `real_data.zip` | `make real-data SRC=path/to/real_data.zip` |
 
 `SRC` also accepts a direct Google Drive file link ("Anyone with the link") instead of a downloaded zip. The processed data contains no postcodes or address fields.
 
