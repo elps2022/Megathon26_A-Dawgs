@@ -25,6 +25,7 @@ api:
 train:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_ml
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_greybox
+	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_bills
 
 
 # Real property book from EPC certificates (needs data/raw/epc, onspd, imd). Writes data/processed/*.parquet.

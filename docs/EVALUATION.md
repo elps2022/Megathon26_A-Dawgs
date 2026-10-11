@@ -60,4 +60,23 @@ Reproduce with `python -m greenhome.models.energy_greybox` (part of `make train`
 - **V1 ties V2 on NEED, as expected.** For NEED homes the physics prediction is a fixed function of the same bands the residual model already sees, so it can't add accuracy there. V1 is shipped anyway (ARCHITECTURE §3.5 default: V2 isn't clearly better). Its value is elsewhere: retrofits act through U-values and efficiencies with diminishing returns, it gives per-element heat loss for the house diagram, and real customers' bills calibrate it (k).
 - Physics-only beats the global median only after one scale factor. Uncalibrated, it is worse than every baseline for gas, which is why the residual and calibration steps exist.
 
+## Two prediction modes: description only vs the home's own bills
+
+Reproduce with `python -m greenhome.models.energy_bills` (part of `make train`) → `eval/results/energy_own_bills.json`. Real NEED use, 2022 → 2023, same splits; 96% (gas) / 94% (electricity) of val homes have a valid 2022 reading, the rest fall back to mode 2.
+
+| Fuel | Model | CV MAE (kWh) | Val MAE (kWh) | Val R² (log) | Val within ±20% | Val within ±30% |
+|---|---|---|---|---|---|---|
+| Gas | Mode 2: V1, description only | 4,118 ± 27 | 4,010 | 0.30 | 34.1% | 51.0% |
+| Gas | Last year's bill (no model) | 2,024 ± 28 | 1,976 | 0.69 | 70.6% | 81.7% |
+| Gas | Last year × median trend (no model) | 2,019 ± 28 | 1,978 | 0.69 | 70.4% | 81.1% |
+| Gas | **Mode 1: change model (GBDT, L1)** | **1,971 ± 27** | **1,925** | **0.71** | **71.1%** | **81.4%** |
+| Elec | Mode 2: V1, description only | 1,549 ± 23 | 1,578 | 0.16 | 27.7% | 40.0% |
+| Elec | Last year's bill (no model) | 925 ± 17 | 969 | 0.53 | 58.5% | 71.9% |
+| Elec | **Mode 1: change model (GBDT, L1)** | **901 ± 20** | **942** | **0.57** | **59.1%** | **72.1%** |
+
+**Reading the numbers**
+- **Description-only accuracy is capped by the inputs.** Among homes with identical type, age, size, EPC band and region, use still varies so much that these bands explain at most R² ≈ 0.25 (gas) / 0.12 (electricity); V1 reaches 0.30 / 0.16 with the extra parity features. Occupants, not buildings, drive most of the rest (building factors explain ~40% of domestic energy variation in Huebner et al., 2015).
+- **The home's own bill is the strongest single predictor**, and most of mode 1's accuracy comes from it. Plain GBDTs with the bill as a feature (L2 on log) lose to "last year's bill" in kWh MAE; predicting the *change* with an L1 objective beats it by ~2.6% (gas) and ~2.6% (electricity) on CV and val. The model's job here is shrinking unusual years back towards what the home's description predicts.
+- **Classification view (val, mode 2):** picking the top 25% of users, V1 has precision 0.55 / recall 0.53 for gas (0.47 / 0.45 electricity), against 0.25 for a random pick.
+
 **Next (§3.5 steps 5–7):** Optuna tuning, the LightGBM vs CatBoost bake-off, feature work (interactions; IMD quintile is already in), conformal p10/p90, subgroup errors, and checking loft/cavity/PV toggles against NEED's observed DiD effects. Then a single scoring of the test split.

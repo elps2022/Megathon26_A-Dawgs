@@ -121,9 +121,14 @@ def epc_features(p: pd.DataFrame) -> pd.DataFrame:
 
 
 def dataset(fuel: str, year: int = TARGET_YEAR, d: pd.DataFrame | None = None,
-            feature_set: str = "parity") -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+            feature_set: str = "parity", own_bills: bool = False) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     """(X, log target, split) for fuel in {"gas", "elec"}; valid ('V') readings only. feature_set picks
-    the columns (FEATURE_SETS); "parity" is the default, matching what EPC homes can supply."""
+    the columns (FEATURE_SETS); "parity" is the default, matching what EPC homes can supply.
+
+    own_bills=True is the "this home" mode (ARCHITECTURE 3.5): adds log_prior = log of the home's own valid
+    reading for the previous year (NaN when it has none). Known at prediction time for an existing customer;
+    for EPC homes it is the weather-normalised annual use from their bills (data/features.py), which matches
+    NEED's conventions (gas weather corrected, electricity not)."""
     d = load_need() if d is None else d
     split = load_split(d)
     if fuel == "gas":
@@ -140,4 +145,8 @@ def dataset(fuel: str, year: int = TARGET_YEAR, d: pd.DataFrame | None = None,
     x = features(d)[keep][FEATURE_SETS[feature_set]]
     if fuel == "gas":
         x = x.drop(columns="gas_heated")
+    if own_bills:
+        cons, flag = ("Gcons", "GasValFlag") if fuel == "gas" else ("Econs", "ElecValFlag")
+        prior = d[f"{cons}{year - 1}"].where(d[f"{flag}{year - 1}"] == "V")
+        x = x.assign(log_prior=np.log(prior[keep]))
     return x, np.log(y[keep]).rename("log_kwh"), split[keep]
