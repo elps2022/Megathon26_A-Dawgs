@@ -6,7 +6,7 @@
   "annual_gas_available_share_gas_heated": 0.9774,
   "median_annual_kwh_by_heating": {
     "direct_electric": {
-      "elec": 7499,
+      "elec": 7392,
       "gas": 0
     },
     "district": {
@@ -18,11 +18,11 @@
       "gas": 7832
     },
     "gas_non_condensing": {
-      "elec": 2474,
-      "gas": 9023
+      "elec": 2473,
+      "gas": 8995
     },
     "heat_pump": {
-      "elec": 4935,
+      "elec": 4924,
       "gas": 0
     },
     "lpg": {
@@ -34,7 +34,7 @@
       "gas": 0
     },
     "storage_heaters": {
-      "elec": 8550,
+      "elec": 8463,
       "gas": 0
     },
     "unknown": {

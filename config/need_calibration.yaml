@@ -102,16 +102,16 @@ elec_kwh_not_gas_heated:
 retrofit_effects:
   loft_insulation:
     fuel: gas
-    median_fractional_change: -0.0245
-    n_treated: 2623
+    median_fractional_change: -0.0272
+    n_treated: 2122
     method: DiD of median post/pre ratio (2y each side), install years 2010-2020
   cavity_wall_insulation:
     fuel: gas
-    median_fractional_change: -0.1015
-    n_treated: 1819
+    median_fractional_change: -0.1097
+    n_treated: 1361
     method: DiD of median post/pre ratio (2y each side), install years 2010-2020
   solar_pv:
     fuel: electricity
-    median_fractional_change: -0.124
-    n_treated: 284
+    median_fractional_change: -0.1388
+    n_treated: 255
     method: DiD of median post/pre ratio (2y each side), install years 2010-2020

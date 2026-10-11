@@ -138,11 +138,15 @@ class BillWorld:
         elec = (appliances / 12)[:, None] * self.seasonal
         heating = x.heating.to_numpy()
         gas_heated, electric = np.isin(heating, list(GAS_HEATING)), np.isin(heating, list(ELECTRIC_HEATING))
-        gas = np.where(gas_heated[:, None], heat_m + base_m, 0.0)
+        # A gas meter in a home not heated by gas carries the base load (hot water + cooking) on gas rather
+        # than a fabricated 0. Never happens in the interim generator, where gas meter <=> gas heating.
+        base_on_gas = x.gas_meter.to_numpy(dtype=bool) & ~gas_heated
+        gas = np.where(gas_heated[:, None], heat_m + base_m, np.where(base_on_gas[:, None], base_m, 0.0))
         e = self.c["electric_heating_efficiency"]
         eff = np.where(heating == "heat_pump", lat.heat_pump_scop.to_numpy(),
                        np.where(heating == "storage_heaters", e["storage_heaters"], e["direct_electric"]))
-        elec = elec + np.where(electric[:, None], (heat_m + base_m) * self.c["boiler_efficiency_gas"] / eff[:, None], 0.0)
+        elec_base = np.where(base_on_gas[:, None], 0.0, base_m)
+        elec = elec + np.where(electric[:, None], (heat_m + elec_base) * self.c["boiler_efficiency_gas"] / eff[:, None], 0.0)
         gen = (x.solar_kwp.to_numpy() * x.local_authority.map(self.solar["yield_kwh_per_kwp"]).to_numpy())[:, None]
         elec = elec - np.minimum(self.solar["self_consumption"] * gen * self.solar_share, 0.9 * elec)
         if rng is not None:

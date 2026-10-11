@@ -30,7 +30,7 @@ Synthetic fields (bills, `customer_id`, smart-thermostat upgrades, LTV) have no 
 - **NEED energy-model split:** fixed 70/15/15 (`data/splits/need_split.csv`). Homes that installed a measure during the target year are dropped. Install flags only count installs before the target year. The test set is scored once.
 - **NEED retrofit effects:** difference-in-differences of the median post/pre ratio, 2 years each side, installs 2010-2020 (`config/need_calibration.yaml`).
 
-## Interim synthetic dataset (use this now)
+## Interim synthetic dataset (needs no raw data)
 
 Run `make data` (or `uv run python -m greenhome.data.generate --seed 42`). It takes ~6 s, needs only `config/`, and writes CSVs to `data/generated/`, which is gitignored. The same seed always gives identical files.
 
@@ -61,7 +61,7 @@ All constants are in `config/synthetic.yaml`, each block with a `source`. The ca
 
 | File | From | Content |
 |---|---|---|
-| `config/need_calibration.yaml` | NEED 50k (2023) | Log-linear models of annual gas and electricity by type × floor-area band × age band × EPC band; **observed retrofit effects** (difference-in-differences, 2 years each side): loft −2.5% gas, cavity wall −10.2% gas, PV −12.4% electricity |
+| `config/need_calibration.yaml` | NEED 50k (2023) | Log-linear models of annual gas and electricity by type × floor-area band × age band × EPC band; **observed retrofit effects** (difference-in-differences, 2 years each side, valid readings only, gas effects against gas-heated never-treated homes): loft −2.7% gas, cavity wall −11.0% gas, PV −13.9% electricity |
 | `config/degree_days.csv` | Met Office HadUK-Grid | Monthly HDD (base 15.5 °C, monthly-mean approximation) per LA |
 | `config/price_calibration.yaml` | Price Paid 2018–2025 | Median price by LA × type |
 | `config/hpi_index.csv` | UK HPI Jul 2026 | Monthly index per LA |
@@ -78,7 +78,7 @@ Run `make epc` (`python -m greenhome.data.epc_ingest`, about 15 s). It needs `da
 
 - **Input:** 731,331 domestic certificates for Leeds, Cornwall and Southwark (lodged 2012-01 to 2026-09).
 - **Dedup:** the latest certificate per UPRN. Certificates without a UPRN (9,561) and park homes (303) are dropped. Result: **542,711 homes** (Leeds 253,557, Cornwall 191,954, Southwark 97,200).
-- **Mapping:** free-text EPC fields map to the `Property` vocabulary with ordered rules in `config/epc_mapping.yaml`. Mapped share per field is 99.3-100% (`eval/results/epc_ingest_summary.json`). Anything assumed is listed in `data_flags`: for example `wall_insulation_assumed`, `loft_mm_assumed_from_description`, `glazing_install_date_unknown`, `gas_meter_inferred`. Fields that can't be mapped become `"unknown"` and are treated as missing (default sub-score + flag; a survey is needed before the affected retrofits).
+- **Mapping:** free-text EPC fields map to the `Property` vocabulary with ordered rules in `config/epc_mapping.yaml`. Mapped share per field is 99.3-100% (`eval/results/epc_ingest_summary.json`). Anything assumed is listed in `data_flags`: for example `wall_insulation_assumed`, `loft_mm_assumed_from_description`, `glazing_install_date_unknown`, `gas_meter_inferred`. Oil, LPG and district-heated homes (72,557) are flagged `heating_fuel_unmetered`: their heating fuel is not in the electricity or gas bills. Gas room heaters (gas fires) map to `gas_non_condensing`, not to a boiler. Fields that can't be mapped become `"unknown"` and are treated as missing (default sub-score + flag; a survey is needed before the affected retrofits).
 - **IMD:** postcode → LSOA 2011 (ONSPD Aug 2026) → IMD 2019 decile → NEED-style quintile (1 = most deprived). 100% joined.
 - **Outputs (gitignored):** `data/processed/epc_properties.parquet` (with postcode, for internal joins) and `epc_properties_share.parquet` (no postcode, safe to share on Drive). `property_id` is a hash of the UPRN.
 - **Filled by later steps:** bills and `customer_id` (`make real`), `current_value_estimate` (`make value`).
@@ -102,7 +102,7 @@ Known limitations:
 | `splits.parquet` | train/val/test per customer (70/15/15) |
 | `_hidden/latents.parquet` | **Evaluation only:** occupancy, behaviour, noise, heat-pump SCOP, unmatched-meter and missing-month counts |
 
-- **Bills:** 537,732 homes get bills. The rest (unknown type, age, floor area or heating) are flagged `no_synthetic_bills_unknown_cell` and go down the "estimated from similar homes" or "unavailable" path. Typical medians: gas-boiler homes ≈ 7,832 kWh gas + 2,464 kWh electricity; heat pumps ≈ 4,935 kWh electricity.
+- **Bills:** 537,732 homes get bills. The rest (unknown type, age, floor area or heating) are flagged `no_synthetic_bills_unknown_cell` and go down the "estimated from similar homes" or "unavailable" path. Typical medians: gas-boiler homes ≈ 7,832 kWh gas + 2,464 kWh electricity; heat pumps ≈ 4,924 kWh electricity. A gas meter in a home not heated by gas (17,521 electric or district homes) carries the hot-water and cooking load on gas (median 1,545 kWh) instead of a fabricated 0.
 - **Customers:** 518,011, including 9,905 landlords holding 34,605 homes.
 - **Smart controls:** 22% smart thermostat (synthetic upgrade of programmer homes), 10% zone control, 51% programmer and 16% none.
 - **No conflicts injected into real records** (see ARCHITECTURE §3.1). Use the interim synthetic dataset for conflicting-data scenarios.
@@ -135,5 +135,5 @@ Known limitations:
 - **Label:** `pre_kwh` / `post_kwh` = mean annual use over the 2 years before and the 2 years after the install year (the install year is dropped, and all four readings must be valid). `change` = post / pre − 1. `did_change` divides out the same-years trend of never-treated homes (computed from non-test homes only).
 - **Rules** (same as the pooled effects in `need_calibration.yaml`): gas labels only for gas-heated homes, solar on electricity, and homes with another install within 2 years are dropped.
 - **Counts (train / val / test):** loft 1,512 / 303 / 319, cavity wall 960 / 193 / 225, solar 193 / 57 / 29. Each home keeps its fixed NEED split, so the test labels belong to homes the energy model never trains on.
-- **Train + val medians (DiD):** loft −3.0% gas, cavity wall −10.8% gas, solar −15.5% electricity. These are close to the pooled effects (−2.5%, −10.2%, −12.4%). **Test medians are withheld** until the final savings evaluation.
+- **Train + val medians (DiD):** loft −3.1% gas, cavity wall −10.9% gas, solar −15.5% electricity. These are close to the pooled effects in `need_calibration.yaml` (−2.7%, −11.0%, −13.9%), which use the same rules. **Test medians are withheld** until the final savings evaluation.
 - Limitation: only 29 solar labels in test, so the solar savings check has wide uncertainty. Report it with a bootstrap interval.

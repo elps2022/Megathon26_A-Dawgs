@@ -6,18 +6,13 @@ Defined in docs/ARCHITECTURE.md section 3.2.
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import yaml
 
-# Monthly weights representing typical UK seasonal consumption share (sum to 1.0)
-# Gas: strong winter peak (heating). Elec: mild seasonal variation.
-GAS_SEASONAL_PROFILE = {
-    1: 0.165, 2: 0.145, 3: 0.125, 4: 0.080, 5: 0.045, 6: 0.025,
-    7: 0.020, 8: 0.020, 9: 0.035, 10: 0.075, 11: 0.120, 12: 0.145,
-}
-
-ELEC_SEASONAL_PROFILE = {
-    1: 0.105, 2: 0.095, 3: 0.090, 4: 0.080, 5: 0.075, 6: 0.070,
-    7: 0.070, 8: 0.070, 9: 0.075, 10: 0.085, 11: 0.090, 12: 0.095,
-}
+# Monthly share of a typical year's use, per fuel (sum to 1.0); profiles and thresholds with their source
+# live in config/annualisation.yaml.
+_CFG = yaml.safe_load((Path(__file__).resolve().parents[3] / "config" / "annualisation.yaml").read_text())
+GAS_SEASONAL_PROFILE = {int(k): float(v) for k, v in _CFG["gas"].items()}
+ELEC_SEASONAL_PROFILE = {int(k): float(v) for k, v in _CFG["elec"].items()}
 
 
 def annualise_series(months: list[int], values: list[float], fuel: str) -> tuple[float | None, str]:
@@ -34,21 +29,17 @@ def annualise_series(months: list[int], values: list[float], fuel: str) -> tuple
     total_observed = sum(v for _, v in valid)
     total_share = sum(profile.get(m, 1.0 / 12) for m, _ in valid)
 
-    # Normalize if multiple years observed (total_share > 1.0)
-    # Annualisation scale: observed / (total_share_per_year)
-    years_represented = len(valid) / 12.0
     if total_share <= 0:
         return None, "unavailable"
 
-    # Scale to single typical 12-month annual figure
-    annual_estimate = total_observed / total_share * (total_share / max(years_represented, 1.0))
+    # Observed use / the share of a typical year it covers (works for any number of months, incl. 2+ years)
     annual_kwh = round(float(total_observed / total_share), 1)
 
     # Low quality flag if < 6 distinct calendar months or seasonal coverage < 40%
     distinct_months = len(set(m for m, _ in valid))
     unique_share = sum(profile.get(m, 1.0 / 12) for m in set(m for m, _ in valid))
 
-    if distinct_months < 6 or unique_share < 0.40:
+    if distinct_months < _CFG["low_coverage_if_fewer_distinct_months"] or unique_share < _CFG["low_coverage_if_share_below"]:
         return annual_kwh, "low_coverage"
 
     return annual_kwh, "good"

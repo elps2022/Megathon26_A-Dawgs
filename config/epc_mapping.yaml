@@ -33,11 +33,13 @@ heating:   # mainheat_description patterns -> Property.heating
   - [heat pump, heat_pump]
   - [community scheme|community, district]
   - [storage heater, storage_heaters]
+  - ["^room heaters, mains gas", gas_non_condensing]   # gas fires, not boilers: never condensing
   - [mains gas, GAS]          # GAS is resolved to gas_condensing / gas_non_condensing below
   - ["\\boil\\b", oil]
   - [lpg, lpg]
   - [electric|electricaire|no system present, direct_electric]
 gas_boiler_condensing_if_mainheat_energy_eff: [Good, Very Good]   # SAP efficiency rating proxy for condensing
+unmetered_heating: [oil, lpg, district]   # heating fuel not on the electricity or gas meter -> flagged
 
 walls:
   construction:   # walls_description -> wall_type ("solid" = not cavity-fillable)

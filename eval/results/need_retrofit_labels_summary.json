@@ -19,8 +19,8 @@
     }
   },
   "train_val_median_did_change": {
-    "cavity_wall_insulation": -0.1084,
-    "loft_insulation": -0.0303,
+    "cavity_wall_insulation": -0.1087,
+    "loft_insulation": -0.0305,
     "solar_pv": -0.155
   },
   "train_val_median_change_kwh": {

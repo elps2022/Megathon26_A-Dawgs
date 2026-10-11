@@ -57,8 +57,14 @@ def fit_loglinear(df: pd.DataFrame, target: str) -> dict:
 
 def need_retrofit_effects(d: pd.DataFrame) -> dict:
     """Difference-in-differences on NEED: change in use from 2 years before to 2 years after an install,
-    relative to the same change in never-treated homes. Returns the median fractional change."""
+    relative to the same change in never-treated homes. Returns the median fractional change.
+    Valid ("V") readings only, as everywhere else NEED is used; gas effects compare gas-heated homes only."""
     out = {}
+    for f, flag in (("G", "Gas"), ("E", "Elec")):  # mask non-valid readings ("E" readings carry values)
+        for y in range(2005, 2024):
+            col = f"{f}cons{y}"
+            if col in d:
+                d = d.assign(**{col: d[col].where(d[f"{flag}ValFlag{y}"] == "V")})
     specs = {"loft_insulation": ("LI", "G"), "cavity_wall_insulation": ("CWI", "G"), "solar_pv": ("PV", "E")}
     never = d[(d.LI_FLAG == 0) & (d.CWI_FLAG == 0) & (d.PV_FLAG == 0)]
     for name, (flag, fuel) in specs.items():
@@ -74,8 +80,9 @@ def need_retrofit_effects(d: pd.DataFrame) -> dict:
                 treated = treated[~treated[f"{o}_DATE"].between(year - 2, year + 2)]
             if fuel == "G":
                 treated = treated[treated.MAIN_HEAT_FUEL == 1]
-            t = (treated[post].mean(axis=1) / treated[pre].mean(axis=1)).dropna()
-            c = (never[post].mean(axis=1) / never[pre].mean(axis=1)).dropna()
+            control = never[never.MAIN_HEAT_FUEL == 1] if fuel == "G" else never
+            t = (treated[post].mean(axis=1, skipna=False) / treated[pre].mean(axis=1, skipna=False)).dropna()
+            c = (control[post].mean(axis=1, skipna=False) / control[pre].mean(axis=1, skipna=False)).dropna()
             if len(t) >= 20:
                 ratios.append((float(t.median() / c.median()), len(t)))
         w = np.array([n for _, n in ratios], dtype=float)

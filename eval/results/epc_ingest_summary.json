@@ -40,7 +40,7 @@
       "nan": 3
     },
     "heating": {
-      "gas_condensing": 348430,
+      "gas_condensing": 348242,
       "direct_electric": 56919,
       "storage_heaters": 40186,
       "district": 38891,
@@ -48,7 +48,7 @@
       "heat_pump": 17627,
       "lpg": 7642,
       "unknown": 3742,
-      "gas_non_condensing": 3250
+      "gas_non_condensing": 3438
     },
     "wall_type": {
       "cavity": 338611,
@@ -100,6 +100,7 @@
     "loft_mm_assumed_from_description": 175513,
     "solar_unknown_assumed_none": 94055,
     "gas_meter_inferred": 85410,
+    "heating_fuel_unmetered": 72557,
     "unknown_heating": 3742,
     "unknown_wall_insulation": 2308,
     "unknown_built_form": 1152,

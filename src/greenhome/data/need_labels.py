@@ -5,8 +5,8 @@ For each NEED home with a loft insulation, cavity wall insulation or solar PV in
   (the install year itself is dropped; all 4 readings must be valid "V" readings)
   change     = post / pre - 1
   did_change = (post / pre) / (median post / pre of never-treated homes over the same years) - 1
-Homes with another intervention within 2 years of the install are dropped, gas labels only use gas-heated
-homes, and solar is measured on electricity. The rules match calibrate.need_retrofit_effects, which pools the
+Homes with another intervention within 2 years of the install are dropped, gas labels (and their control
+trend) only use gas-heated homes, and solar is measured on electricity. The rules match calibrate.need_retrofit_effects, which pools the
 same comparison into one effect per measure; here each home keeps its own label and its fixed NEED split
 (data/splits/need_split.csv), so the savings simulator can be validated on held-out real installs.
 
@@ -56,7 +56,8 @@ def labels(d: pd.DataFrame, split: pd.Series) -> pd.DataFrame:
                 treated &= d.MAIN_HEAT_FUEL == 1
             pre, post = window_use(d, fuel, pre_y), window_use(d, fuel, post_y)
             ratio = post / pre
-            control = ratio[never & (split != "test")].median()  # reference trend from non-test homes only
+            ctrl = never & (split != "test") & ((d.MAIN_HEAT_FUEL == 1) if fuel == "gas" else True)
+            control = ratio[ctrl].median()  # reference trend: never-treated, non-test (gas-heated for gas)
             t = d.index[treated & ratio.notna() & (pre > 0)]
             rows.append(pd.DataFrame({
                 "need_row": d.need_row[t], "split": split[t], "measure": measure, "fuel": fuel,

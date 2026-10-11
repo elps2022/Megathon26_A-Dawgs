@@ -74,7 +74,7 @@ What-if flow: user asks "what if I skip the heat pump and add solar?" → LLM ca
 
 ### 3.1 Data (real public data first, synthetic only where none exists)
 
-**Interim (now): fully synthetic dataset, same shape.** `make data` builds 10k homes from `config/` only (calibrated to NEED, Price Paid, UK HPI and Met Office via `make calibrate`). Teammates build against it while the real EPC book is prepared. Files and caveats: `docs/DATA.md`. Swapping in real EPC homes later changes `properties.csv` only; the bills stay synthetic either way.
+**Interim (now): fully synthetic dataset, same shape.** `make data` builds 10k homes from `config/` only (calibrated to NEED, Price Paid, UK HPI and Met Office via `make calibrate`). Teammates build against it while the real EPC book is prepared. Files and caveats: `docs/DATA.md`. The real book (`make build`, `data/processed/real/`) has the same fields as parquet; the bills stay synthetic either way.
 
 **Real sources** (raw files in `data/raw/`, never committed; sources and licences in `docs/DATA.md`):
 
@@ -89,10 +89,10 @@ What-if flow: user asks "what if I skip the heat pump and add solar?" → LLM ca
 LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S Wales, Southwark → England SE & Central S.
 
 **Synthetic, only where no public data exists** (seeded, rules in `config/` with a `source` field):
-- **Monthly bills per EPC home** (`greenhome.data.synthetic_parts`, `make real`). EPCs carry no metered use, and NEED isn't linked to EPC addresses. Annual gas and electricity come from the NEED log-linear model for the home's cell (type × age × floor-area band × EPC band), times hidden occupancy / behaviour latents and the smart-control multiplier. This is the same process as the interim generator's `EnergyWorld`, checked to match it exactly. Bills are split into months with real regional HDD (region enters through the weather), with electric heating via efficiency / SCOP and solar via self-consumption. ~10% of homes lose some months and ~2% of gas homes have unmatched meters. Homes the NEED model can't place (unknown type, age, floor area or heating, ~1%) get no bills, which exercises the "unavailable" path. **Conflicting fields are not injected into real EPC records:** relabelling real ratings would corrupt the value model and lender view. Real records already contain a few natural conflicts (~0.07%), and the interim synthetic dataset keeps its ~5% injected conflicts for the scenario tests.
+- **Monthly bills per EPC home** (`greenhome.data.synthetic_parts`, `make real`). EPCs carry no metered use, and NEED isn't linked to EPC addresses. Annual gas and electricity come from the NEED log-linear model for the home's cell (type × age × floor-area band × EPC band), times hidden occupancy / behaviour latents and the smart-control multiplier. This is the same process as the interim generator's `EnergyWorld`, checked to match it exactly. Bills are split into months with real regional HDD (region enters through the weather), with electric heating via efficiency / SCOP and solar via self-consumption. ~10% of homes lose some months and ~2% of gas homes have unmatched meters. Homes the NEED model can't place (unknown type, age, floor area or heating, ~1%) get no bills, which exercises the "unavailable" path. A gas meter in a home not heated by gas carries the hot-water and cooking load on gas. Oil, LPG and district heating aren't metered, so those homes are flagged `heating_fuel_unmetered`. **Conflicting fields are not injected into real EPC records:** relabelling real ratings would corrupt the value model and lender view. Real records already contain a few natural conflicts (~0.07%), and the interim synthetic dataset keeps its ~5% injected conflicts for the scenario tests.
 - **`customer_id`**: one per home, except ~30% of private-rented homes, which are grouped into landlord customers holding 2–5 homes in the same local authority. Used for splits (70/15/15 by customer).
 - **Smart-controls level**: EPC records none / programmer / zone control but has no smart-thermostat field. Programmer homes are upgraded to `smart_thermostat` until the book matches the documented 22% market share (flagged `smart_controls_synthetic`).
-- **LTV** for the lender view (3.12): mortgaged share by tenure (none for social housing), LTV uniform 0.25–0.90. The balance is LTV × current value, unavailable until valuations exist.
+- **LTV** for the lender view (3.12): mortgaged share by tenure (none for social housing), LTV uniform 0.25–0.90. The balance is LTV × current value, unavailable for homes without a valuation.
 
 **Leakage and join rules**
 - Only use an EPC lodged *before* the sale date as the features for that sale. `current_value_estimate` = last sale price HPI-indexed to today (UK HPI for the sale's property type in its local authority, `greenhome.data.valuation`), kept separate from historical `price`. Homes with no sale since 2018 stay unavailable until the value model predicts them.
@@ -103,7 +103,7 @@ LA → Met Office region: Leeds → England E & NE, Cornwall → England SW & S 
 Reproducible: `python -m greenhome.data.build --seed 42` (`make build`: EPC ingest → synthetic parts → Price Paid join → valuation → NEED retrofit labels, ~2 min). Calibration (`make calibrate`) stays separate because its outputs are committed.
 
 ### 3.2 Annualisation
-`annual = Σ observed_months / Σ seasonal_share(observed_months)` using separate monthly profiles for gas (strongly seasonal) and electricity. If coverage < 6 months or share < 40%, mark `annual_estimate_quality = "low"`; if no data, `null` + "unavailable". Never fill with 0.
+`annual = Σ observed_months / Σ seasonal_share(observed_months)` using separate monthly profiles for gas (strongly seasonal) and electricity. Profiles and thresholds are in `config/annualisation.yaml`. If coverage < 6 months or share < 40%, flag `{fuel}_low_coverage`; if no data, `null` + `{fuel}_unavailable`. Never fill with 0.
 
 ### 3.3 Green Home Score sub-scores (all monotonic, documented in `config/score_mappings.yaml`)
 | Component | w | Mapping (draft) |
@@ -410,6 +410,7 @@ def build_portfolio(reports: list[PropertyReport]) -> PortfolioSummary   # lende
 ```
 config/            score_mappings.yaml, retrofit_catalogue.yaml, emission_factors.csv,
                    u_values.yaml, geometry.yaml, degree_days.csv, efficiencies.yaml, grants.yaml, synthetic.yaml, need_calibration.yaml,
+                   epc_mapping.yaml, annualisation.yaml, price_calibration.yaml, hpi_index.csv,
                    simulator.yaml + value_uplift.yaml (interim, until V1 and the value model replace them)
 data/              generated/ (gitignored if large), splits/
 src/greenhome/

@@ -108,6 +108,7 @@ def map_certificates(d: pd.DataFrame) -> pd.DataFrame:
     heating[heating == "GAS"] = np.where(condensing[heating == "GAS"], "gas_condensing", "gas_non_condensing")
     x["heating"] = heating
     flag(heating.isna(), "unknown_heating")
+    flag(heating.isin(CFG["unmetered_heating"]), "heating_fuel_unmetered")  # oil / LPG / district: not in bills
     gas_flag = d.mains_gas_flag.map({"Y": True, "N": False})
     inferred = gas_flag.isna()
     gas_flag[inferred] = d.main_fuel[inferred].fillna("").str.contains("mains gas", case=False)

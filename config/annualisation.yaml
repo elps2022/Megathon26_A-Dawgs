@@ -1,0 +1,11 @@
+version: 1
+source: >
+  Team profiles for annualising monthly bills (ARCHITECTURE 3.2): typical share of a year's use falling in each
+  calendar month. Gas follows the heating season (Met Office HDD shape, base load spread evenly); electricity has
+  a mild winter peak. VERIFY against published monthly profiles (e.g. Elexon Profile Class 1, Xoserve gas demand).
+  Check: on bills driven by real Met Office HDD (make real), annualising with a 4-month winter gap is off by
+  +2.0% (gas) / +0.7% (electricity); full or randomly gappy series by <=0.1%.
+low_coverage_if_fewer_distinct_months: 6
+low_coverage_if_share_below: 0.40
+gas: {1: 0.165, 2: 0.145, 3: 0.125, 4: 0.080, 5: 0.045, 6: 0.025, 7: 0.020, 8: 0.020, 9: 0.035, 10: 0.075, 11: 0.120, 12: 0.145}
+elec: {1: 0.105, 2: 0.095, 3: 0.090, 4: 0.080, 5: 0.075, 6: 0.070, 7: 0.070, 8: 0.070, 9: 0.075, 10: 0.085, 11: 0.090, 12: 0.095}
