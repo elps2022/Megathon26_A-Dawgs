@@ -9,6 +9,7 @@ Multi-view interactive application:
 from pathlib import Path
 import html
 import json
+import re
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -2446,9 +2447,20 @@ elif view_mode == "AI Grounding Inspector":
         extracted = extract_numbers_from_text(sample_text)
         if extracted:
             audit_rows = []
+            verified_list = res_dict.get("verified_claims", [])
+            unsupported_list = res_dict.get("unsupported_claims", [])
+            verified_nums = [v for claim_str in verified_list for v, _ in extract_numbers_from_text(claim_str)]
+            unsupported_nums = [v for claim_str in unsupported_list for v, _ in extract_numbers_from_text(claim_str)]
+
             for val, raw in extracted:
-                is_supported = any(abs(val - num) <= (0.05 * abs(num) + 1.0) for num in res_dict.get("verified_claims", [])) or raw in res_dict.get("verified_claims", [])
-                status = "✅ PASS (Engine Grounded)" if raw not in res_dict.get("unsupported_claims", []) else "🚨 BLOCKED (Hallucination)"
+                if val in {2023.0, 2024.0, 2025.0, 2026.0, 2030.0} or (val == 100.0 and re.search(r"/\s*100\b", sample_text)):
+                    status = "ℹ️ NEUTRAL (Score Scale / Year)"
+                elif raw in unsupported_list or any(abs(val - u) <= (0.02 * max(abs(u), 1.0)) for u in unsupported_nums):
+                    status = "🚨 BLOCKED (Hallucination)"
+                elif raw in verified_list or any(abs(val - v) <= (0.02 * max(abs(v), 1.0)) for v in verified_nums):
+                    status = "✅ PASS (Engine Grounded)"
+                else:
+                    status = "🚨 BLOCKED (Hallucination)"
                 audit_rows.append({"Numeric Value": val, "Matched Token": raw, "Shield Verdict": status})
             st.markdown("#### Claim-by-Claim Verification Audit")
             st.dataframe(pd.DataFrame(audit_rows), use_container_width=True)
