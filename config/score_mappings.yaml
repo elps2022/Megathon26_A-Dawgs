@@ -28,8 +28,14 @@ energy_efficiency:
   source: "Team draft; EPC band midpoints (VERIFY against EPC band ranges)"
 
 consumption_intensity:
-  points: [[50, 100], [350, 0]]   # kWh/m2/yr -> score, linear between, clipped
-  source: "Team draft, ARCHITECTURE.md 3.3 (VERIFY against NEED/EPC benchmarks)"
+  # Scored relative to similar homes, so neither big nor small homes are penalised for their size: energy doesn't
+  # scale with floor area (hot water, cooking, appliances), so raw kWh/m2 scored small homes ~15 points worse
+  # than large homes of similar efficiency on real NEED use (docs/SCORING.md). ratio = actual purchased energy /
+  # expected purchased energy for a typical home of the same type, size, age band and EPC band (NEED model,
+  # models/expected_use.py, median statistic) -> score, linear between, clipped.
+  ratio_points: [[0.5, 100], [1.0, 75], [2.0, 0]]
+  points: [[50, 100], [350, 0]]   # kWh/m2/yr, reported in inputs_used only
+  source: "Team mapping: a typical home (ratio 1.0) keeps the old median sub-score (75 at NEED's median ~125 kWh/m2); half its expected use scores 100, double scores 0. Expected use: DESNZ NEED 2023 log-linear model (config/need_calibration.yaml)"
 
 insulation:
   loft_weight: 0.5

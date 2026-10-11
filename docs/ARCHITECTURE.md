@@ -109,7 +109,7 @@ Reproducible: `python -m greenhome.data.build --seed 42` (`make build`: EPC inge
 | Component | w | Mapping (draft) |
 |---|---|---|
 | Energy efficiency | .25 | SAP points if present (1–100, clipped), else rating band midpoint: A 96, B 86, C 75, D 61, E 46, F 30, G 10 |
-| Consumption intensity | .20 | purchased kWh/m²/yr, piecewise-linear: ≤50 → 100, ≥350 → 0 |
+| Consumption intensity | .20 | purchased energy ÷ expected for a typical similar home (same type, size, age, EPC band; NEED model), piecewise-linear: ≤0.5 → 100, 1.0 → 75, ≥2.0 → 0. Raw kWh/m² penalised small homes by ~23 points on real NEED use (`docs/SCORING.md`); unmetered heating fuel → default + flag |
 | Insulation | .15 | loft depth score × 0.5 + wall score × 0.5 (none 0, partial 50, full 100) |
 | Heating | .15 | heat pump 100, district 70, condensing gas 55, non-condensing gas 35, oil/LPG 25, storage heaters 30, direct electric 20 |
 | Glazing | .10 | triple 100, double (post-2002) 80, double (older) 60, partial 35, single 0 |

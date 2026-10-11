@@ -69,10 +69,40 @@ def log_linear() -> Pipeline:
     return Pipeline([("pre", pre), ("ridge", Ridge(alpha=1.0))])
 
 
-def fit_lgb(xtr, ytr, xva, yva, fuel):
-    m = lgb.LGBMRegressor(**LGB_PARAMS, monotone_constraints=monotone(list(xtr.columns), fuel))
-    m.fit(xtr, ytr, eval_X=(xva,), eval_y=(yva,), callbacks=[lgb.early_stopping(100, verbose=False)])
-    return m
+PARAMS_PATH = ROOT / "config" / "energy_params.yaml"
+
+
+def tuned_params(fuel: str) -> dict:
+    """Optuna-tuned settings per fuel (config/energy_params.yaml, written by models/tune.py); {} if untuned."""
+    import yaml
+    if not PARAMS_PATH.exists():
+        return {}
+    return dict(yaml.safe_load(PARAMS_PATH.read_text()).get(fuel, {}))
+
+
+class _RawTarget:
+    """Fits a raw-kWh objective (Tweedie) on exp(log target) but predicts log kWh, like the other models."""
+
+    def __init__(self, model):
+        self.m = model
+        self.best_iteration_ = model.best_iteration_
+
+    def predict(self, x):
+        return np.log(np.clip(self.m.predict(x), 1e-6, None))
+
+
+def fit_lgb(xtr, ytr, xva, yva, fuel, tuned: bool = True, log_ratio_target: bool = False):
+    """LightGBM on a log target. tuned=True uses config/energy_params.yaml. A log-ratio target (V1's residual,
+    which can be negative) can't use Tweedie, so it keeps the other tuned settings with an L2 objective."""
+    params = {**LGB_PARAMS, **(tuned_params(fuel) if tuned else {})}
+    raw = params.get("objective") == "tweedie"
+    if raw and log_ratio_target:
+        params["objective"], raw = "regression", False
+        params.pop("tweedie_variance_power", None)
+    m = lgb.LGBMRegressor(**params, monotone_constraints=monotone(list(xtr.columns), fuel))
+    t_tr, t_va = (np.exp(ytr), np.exp(yva)) if raw else (ytr, yva)
+    m.fit(xtr, t_tr, eval_X=(xva,), eval_y=(t_va,), callbacks=[lgb.early_stopping(100, verbose=False)])
+    return _RawTarget(m) if raw else m
 
 
 def metrics(y_log: np.ndarray, p_log: np.ndarray) -> dict:

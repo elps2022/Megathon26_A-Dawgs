@@ -54,13 +54,34 @@ def _energy_efficiency(p, m):
     return _lookup(cfg["rating_midpoints"], p.get("energy_rating"), "energy_rating", d)
 
 
+def _expected_purchased(p) -> float | None:
+    """Expected purchased energy (kWh/yr) for a typical similar home (NEED model, median), or None."""
+    from types import SimpleNamespace
+    from greenhome.models.expected_use import expected_annual_kwh
+    keys = ("property_type", "age_band", "floor_area_m2", "energy_rating", "heating", "gas_meter")
+    if any(p.get(k) is None for k in keys):
+        return None
+    e = expected_annual_kwh(SimpleNamespace(**{k: p[k] for k in keys}), statistic="median")
+    return None if e["elec"] is None or e["gas"] is None else e["elec"] + e["gas"]
+
+
 def _consumption(p, m):
+    """Purchased energy relative to a typical similar home (same type, size, age band, EPC band), so a home
+    isn't penalised for being big or small. kWh/m2 is reported alongside but not scored."""
     cfg, d = m["consumption_intensity"], m["default_score"]
     elec, gas, area = p.get("annual_elec_kwh"), p.get("annual_gas_kwh"), p.get("floor_area_m2")
     if elec is None or gas is None or not area or area <= 0:
         return d, {"annual_elec_kwh": elec, "annual_gas_kwh": gas, "floor_area_m2": area}, ["missing_consumption_inputs"]
-    intensity = (elec + gas) / area
-    return _interp(intensity, cfg["points"]), {"kwh_per_m2": round(intensity, 1)}, []
+    used = {"kwh_per_m2": round((elec + gas) / area, 1), "actual_kwh": round(elec + gas, 1)}
+    if "heating_fuel_unmetered" in (p.get("data_flags") or []):
+        # oil / LPG / district heat isn't in the bills: the home's real consumption can't be judged
+        return d, used, ["heating_fuel_unmetered"]
+    expected = _expected_purchased(p)
+    if not expected:
+        return d, used, ["expected_use_unavailable"]
+    ratio = (elec + gas) / expected
+    used.update(expected_kwh_similar_homes=round(expected, 1), ratio_to_similar_homes=round(ratio, 3))
+    return _interp(ratio, cfg["ratio_points"]), used, []
 
 
 def _insulation(p, m):

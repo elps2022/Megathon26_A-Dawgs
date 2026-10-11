@@ -56,3 +56,17 @@ def test_epc_features_unknowns_stay_missing():
     assert np.isnan(x.epc_band.iat[0]) and x.has_epc.iat[0] == 0
     assert epc_features(_epc_home(floor_area_m2=50.0)).floor_area_band.iat[0] == 1  # NEED band edges: <=50
     assert epc_features(_epc_home(floor_area_m2=50.5)).floor_area_band.iat[0] == 2
+
+
+def test_expected_use_is_smeared_to_the_mean():
+    import math
+    import yaml
+    from greenhome.models import expected_use as eu
+    need = yaml.safe_load(eu._CFG.read_text())
+    for key in ("gas_kwh_gas_heated", "elec_kwh_gas_heated", "elec_kwh_not_gas_heated"):
+        assert need[key]["smearing_factor"] > 1.0          # log-model outputs sit below the mean
+    m, cell = need["gas_kwh_gas_heated"], ("Semi detached", "2", "2", "D")
+    e = m["effects"]
+    typical = math.exp(m["intercept"] + e["PROP_TYPE"][cell[0]] + e["FLOOR_AREA_BAND"][cell[1]]
+                       + e["PROP_AGE_BAND"][cell[2]] + e["EPC"][cell[3]])
+    assert abs(eu._predict(m, cell) - round(typical * m["smearing_factor"], 1)) < 1e-6

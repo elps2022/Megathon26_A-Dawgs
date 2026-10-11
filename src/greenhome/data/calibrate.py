@@ -40,7 +40,9 @@ PPD_COLS = ["tid", "price", "date", "postcode", "ptype", "new_build", "tenure", 
 
 
 def fit_loglinear(df: pd.DataFrame, target: str) -> dict:
-    """OLS of log(target) on one-hot NEED bands. Returns intercept, per-level effects, residual sd."""
+    """OLS of log(target) on one-hot NEED bands. Returns intercept, per-level effects, residual sd, and Duan's
+    smearing factor mean(exp(residual)): exp(log prediction) is the typical (median-like) home, which sits
+    below the average, so expected totals (carbon, portfolio) need prediction x smearing (Duan, 1983)."""
     x = pd.get_dummies(df[NEED_FACTORS].astype(str), drop_first=True, dtype=float)
     y = np.log(df[target].to_numpy())
     a = np.column_stack([np.ones(len(x)), x.to_numpy()])
@@ -52,7 +54,8 @@ def fit_loglinear(df: pd.DataFrame, target: str) -> dict:
             col = f"{f}_{lvl}"
             effects[f][lvl] = round(float(beta[1 + list(x.columns).index(col)]), 4) if col in x.columns else 0.0
     return {"intercept": round(float(beta[0]), 4), "effects": effects,
-            "resid_sd": round(float(resid.std()), 4), "n": int(len(df))}
+            "resid_sd": round(float(resid.std()), 4), "smearing_factor": round(float(np.exp(resid).mean()), 4),
+            "n": int(len(df))}
 
 
 def need_retrofit_effects(d: pd.DataFrame) -> dict:

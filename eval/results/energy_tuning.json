@@ -1,0 +1,44 @@
+{
+  "gas": {
+    "untuned_cv_mae": 4119.1,
+    "untuned_cv_sd": 27.1,
+    "tuned_cv_mae": 4078.6,
+    "tuned_cv_sd": 26.1,
+    "objective": "huber",
+    "params": {
+      "learning_rate": 0.04095,
+      "num_leaves": 17,
+      "min_child_samples": 199,
+      "feature_fraction": 0.51471,
+      "bagging_fraction": 0.79363,
+      "lambda_l1": 0.6251,
+      "lambda_l2": 0.14952,
+      "min_split_gain": 0.0085,
+      "alpha": 0.42909
+    },
+    "trials": 50,
+    "best_trial": 38,
+    "best_iterations": 280
+  },
+  "elec": {
+    "untuned_cv_mae": 1550.2,
+    "untuned_cv_sd": 23.5,
+    "tuned_cv_mae": 1549.5,
+    "tuned_cv_sd": 23.1,
+    "objective": "huber",
+    "params": {
+      "learning_rate": 0.05773,
+      "num_leaves": 42,
+      "min_child_samples": 37,
+      "feature_fraction": 0.87502,
+      "bagging_fraction": 0.77768,
+      "lambda_l1": 2.1498,
+      "lambda_l2": 2.83604,
+      "min_split_gain": 0.01985,
+      "alpha": 0.6913
+    },
+    "trials": 50,
+    "best_trial": 47,
+    "best_iterations": 167
+  }
+}

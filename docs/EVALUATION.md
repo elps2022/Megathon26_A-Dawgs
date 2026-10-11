@@ -9,11 +9,13 @@ Reproduce with `make train`, which writes `eval/results/energy_first_cut.json`. 
 | Gas | Global median | 5,003 | −0.01 | 4,930 | 4,721 | −0.01 |
 | Gas | Median of similar homes (back-off) | 4,241 | 0.24 | 4,131 | 3,894 | 0.26 |
 | Gas | Log-linear (ridge) | 4,118 | 0.28 | 4,029 | 3,829 | 0.30 |
-| Gas | **LightGBM (monotone, untuned)** | **4,119** | **0.28** | **4,015** | **3,823** | **0.30** |
+| Gas | LightGBM (monotone, untuned) | 4,119 | 0.28 | 4,015 | 3,823 | 0.30 |
+| Gas | **LightGBM (monotone, Optuna-tuned)** | **4,079** | **0.28** | **3,972** | **3,784** | **0.30** |
 | Elec | Global median | 1,672 | 0.00 | 1,715 | 1,728 | 0.00 |
 | Elec | Median of similar homes (back-off) | 1,587 | 0.09 | 1,614 | 1,620 | 0.11 |
 | Elec | Log-linear (ridge) | 1,589 | 0.10 | 1,618 | 1,624 | 0.11 |
-| Elec | **LightGBM (monotone, untuned)** | **1,550** | **0.15** | **1,581** | **1,572** | **0.16** |
+| Elec | LightGBM (monotone, untuned) | 1,550 | 0.15 | 1,581 | 1,572 | 0.16 |
+| Elec | **LightGBM (monotone, Optuna-tuned)** | **1,549** | **0.15** | **1,580** | **1,570** | **0.16** |
 
 CV MAE fold-to-fold sd is ≈ 20–30 kWh. Gas medians are ≈ 10,100 kWh and electricity ≈ 2,600 kWh. All rows use the **parity feature set** (below), i.e. only what an EPC home can also supply.
 
@@ -49,11 +51,13 @@ Reproduce with `python -m greenhome.models.energy_greybox` (part of `make train`
 | Gas | Physics only (no training) | 10,731 | −1.21 | 10,578 | −1.19 |
 | Gas | Physics × one scale factor (fitted on train) | 4,548 | 0.14 | 4,439 | 0.16 |
 | Gas | V2: LightGBM (untuned) | 4,119 | 0.28 | 4,015 | 0.30 |
-| Gas | **V1: physics × LightGBM residual** | **4,118** | **0.28** | **4,010** | **0.30** |
+| Gas | V1: physics × LightGBM residual (untuned) | 4,118 | 0.28 | 4,010 | 0.30 |
+| Gas | **V1, tuned settings** | **4,085** | **0.27** | **3,967** | **0.30** |
 | Elec | Physics only (no training) | 1,659 | 0.01 | 1,680 | 0.03 |
 | Elec | Physics × one scale factor | 1,621 | 0.02 | 1,653 | 0.03 |
 | Elec | V2: LightGBM (untuned) | 1,550 | 0.15 | 1,581 | 0.16 |
-| Elec | **V1: physics × LightGBM residual** | **1,549** | **0.15** | **1,578** | **0.16** |
+| Elec | V1: physics × LightGBM residual (untuned) | 1,549 | 0.15 | 1,578 | 0.16 |
+| Elec | **V1, tuned settings** | **1,550** | **0.15** | **1,578** | **0.16** |
 
 **Reading the numbers**
 - **Physics overpredicts NEED gas about 2×** (median 20,400 vs 10,100 kWh; the fitted scale factor is 0.51). This is the documented *prebound effect*: real homes, especially older and poorly rated ones, are heated less, and to lower temperatures, than steady-state physics assumes (Sunikka-Blank & Galvin, 2012). NEED homes have no fabric fields, so their physics uses age-band default fabric, which adds to the gap. Electricity physics (SAP lighting and appliances) is close: scale factor 0.89.
@@ -77,6 +81,19 @@ Reproduce with `python -m greenhome.models.energy_bills` (part of `make train`) 
 **Reading the numbers**
 - **Description-only accuracy is capped by the inputs.** Among homes with identical type, age, size, EPC band and region, use still varies so much that these bands explain at most R² ≈ 0.25 (gas) / 0.12 (electricity); V1 reaches 0.30 / 0.16 with the extra parity features. Occupants, not buildings, drive most of the rest (building factors explain ~40% of domestic energy variation in Huebner et al., 2015).
 - **The home's own bill is the strongest single predictor**, and most of mode 1's accuracy comes from it. Plain GBDTs with the bill as a feature (L2 on log) lose to "last year's bill" in kWh MAE; predicting the *change* with an L1 objective beats it by ~2.6% (gas) and ~2.6% (electricity) on CV and val. The model's job here is shrinking unusual years back towards what the home's description predicts.
-- **Classification view (val, mode 2):** picking the top 25% of users, V1 has precision 0.55 / recall 0.53 for gas (0.47 / 0.45 electricity), against 0.25 for a random pick.
+- **Classification view (val, mode 2, untuned V1):** picking the top 25% of users, V1 has precision 0.55 / recall 0.53 for gas (0.47 / 0.45 electricity), against 0.25 for a random pick.
+
+## Hyperparameter tuning
+
+`python -m greenhome.models.tune --trials 50` → `eval/results/energy_tuning.json` and `config/energy_params.yaml` (read by every LightGBM fit, so V1's residual and V2 share settings). Optuna TPE, 50 trials per fuel, over learning rate, leaves, minimum leaf size, feature and row sampling, L1/L2 penalties, minimum split gain and the objective (L2 or Huber on log kWh, Tweedie on raw kWh). Scored by 5-fold CV MAE in kWh on the train split only; val and test never seen.
+
+| Fuel | Untuned CV MAE | Tuned CV MAE | Val MAE untuned → tuned | Chosen |
+|---|---|---|---|---|
+| Gas | 4,119 ± 27 | **4,079 ± 26** | 4,015 → **3,972** (−1.1%) | Huber loss (α 0.43), 17 leaves, ≥ 199 homes per leaf |
+| Elec | 1,550 ± 24 | 1,550 ± 23 | 1,581 → 1,580 | Huber loss, 42 leaves (no gain) |
+
+Tuning bought ~1% on gas and nothing on electricity, consistent with the feature ceiling above: the inputs, not the settings, limit description-only accuracy. Huber was picked for both fuels because it is less pulled by the few very high or very low users.
+
+**Totals vs single homes (smearing).** Log-scale models predict the *typical* home, which sits below the average because use is skewed. Summed over a portfolio that undercounts by ~12–15% (gas) and ~18–31% (electricity). Duan's smearing factor, mean(exp(residual)) on the training data, corrects it: 1.15 (gas), 1.18 / 1.31 (electricity in gas / other homes) for the NEED fallback (`config/need_calibration.yaml`, applied in `models/expected_use.py`), and recorded per model in `energy_v1.json`. With it, description-only totals are within ~3% for 100 homes and ~1% for 1,000 homes (val), while single homes stay at ~29% median error.
 
 **Next (§3.5 steps 5–7):** Optuna tuning, the LightGBM vs CatBoost bake-off, feature work (interactions; IMD quintile is already in), conformal p10/p90, subgroup errors, and checking loft/cavity/PV toggles against NEED's observed DiD effects. Then a single scoring of the test split.

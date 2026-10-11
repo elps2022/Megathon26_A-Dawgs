@@ -36,9 +36,12 @@ def predict_v1(xtr, ytr, xev, fuel) -> dict[str, np.ndarray]:
     scale = float(np.median(ytr.to_numpy() - ptr))
     es = np.random.default_rng(0).random(len(xtr)) < 0.15
     resid = ytr - xtr.log_physics
-    m = fit_lgb(xtr[~es], resid[~es], xtr[es], resid[es], fuel)
+    m = fit_lgb(xtr[~es], resid[~es], xtr[es], resid[es], fuel, log_ratio_target=True)
+    # Duan smearing factor: exp(log prediction) is the typical home; x smearing gives the expected (mean) use,
+    # which totals (carbon, portfolio) need. Reported here, applied by the EnergyModel interface.
+    smear = float(np.mean(np.exp(ytr.to_numpy() - (ptr + m.predict(xtr)))))
     return {"physics_only": pev, "physics_scaled": pev + scale, "v1_greybox": pev + m.predict(xev),
-            "_scale": scale, "_iters": m.best_iteration_}
+            "_scale": scale, "_iters": m.best_iteration_, "_smear": smear}
 
 
 def evaluate(fuel: str) -> dict:
@@ -60,6 +63,7 @@ def evaluate(fuel: str) -> dict:
     preds = {**predict_all(plain(xtr), ytr, plain(xva), fuel), **predict_v1(xtr, ytr, xva, fuel)}
     out["physics_scale_factor"] = round(float(np.exp(preds.pop("_scale"))), 3)
     out["v1_iterations"] = int(preds.pop("_iters"))
+    out["v1_smearing_factor"] = round(preds.pop("_smear"), 4)
     preds.pop("_lgb_iters", None)
     out["val"] = {k: metrics(yva.to_numpy(), v) for k, v in preds.items()}
     return out

@@ -38,9 +38,17 @@ Otherwise the EPC band midpoint is used:
 |---|---|---|---|---|---|---|
 | 96 | 86 | 75 | 61 | 46 | 30 | 10 |
 
-**Consumption intensity (20%).** Intensity = (annual electricity + annual gas) / floor area,
-in kWh per m2 per year. 50 or less scores 100, 350 or more scores 0, with a straight line
-between. Lower use never scores lower.
+**Consumption intensity (20%).** Purchased energy (annual electricity + annual gas) **relative to a typical
+similar home**: ratio = actual / expected, where expected is the NEED model's typical (median) use for the same
+property type, floor area, age band and EPC band (`models/expected_use.py`). A ratio of 0.5 or less scores 100,
+1.0 (typical) scores 75, 2.0 or more scores 0, with straight lines between. Using more never scores higher.
+kWh per m2 is still reported in `inputs_used`, but it isn't scored: energy doesn't grow in proportion to floor
+area (hot water, cooking and appliances don't double when the house does), so on real NEED use raw kWh/m2 scored
+small homes 56 and large homes 79 at the median, a 23.5-point gap that penalised flats and smaller (often
+lower-income) homes for their size. Relative to similar homes the gap is 6.6 points. Homes heated by oil, LPG or
+district heat (flag `heating_fuel_unmetered`) get the default score and a flag, because their heating fuel isn't
+in the bills; scoring only their electricity would make them look highly efficient. Homes the NEED model can't
+place get the default and `expected_use_unavailable`.
 
 **Insulation (15%).** Half loft, half walls.
 - Loft depth: 0 mm = 0, 100 mm = 50, 270 mm or more = 100, straight lines between.
@@ -114,7 +122,8 @@ requires, and document this overlap here instead of hiding it.
   NEED benchmarks, loft depth target, regional solar yield).
 - Solar yield uses one flat 900 kWh/kWp, not a regional figure.
 - Consumption intensity adds the electricity and gas figures given on the property. It
-  matches "purchased energy" only if `annual_elec_kwh` is grid import.
+  matches "purchased energy" only if `annual_elec_kwh` is grid import. Bills are compared with NEED's
+  weather-corrected gas without weather-normalising them first, so a mild billing year scores slightly better.
 - Category names in the config (for example `gas_condensing`) must match the Property schema names in the
   data. Mismatches show up as `unknown_<field>` flags.
 - The data is synthetic, so the score shows how the method behaves, not real-world accuracy.

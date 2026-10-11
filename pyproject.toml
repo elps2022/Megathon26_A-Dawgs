@@ -17,6 +17,7 @@ dependencies = [
     "uvicorn>=0.54.0",
     "streamlit>=1.65.0",
     "httpx>=0.28.1",
+    "optuna>=5.0.0",
 ]
 
 [dependency-groups]

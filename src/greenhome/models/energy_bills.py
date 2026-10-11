@@ -38,14 +38,14 @@ def predict(xtr, ytr, xev, fuel) -> dict[str, np.ndarray]:
     desc = lambda df: df.drop(columns=["log_prior"])
     # description-only V1 (fallback for homes without last year's bill)
     r = ytr - xtr.log_physics
-    v1_desc = fit_lgb(desc(xtr)[~es], r[~es], desc(xtr)[es], r[es], fuel)
+    v1_desc = fit_lgb(desc(xtr)[~es], r[~es], desc(xtr)[es], r[es], fuel, log_ratio_target=True)
     fallback = xev.log_physics.to_numpy() + v1_desc.predict(desc(xev))
     prior = xev.log_prior.to_numpy()
     has = ~np.isnan(prior)
     trend = float(np.nanmedian(ytr.to_numpy() - xtr.log_prior.to_numpy()))
     plain = lambda df: df.drop(columns=["log_physics"])
     v2 = fit_lgb(plain(xtr)[~es], ytr[~es], plain(xtr)[es], ytr[es], fuel)
-    v1 = fit_lgb(xtr[~es], r[~es], xtr[es], r[es], fuel)
+    v1 = fit_lgb(xtr[~es], r[~es], xtr[es], r[es], fuel, log_ratio_target=True)
     # Shipped mode-1 model: GBDT on the change from last year, log(y / prior), with an L1 (median) objective,
     # which is what minimises kWh error; homes without last year's bill use the description-only V1.
     mm = xtr.log_prior.notna().to_numpy()

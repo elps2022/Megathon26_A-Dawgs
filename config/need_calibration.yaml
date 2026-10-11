@@ -40,6 +40,7 @@ gas_kwh_gas_heated:
       E: 0.3744
       F/G: 0.3568
   resid_sd: 0.5473
+  smearing_factor: 1.1463
   n: 23940
 elec_kwh_gas_heated:
   intercept: 7.412
@@ -69,6 +70,7 @@ elec_kwh_gas_heated:
       E: 0.0459
       F/G: 0.1079
   resid_sd: 0.5651
+  smearing_factor: 1.1775
   n: 23665
 elec_kwh_not_gas_heated:
   intercept: 7.0894
@@ -98,6 +100,7 @@ elec_kwh_not_gas_heated:
       E: 0.8287
       F/G: 0.8425
   resid_sd: 0.7455
+  smearing_factor: 1.3106
   n: 6864
 retrofit_effects:
   loft_insulation:

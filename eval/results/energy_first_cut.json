@@ -25,11 +25,11 @@
         "mae_kwh_sd": 21.4
       },
       "lightgbm": {
-        "mae_kwh": 4119.06,
-        "mape_pct": 50.088,
-        "median_ape_pct": 30.332,
-        "r2_log": 0.2799,
-        "mae_kwh_sd": 27.1
+        "mae_kwh": 4078.74,
+        "mape_pct": 52.044,
+        "median_ape_pct": 29.796,
+        "r2_log": 0.2767,
+        "mae_kwh_sd": 26.2
       }
     },
     "val": {
@@ -52,10 +52,10 @@
         "r2_log": 0.3001
       },
       "lightgbm": {
-        "mae_kwh": 4015.3,
-        "mape_pct": 47.41,
-        "median_ape_pct": 29.56,
-        "r2_log": 0.3026
+        "mae_kwh": 3971.8,
+        "mape_pct": 49.17,
+        "median_ape_pct": 29.18,
+        "r2_log": 0.3012
       }
     },
     "val_with_epc": {
@@ -78,13 +78,13 @@
         "r2_log": 0.2991
       },
       "lightgbm": {
-        "mae_kwh": 3823.0,
-        "mape_pct": 48.23,
-        "median_ape_pct": 30.09,
-        "r2_log": 0.301
+        "mae_kwh": 3783.7,
+        "mape_pct": 49.91,
+        "median_ape_pct": 29.82,
+        "r2_log": 0.2993
       }
     },
-    "lgb_iterations": 202
+    "lgb_iterations": 599
   },
   "elec": {
     "n_train": 31721,
@@ -112,11 +112,11 @@
         "mae_kwh_sd": 25.9
       },
       "lightgbm": {
-        "mae_kwh": 1550.2,
-        "mape_pct": 54.15,
-        "median_ape_pct": 37.75,
-        "r2_log": 0.1487,
-        "mae_kwh_sd": 23.5
+        "mae_kwh": 1549.12,
+        "mape_pct": 53.888,
+        "median_ape_pct": 37.588,
+        "r2_log": 0.1479,
+        "mae_kwh_sd": 23.1
       }
     },
     "val": {
@@ -139,10 +139,10 @@
         "r2_log": 0.1107
       },
       "lightgbm": {
-        "mae_kwh": 1581.0,
-        "mape_pct": 54.24,
-        "median_ape_pct": 37.83,
-        "r2_log": 0.1615
+        "mae_kwh": 1580.2,
+        "mape_pct": 53.96,
+        "median_ape_pct": 37.75,
+        "r2_log": 0.1622
       }
     },
     "val_with_epc": {
@@ -165,12 +165,12 @@
         "r2_log": 0.1119
       },
       "lightgbm": {
-        "mae_kwh": 1572.1,
-        "mape_pct": 53.76,
-        "median_ape_pct": 37.68,
-        "r2_log": 0.1777
+        "mae_kwh": 1570.3,
+        "mape_pct": 53.66,
+        "median_ape_pct": 37.71,
+        "r2_log": 0.1787
       }
     },
-    "lgb_iterations": 188
+    "lgb_iterations": 169
   }
 }
