@@ -145,3 +145,27 @@ def test_estimated_use_carries_the_model_band():
     assert before.gas_p10 < before.gas_kwh < before.gas_p90 and before.elec_p10 < before.elec_kwh < before.elec_p90
     billed = savings.simulate_package_savings(home(), ["loft_insulation"])[0]
     assert billed.gas_p10 is None  # billed use is a measurement, not a model estimate
+
+
+@needs_artifacts
+def test_mode1_forecast_is_near_the_bill_and_sets_the_baseline():
+    f = load_model("greybox").forecast_frame(frame(home(), home(annual_gas_kwh=None)))
+    assert 0.7 < f.gas_kwh[0] / 12000 < 1.3 and 0.7 < f.elec_kwh[0] / 3000 < 1.3
+    assert np.isnan(f.gas_kwh[1])  # no gas bill: nothing to forecast from
+    before = savings.simulate_package_savings(home(), ["loft_insulation"])[0]
+    assert before.model_version == "greybox_v1+mode1" and before.gas_kwh == pytest.approx(f.gas_kwh[0], abs=0.1)
+
+
+def test_score_reference_compares_gas_meter_homes_with_gas_heated_homes():
+    from greenhome.models.energy import similar_home_kwh
+    hp = home(heating="heat_pump").model_dump()
+    gas_home = similar_home_kwh(home().model_dump(), "median", score_reference=True)["gas"]
+    assert similar_home_kwh(hp, "median", score_reference=True)["gas"] == pytest.approx(gas_home)
+    assert similar_home_kwh(hp, "median")["gas"] < 0.3 * gas_home   # actual-use estimate: cooking / hot water only
+
+
+def test_heat_pump_and_solar_never_lower_the_score():
+    from greenhome.engine.report import build_report
+    r0 = build_report(home())
+    r1 = build_report(home(), retrofits=["heat_pump", "solar_pv"])
+    assert r1.score_after.total >= r0.score.total

@@ -27,8 +27,7 @@ import yaml
 
 from greenhome.engine.carbon import calculate_carbon_kg
 from greenhome.engine.feasibility import RETROFIT_CATALOGUE
-from greenhome.models.energy import ModelUnavailable, load_model, physics_elasticity
-from greenhome.models.expected_use import expected_annual_kwh
+from greenhome.models.energy import ModelUnavailable, load_model, physics_elasticity, similar_home_kwh
 from greenhome.schema import (
     Element,
     EnergyBreakdown,
@@ -111,49 +110,39 @@ def energy_model(name: str = "greybox"):
         return load_model("physics"), name != "physics"
 
 
-def _expected(p: Property, model, fallback: bool) -> dict[str, float | None]:
-    """Expected annual use for similar homes: the energy model, or the NEED log-linear table when the model is
-    a fallback or can't place the home (e.g. unknown floor area).
-
-    A gas meter in a home not heated by gas is hot water / cooking only. NEED has no gas readings for such homes,
-    so their gas is the base-load share (1 - gas_heating_share, config/simulator.yaml) of what a similar
-    gas-heated home uses, the same rule the synthetic bills use; it was the whole gas-heated figure before."""
-    table = expected_annual_kwh(p)
-    gas_heated = _heating_fuel(p) == "gas"
-    if p.gas_meter and not gas_heated:
-        as_gas_heated = p.model_copy(update={"heating": "gas_condensing"})
-        share = 1 - _cfg("simulator.yaml")["gas_heating_share"]["value"]
-    else:
-        as_gas_heated, share = p, 1.0
-    if fallback:
-        gas = expected_annual_kwh(as_gas_heated)["gas"]
-        return {"elec": table["elec"], "gas": None if gas is None else round(gas * share, 1)}
-    pred = model.predict_frame(pd.DataFrame([p.model_dump(), as_gas_heated.model_dump()]))
-    elec, gas = pred.elec_kwh.iloc[0], pred.gas_kwh.iloc[1] * share
-    out = {"elec": None if np.isnan(elec) else round(float(elec), 1), "gas": None if np.isnan(gas) else round(float(gas), 1)}
-    if out["gas"] is None and table["gas"] is not None:
-        out["gas"] = round(expected_annual_kwh(as_gas_heated)["gas"] * share, 1)
-    return {f: out[f] if out[f] is not None else table[f] for f in out}
-
-
-def baseline_energy(p: Property, energy_model_name: str = "greybox") -> tuple[float, float, list[str]]:
-    """(elec, gas, flags): bills first, then the flagged energy-model estimate for similar homes."""
+def _baseline(p: Property, energy_model_name: str = "greybox") -> tuple[float, float, list[str], bool]:
+    """(elec, gas, flags, forecast_used). A billed fuel is forecast for next year by mode 1 (the home's own bill
+    + description, models/energy.py), which beats the bill alone on held-out NEED homes; the bill itself is used
+    when the model isn't trained (or the physics model is chosen). A missing bill falls back to the flagged
+    estimate for similar homes (mode 2, energy.similar_home_kwh)."""
     flags: list[str] = []
-    expected = None
     elec, gas = p.annual_elec_kwh, p.annual_gas_kwh
     if gas is None and not p.gas_meter:
         gas = 0.0  # no gas supply: a real zero, not missing data
+    forecast_used = False
+    model, fallback = energy_model(energy_model_name)
+    if not fallback and hasattr(model, "forecast_frame") and (p.annual_elec_kwh or p.annual_gas_kwh):
+        f = model.forecast_frame(pd.DataFrame([p.model_dump()])).iloc[0]
+        if p.annual_elec_kwh and np.isfinite(f.elec_kwh):
+            elec, forecast_used = round(float(f.elec_kwh), 1), True
+        if p.annual_gas_kwh and np.isfinite(f.gas_kwh):
+            gas, forecast_used = round(float(f.gas_kwh), 1), True
     if elec is None or gas is None:
-        expected = _expected(p, *energy_model(energy_model_name))
-    if elec is None:
-        elec = expected["elec"]
-        flags.append("elec_estimated_from_similar_homes")
-    if gas is None:
-        gas = expected["gas"]
-        flags.append("gas_estimated_from_similar_homes")
+        expected = similar_home_kwh(p.model_dump(), "mean", energy_model_name)
+        if elec is None:
+            elec = expected["elec"]
+            flags.append("elec_estimated_from_similar_homes")
+        if gas is None:
+            gas = expected["gas"]
+            flags.append("gas_estimated_from_similar_homes")
     if elec is None or gas is None:
         raise EnergyUnavailable("No usable bills and too little property data to estimate expected use.")
-    return float(elec), float(gas), flags
+    return float(elec), float(gas), flags, forecast_used
+
+
+def baseline_energy(p: Property, energy_model_name: str = "greybox") -> tuple[float, float, list[str]]:
+    """(elec, gas, flags): the bill-based forecast first, then the flagged estimate for similar homes."""
+    return _baseline(p, energy_model_name)[:3]
 
 
 def _heating_efficiency(heating: str) -> float:
@@ -203,7 +192,7 @@ def simulate_package_savings(
     """
     sim = _cfg("simulator.yaml")
     model, fallback = energy_model(energy_model_name)
-    base_elec, base_gas, baseline_flags = baseline_energy(p, energy_model_name)
+    base_elec, base_gas, baseline_flags, forecast_used = _baseline(p, energy_model_name)
 
     # Split each fuel into space heating vs base load (hot water, cooking, appliances). Only the fuel the
     # heating system actually uses carries heating demand: a gas meter in an electrically heated home is cooking.
@@ -326,7 +315,7 @@ def simulate_package_savings(
     elements_before = build_home_elements(p)
     elements_after = build_home_elements(apply_retrofits_to_property(p, ordered_retrofits))
     hlc = lambda els: round(sum(e.heat_loss_w_per_k for e in els), 1) if els else None
-    version = model.version + ("_fallback" if fallback else "")
+    version = model.version + ("_fallback" if fallback else "") + ("+mode1" if forecast_used else "")
     # Calibration k = this home's use / the model's expected use for it (heating fuel), when it has bills.
     k = None
     if not fallback and heating_fuel in ("gas", "electricity") and not baseline_flags:

@@ -31,7 +31,7 @@
     "cavity_installed": 0.0,
     "pv_installed": 0.0
   },
-  "median_purchased_kwh_per_m2": 126.1,
+  "median_purchased_kwh_per_m2": 126.2,
   "intensity_available_share": 0.9781,
   "flags": {
     "heating_fuel_unmetered": 72557,

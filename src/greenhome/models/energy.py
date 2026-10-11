@@ -18,6 +18,16 @@ Conventions match training exactly (energy_greybox / energy_ml), so deployment s
 Gas is NaN for homes that aren't gas heated (the NEED gas model only covers gas-heated homes). Predictions are
 the expected (mean) use, Duan smearing included, so totals and savings stay unbiased.
 
+Mode 1 ("this home", energy_bills): for a home with bills, `forecast_frame` predicts next year's use from its
+own billed use plus its description (a GBDT on log(this year / last year), L1). On held-out NEED homes it beats
+"last year's bill" by 2.6% (gas) / 3.3% (electricity) MAE, so the engine uses it as the baseline for billed homes.
+The billed figure is the plain annualised bill (Property has no weather-normalised field); NEED's prior-year gas
+is weather corrected, so a very cold or mild billing year passes partly into the forecast.
+
+`similar_home_kwh` is the one "typical / expected similar home" estimate (mode 2) shared by the score's
+consumption sub-score and the simulator's missing-bill fallback; without trained artifacts it falls back to the
+NEED log-linear table (models/expected_use.py).
+
 V1 also gives an 80% band for one home's actual use (`{fuel}_p10` / `{fuel}_p90`): conformalised quantile
 regression (CQR). Quantile GBDTs (10% / 90%) on the same V1 residual are fitted on train; the val split then
 widens (or narrows) both ends by the one amount Q that makes 80% of val homes fall inside. Coverage is
@@ -142,6 +152,8 @@ class _Trained(_Base):
         self.boosters = {fuel: lgb.Booster(model_file=str(path / self.meta[fuel]["file"])) for fuel in FUELS}
         self.quantiles = {fuel: [lgb.Booster(model_file=str(path / f)) for f in self.meta[fuel]["band"]["files"]]
                           for fuel in FUELS if "band" in self.meta[fuel]}
+        self.mode1 = {fuel: lgb.Booster(model_file=str(path / self.meta[fuel]["mode1"]["file"]))
+                      for fuel in FUELS if "mode1" in self.meta[fuel]}
 
     def _x(self, props, phys, fuel) -> pd.DataFrame:
         x = epc_features(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
@@ -167,6 +179,27 @@ class GreyboxModel(_Trained):
         lo, hi = (base + m.predict(x) for m in self.quantiles[fuel])
         return lo - q, hi + q
 
+    def forecast_frame(self, props: pd.DataFrame) -> pd.DataFrame:
+        """Mode 1: next year's expected (mean) use from each home's own billed annual use + description.
+        NaN where the home has no bill for that fuel (or, for gas, isn't gas heated)."""
+        props = props.reset_index(drop=True)
+        phys = physics_frame(props)
+        out = pd.DataFrame(index=props.index)
+        for fuel in FUELS:
+            m = self.meta[fuel].get("mode1")
+            prior = pd.to_numeric(props.get(f"annual_{fuel}_kwh"), errors="coerce")
+            if m is None or prior is None:
+                out[f"{fuel}_kwh"] = np.nan
+                continue
+            prior = prior.where(prior > 0)
+            x = epc_features(props).assign(log_physics=phys[f"log_physics_{fuel}"].to_numpy(),
+                                           log_prior=np.log(prior.to_numpy()))
+            x = x[m["features"]].fillna({"imd_quintile": self.meta.get("imd_fill", 3.0)})
+            change = self.mode1[fuel].predict(x)
+            out[f"{fuel}_kwh"] = np.where(prior.notna(), np.exp(x.log_prior.to_numpy() + change) * m["total_factor"], np.nan)
+        out.loc[~_gas_heated(props), "gas_kwh"] = np.nan
+        return out
+
     def predict_frame(self, props: pd.DataFrame) -> pd.DataFrame:
         out = super().predict_frame(props)
         props = props.reset_index(drop=True)
@@ -190,6 +223,64 @@ class MLModel(_Trained):
 
 
 MODELS = {"greybox": GreyboxModel, "ml": MLModel, "physics": PhysicsModel}
+
+
+def _heating_fuel(p: dict) -> str | None:
+    """Metered fuel the heating draws from (as engine.savings._heating_fuel, kept here to avoid a cycle)."""
+    system = physics.cfg("efficiencies.yaml")["heating_systems"].get(p.get("heating"))
+    if system is None:
+        return "gas" if p.get("gas_meter", True) else None
+    if system["fuel"] == "gas" and not p.get("gas_meter", True):
+        return None
+    return system["fuel"] if system["fuel"] in ("gas", "electricity") else None
+
+
+def similar_home_kwh(p: dict, statistic: str = "mean", model_name: str = "greybox", score_reference: bool = False) -> dict:
+    """Expected annual use of a home like this one, from its description only (mode 2): {"elec", "gas", "source"}.
+    statistic "mean" (savings, totals) or "median" (the typical similar home the score compares against).
+    Gas is 0.0 without a gas meter. A gas meter in a home not heated by gas is hot water / cooking only: NEED has
+    no gas readings for such homes, so it is the base-load share (1 - gas_heating_share, config/simulator.yaml)
+    of a similar gas-heated home. Falls back to the NEED log-linear table without trained artifacts, or when
+    the model can't place the home (e.g. unknown floor area). None = too little data for either.
+
+    score_reference=True is the consumption sub-score's comparison home (SCORING.md): any home with a gas meter
+    is compared with a similar gas-heated home's gas, as the score was designed and tested. Otherwise a heat pump
+    would be compared with NEED's non-gas homes, many of which burn unmetered oil, and look like a heavy user."""
+    from types import SimpleNamespace
+    from greenhome.models.expected_use import expected_annual_kwh
+    cooker = bool(p.get("gas_meter", True)) and _heating_fuel(p) != "gas"
+    if score_reference and cooker:
+        cooker, share_override = True, 1.0
+    else:
+        share_override = None
+    share = 1 - physics.cfg("simulator.yaml")["gas_heating_share"]["value"] if cooker else 1.0
+    if share_override is not None:
+        share = share_override
+    as_gas = {**p, "heating": "gas_condensing"} if cooker else p
+    keys = ("property_type", "age_band", "floor_area_m2", "energy_rating", "heating", "gas_meter")
+    table = lambda q: (expected_annual_kwh(SimpleNamespace(**{k: q.get(k) for k in keys}), statistic=statistic)
+                       if all(q.get(k) is not None for k in keys) else {"elec": None, "gas": None})
+    t, tg = table(p), table(as_gas)
+    out = {"elec": t["elec"], "gas": None if tg["gas"] is None else round(tg["gas"] * share, 1), "source": "need_loglinear"}
+    try:
+        model = load_model(model_name)
+    except ModelUnavailable:
+        model = None
+    defaults = {k: f.default for k, f in Property.model_fields.items() if not f.is_required()}
+    needed = ("property_type", "age_band", "region", "heating", "wall_type", "glazing", "local_authority")
+    if model is not None and all(p.get(k) is not None for k in needed):
+        rows = pd.DataFrame([{**defaults, **{k: v for k, v in q.items() if k in Property.model_fields}} for q in (p, as_gas)])
+        pred = model.predict_frame(rows)
+        unsmear = lambda fuel: model.smear[fuel] if statistic == "median" else 1.0
+        elec = pred.elec_kwh.iloc[0] / unsmear("elec")
+        gas = pred.gas_kwh.iloc[1 if cooker else 0] / unsmear("gas") * share
+        if np.isfinite(elec):
+            out["elec"], out["source"] = round(float(elec), 1), model.version
+        if np.isfinite(gas):
+            out["gas"] = round(float(gas), 1)
+    if not p.get("gas_meter", True):
+        out["gas"] = 0.0  # no gas supply: a real zero, not missing data
+    return out
 
 
 @lru_cache(maxsize=1)
@@ -235,6 +326,39 @@ def fit_band(xtr, ytr, xva, yva, fuel: str, beta: float) -> tuple[list, float, f
     return models, q, coverage
 
 
+def fit_mode1(fuel: str, path: Path) -> dict:
+    """Mode 1 change model, exactly as evaluated in energy_bills (train rows with a valid prior-year reading,
+    L1 on log(this year / last year), same early-stopping slice), saved for deployment."""
+    import lightgbm as lgb
+    from greenhome.models.energy_greybox import with_physics
+    from greenhome.models.energy_ml import LGB_PARAMS, metrics
+    from greenhome.models.need_data import dataset
+    x, y, split = dataset(fuel, own_bills=True)
+    x = with_physics(x, fuel)
+    tr, va = (split == "train").to_numpy(), (split == "val").to_numpy()
+    xtr, ytr = x[tr], y[tr]
+    es = np.random.default_rng(0).random(len(xtr)) < 0.15
+    mm = xtr.log_prior.notna().to_numpy()
+    xm, ym, esm = xtr[mm], (ytr - xtr.log_prior)[mm], es[mm]
+    m = lgb.LGBMRegressor(**{**LGB_PARAMS, "objective": "l1"})
+    m.fit(xm[~esm], ym[~esm], eval_X=(xm[esm],), eval_y=(ym[esm],), callbacks=[lgb.early_stopping(100, verbose=False)])
+    fname = f"mode1_{fuel}.txt"
+    m.booster_.save_model(str(path / fname), num_iteration=m.booster_.best_iteration)
+    xv, yv = x[va], y[va]
+    hv = xv.log_prior.notna().to_numpy()
+    pv = xv.log_prior.to_numpy()[hv] + m.predict(xv[hv])
+    out = {"file": fname, "features": list(xm.columns), "iterations": int(m.best_iteration_),
+            # Totals factor = sum(actual) / sum(prediction) on train. Not Duan smearing (mean of exp(residual)):
+            # year-on-year errors are relatively larger for small users, so smearing overshot val totals by 4-5%
+            # while the plain L1 forecast was already within 0-3%.
+            "total_factor": round(float(np.exp(ytr[mm]).sum() / np.exp(xm.log_prior.to_numpy() + m.predict(xm)).sum()), 4),
+            "val_total_ratio": None,
+            "val_homes_with_prior": metrics(yv.to_numpy()[hv], pv),
+            "val_last_year_same_homes": metrics(yv.to_numpy()[hv], xv.log_prior.to_numpy()[hv])}
+    out["val_total_ratio"] = round(float((np.exp(pv) * out["total_factor"]).sum() / np.exp(yv[hv]).sum()), 4)
+    return out
+
+
 def train(path: Path = ARTIFACTS) -> dict:
     """Fit V1 and V2 per fuel on the NEED train split (early stopping on a train slice, as in evaluation), save
     them, and check the saved models reproduce the evaluated validation scores. Val and test are not fitted on."""
@@ -278,6 +402,7 @@ def train(path: Path = ARTIFACTS) -> dict:
         meta["greybox"][fuel]["band"] = {"method": "CQR, quantile GBDT on train, conformal Q on val",
                                          "quantiles": list(BAND), "files": files, "conformal_q": round(q, 5),
                                          "val_coverage": round(cov, 4)}
+        meta["greybox"][fuel]["mode1"] = fit_mode1(fuel, path)
     (path / "meta.json").write_text(json.dumps(meta, indent=2))
     load_model.cache_clear()
     return meta
@@ -291,6 +416,10 @@ def main() -> None:
             print(f"{kind:8s} {fuel:4s} iters {m['iterations']:5d}  smear {m['smearing_factor']:.4f}  "
                   f"val MAE {m['val']['mae_kwh']:7.1f}  R2(log) {m['val']['r2_log']:.3f}"
                   + (f"  band Q {m['band']['conformal_q']:+.3f} val coverage {m['band']['val_coverage']:.3f}" if "band" in m else ""))
+            if "mode1" in m:
+                print(f"         mode 1 val MAE {m['mode1']['val_homes_with_prior']['mae_kwh']:7.1f} vs last year "
+                      f"{m['mode1']['val_last_year_same_homes']['mae_kwh']:7.1f} (homes with a prior bill); "
+                      f"total factor {m['mode1']['total_factor']}, val total ratio {m['mode1']['val_total_ratio']}")
     print(f"saved to {ARTIFACTS}")
 
 

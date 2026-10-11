@@ -75,7 +75,8 @@ solar:
   source: "PVGIS-style UK yields and monthly shares, approximate; self-consumption per Energy Saving Trust (verify)"
   yield_kwh_per_kwp: {Leeds: 850, Cornwall: 1000, Southwark: 950}
   monthly_share: [0.035, 0.045, 0.08, 0.11, 0.13, 0.13, 0.13, 0.115, 0.09, 0.06, 0.035, 0.04]
-  self_consumption: 0.40
+  self_consumption: 0.155   # was 0.40; same effective value as config/simulator.yaml, calibrated on real NEED PV
+                            # installs (train split: median import cut 487 kWh/yr), so bills and simulator agree
 
 retrofit_events:
   source: "Effects for loft, cavity and solar are NEED observed DiD (need_calibration.yaml); the others are assumptions (verify against EST)"

@@ -140,11 +140,15 @@ def build_report(
         if flags:
             p = p.model_copy(update={"data_flags": [*p.data_flags, *flags]})
             source = ("NEED log-linear model, config/need_calibration.yaml"
-                      if energy_before.model_version.endswith("_fallback")
+                      if "_fallback" in energy_before.model_version
                       else f"{energy_before.model_version} energy model trained on metered use (NEED)")
             assumptions.append(f"Missing bills replaced by expected use for similar homes ({source}); "
                                "flagged in data_flags")
-        if energy_before.model_version.endswith("_fallback"):
+        if energy_before.model_version.endswith("+mode1"):
+            assumptions.append("Baseline use is next year's forecast from this home's own bills and description "
+                               "(mode 1 energy model; more accurate than last year's bill alone on held-out metered "
+                               "homes); the billed figures are in property.annual_elec_kwh / annual_gas_kwh")
+        if "_fallback" in energy_before.model_version:
             assumptions.append(f"Trained energy model '{energy_model}' not found (run `make train`); fabric "
                                "savings use the physics heat-loss model instead")
 
@@ -153,9 +157,15 @@ def build_report(
         purchased_after = energy_after.elec_kwh + energy_after.gas_kwh
         improvement_potential = (round(100.0 * (purchased_base - purchased_after) / purchased_base, 1)
                                  if purchased_base > 0 else None)
-        # Post-scenario energy feeds the consumption-intensity sub-score
-        p_after.annual_elec_kwh = energy_after.elec_kwh
-        p_after.annual_gas_kwh = energy_after.gas_kwh
+        # Post-scenario energy feeds the consumption-intensity sub-score. The "before" score reads the home's billed
+        # use, so the simulated change (after / before baseline, per fuel) is applied to the same billed figures;
+        # otherwise a mode-1 forecast above the bill could make a retrofit look like it lowers the score.
+        def _after(billed, before, after):
+            if billed is None:
+                return after
+            return round(billed * after / before, 1) if before > 0 else after
+        p_after.annual_elec_kwh = _after(p.annual_elec_kwh, energy_before.elec_kwh, energy_after.elec_kwh)
+        p_after.annual_gas_kwh = _after(p.annual_gas_kwh, energy_before.gas_kwh, energy_after.gas_kwh)
 
     # 6. Post-scenario Green Home Score
     score_after = calculate_green_home_score(p_after)

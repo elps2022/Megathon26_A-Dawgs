@@ -39,13 +39,17 @@ Otherwise the EPC band midpoint is used:
 | 96 | 86 | 75 | 61 | 46 | 30 | 10 |
 
 **Consumption intensity (20%).** Purchased energy (annual electricity + annual gas) **relative to a typical
-similar home**: ratio = actual / expected, where expected is the NEED model's typical (median) use for the same
-property type, floor area, age band and EPC band (`models/expected_use.py`). A ratio of 0.5 or less scores 100,
+similar home**: ratio = actual / expected, where expected is the shipped energy model's (V1) typical (median) use
+for a home with the same description (`models/energy.similar_home_kwh`, trained on real NEED use); without the
+trained models it falls back to the NEED log-linear table (`models/expected_use.py`). Any home with a gas meter is
+compared with a similar gas-heated home's gas, so a heat pump isn't compared with NEED's non-gas homes (many
+burn unmetered oil). A ratio of 0.5 or less scores 100,
 1.0 (typical) scores 75, 2.0 or more scores 0, with straight lines between. Using more never scores higher.
 kWh per m2 is still reported in `inputs_used`, but it isn't scored: energy doesn't grow in proportion to floor
 area (hot water, cooking and appliances don't double when the house does), so on real NEED use raw kWh/m2 scored
 small homes 56 and large homes 79 at the median, a 23.5-point gap that penalised flats and smaller (often
-lower-income) homes for their size. Relative to similar homes the gap is 6.6 points. Homes heated by oil, LPG or
+lower-income) homes for their size. Relative to similar homes the gap is 3.6 points with V1 (6.6 with the
+log-linear table; widest spread between any two size bands 6.8). Homes heated by oil, LPG or
 district heat (flag `heating_fuel_unmetered`) get the default score and a flag, because their heating fuel isn't
 in the bills; scoring only their electricity would make them look highly efficient. Homes the NEED model can't
 place get the default and `expected_use_unavailable`.

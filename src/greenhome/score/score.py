@@ -55,13 +55,10 @@ def _energy_efficiency(p, m):
 
 
 def _expected_purchased(p) -> float | None:
-    """Expected purchased energy (kWh/yr) for a typical similar home (NEED model, median), or None."""
-    from types import SimpleNamespace
-    from greenhome.models.expected_use import expected_annual_kwh
-    keys = ("property_type", "age_band", "floor_area_m2", "energy_rating", "heating", "gas_meter")
-    if any(p.get(k) is None for k in keys):
-        return None
-    e = expected_annual_kwh(SimpleNamespace(**{k: p[k] for k in keys}), statistic="median")
+    """Expected purchased energy (kWh/yr) for a typical similar home, or None: the shipped energy model's median
+    (V1, models/energy.similar_home_kwh), or the NEED log-linear table when the model isn't trained."""
+    from greenhome.models.energy import similar_home_kwh
+    e = similar_home_kwh(dict(p), statistic="median", score_reference=True)
     return None if e["elec"] is None or e["gas"] is None else e["elec"] + e["gas"]
 
 
