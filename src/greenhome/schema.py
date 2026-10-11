@@ -40,6 +40,9 @@ class Property(BaseModel):
     recent_gas_kwh: float | None = None
     prior_elec_kwh: float | None = None
     prior_gas_kwh: float | None = None
+    # Share of the heating fuel's typical-year use that varies with weather (space heating), from the home's own
+    # degree-day fit on its bills; None without a usable fit (the simulator then uses config/simulator.yaml shares).
+    heating_share: float | None = None
     data_flags: list[str] = Field(default_factory=list)
 
     @field_validator("data_flags", mode="before")

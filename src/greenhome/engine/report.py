@@ -165,6 +165,12 @@ def build_report(
             assumptions.append("Baseline use is next year's forecast from this home's own bills and description "
                                "(mode 1 energy model; more accurate than last year's bill alone on held-out metered "
                                "homes); the billed figures are in property.annual_elec_kwh / annual_gas_kwh")
+        if p.heating_share is not None and 0 < p.heating_share <= 1:
+            assumptions.append(f"Space heating is {p.heating_share:.0%} of this home's heating fuel, from how its own "
+                               "monthly bills rise with cold weather (degree-day fit)")
+        else:
+            assumptions.append("Space-heating share of the heating fuel is a typical value (config/simulator.yaml): "
+                               "this home's bills don't support its own degree-day fit")
         if "_fallback" in energy_before.model_version:
             assumptions.append(f"Trained energy model '{energy_model}' not found (run `make train`); fabric "
                                "savings use the physics heat-loss model instead")

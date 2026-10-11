@@ -165,7 +165,7 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
 
 **Savings checks** (`eval/eval_savings.py` → `eval/results/savings_checks.json`):
 - **Solar, recalibrated.** The simulator's solar rule (3.5 kWp × 900 kWh/kWp × 40% self-consumption) predicted a 1,260 kWh/yr cut in import, but real NEED PV installs cut it by a median of 487 kWh (difference-in-differences, train split): the rule doubled real savings. `self_consumption` is now 0.155, calibrated on the 193 train installs (it bundles real self-consumption with the smaller systems of 2010–2020 installs; NEED has no kWp). Held-out check: val installs (57) observed −483 kWh vs rule −488; the 29 test installs show −190 kWh, too few to read much into.
-- **Catalogue ranges** (1,000 real homes): model-based savings as % of heating demand are inside the catalogue's typical range for cavity walls (median 19%), solid walls (26%) and glazing (7%), with 3–6% of homes below. **Loft is below the catalogue's 10–25% for 83% of homes** (median 4.2%). Here the real installs side with the model: NEED loft installs cut gas by ~1–3% (above). The catalogue's loft range is now 2–25% (lower end from the observed NEED loft installs, which are mostly top-ups; post-test change to a sanity bound only, no model touched); 2.6% of homes fall below it.
+- **Catalogue ranges** (1,000 real homes): model-based savings as % of heating demand are inside the catalogue's typical range for cavity walls (median 19%), solid walls (26%) and glazing (7%), with 3–6% of homes below. **Loft is below the catalogue's 10–25% for 83% of homes** (median 4.2%). Here the real installs side with the model: NEED loft installs cut gas by ~1–3% (above). The catalogue's loft range is now 2–25% (lower end from the observed NEED loft installs, which are mostly top-ups; post-test change to a sanity bound only, no model touched); 2.3% of homes fall below it. With each home's own heating share (below), 3.7% of solid-wall savings sit above the catalogue's 35% top: homes whose bills show a small heating share get a larger % of it saved.
 - **V1 vs V2 on real installs** (frozen shipped models, post-test reporting). V2 learns a retrofit only through NEED's `cavity_installed` flag; switching it 0 → 1 on the homes that really had cavity walls filled:
 
   | Cavity wall installs | Installs | Observed | **V1** | V2 |
@@ -177,20 +177,22 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
   V2 sees about a third of the real saving, probably because a GBDT trained on consumption levels learns the flag as a weak between-home difference (filled and unfilled homes differ in other ways too), not as a before-after change. V1's physics change with one fitted elasticity matches every split within ~2 points. V2 has no loft feature (the loft flag fails EPC parity), so it can't predict loft savings at all. This is the main reason V1 ships for savings even though the two tie on consumption accuracy.
 - **Synthetic mid-series retrofits** (all 1,175 events in `data/generated`, every measure; hidden true change from `_hidden/retrofit_truth.csv`, labels only). The engine sees the description and the bills from before the install (annualised with seasonal weights) and simulates that one retrofit. Saving = before − after, kWh/yr:
 
-  | Measure | Events | True median | V1 median | V1 total / true total | V2 total / true total | Sign right (V1) |
-  |---|---|---|---|---|---|---|
-  | Heat pump | 220 | 5,189 (gas +7,283, elec −2,176) | 4,769 (gas +6,549, elec −1,832) | 0.89 | 0.87 | 100% |
-  | Solar PV | 258 | 483 | 461 | 1.01 | 1.00 | 100% |
-  | Smart thermostat | 305 | 210 | 417 | 1.79 | 1.78 | 100% |
-  | Double glazing | 142 | 262 | 219 | 0.87 | 0.82 | 86% |
-  | Cavity wall | 68 | 688 | 1,229 | 1.63 | 0.60 | 87% |
-  | Solid wall | 124 | 799 | 1,802 | 1.78 | 1.58 | 92% |
-  | Loft | 58 | 197 | 384 | 1.96 | 1.81 | 81% |
-  | **All** | **1,175** | 458 | 543 | **1.04** | 0.97 | 96% |
+  | Measure | Events | True median | V1 median | V1 total / true total | V2 total / true total | Sign right (V1) | V1 MAE, own heating share | V1 MAE, default share |
+  |---|---|---|---|---|---|---|---|---|
+  | Heat pump | 220 | 5,189 (gas +7,283, elec −2,176) | 4,636 (gas +6,405, elec −1,773) | 0.89 | 0.87 | 100% | 731 | 714 |
+  | Solar PV | 258 | 483 | 461 | 1.01 | 1.00 | 100% | 74 | 74 |
+  | Smart thermostat | 305 | 210 | 391 | 1.72 | 1.71 | 100% | 181 | 198 |
+  | Double glazing | 142 | 262 | 216 | 0.85 | 0.79 | 86% | 252 | 252 |
+  | Cavity wall | 68 | 688 | 1,217 | 1.63 | 0.60 | 87% | 799 | 804 |
+  | Solid wall | 124 | 799 | 1,790 | 1.77 | 1.54 | 92% | 960 | 977 |
+  | Loft | 58 | 197 | 366 | 1.90 | 1.69 | 81% | 414 | 429 |
+  | **All** | **1,175** | 458 | 543 | **1.03** | 0.96 | 96% | **399** | 402 |
 
-  - Across all events the predicted total is within 4% of the truth. The heat pump's electricity rise shows as a negative saving with the right size (−1,832 vs −2,176 kWh), and solar matches.
-  - Fabric and controls savings run 1.6–2× the generator's. The generator gives every home the NEED *average* effect (e.g. −10.4% of gas for any cavity fill), while the engine's physics gives more to homes with fully empty cavities, thin lofts or no controls, which are exactly the homes these events pick. On the real installs above, which carry each home's own state, V1 matches. Part of the gap is the generator's simplification, but part may be real: treat fabric savings for the worst homes as the optimistic end.
-  - The true per-home saving falls inside the engine's low–high band for only 28% (V1) of events. The band reflects uncertainty in the *average* effect (the β range), not how much one home varies (the generator draws each home's effect with a 50% spread), so it should not be read as an 80% interval for a single home.
+  - The engine sees only pre-install information: the description and the bills from before the install, annualised with seasonal weights (the two-year history fields span the install, so they are blanked and the 1-year mode 1 model runs), and a space-heating share from a degree-day fit on the pre-install months (89% of events have a usable fit).
+  - Across all events the predicted total is within 3–4% of the truth. The heat pump's electricity rise shows as a negative saving with the right size (−1,773 vs −2,176 kWh), and solar matches.
+  - **The home's own heating share** (last two columns) cuts error most for controls (−8%), loft and solid walls (−2–3%), and slightly raises it for heat pumps (+2%); overall 402 → 399 kWh. The gain is small because the generator gives almost every home the same base-load share (true heating share median 0.777, 0.009 mean error for the fitted share vs 0.054 for the fixed 0.78), while the fitted shares on the real property book spread more (0.64–0.87 for gas, p5–p95; those bills are also synthetic, generated for the real homes), so the default fits individual homes worse there. No public monthly bills exist to check this on metered homes.
+  - Fabric and controls savings run 1.6–2× the generator's. The generator gives every home the NEED *average* effect (e.g. −10.4% of gas for any cavity fill), while the engine's physics gives more to homes with fully empty cavities, thin lofts or no controls, which are exactly the homes these events pick. On the real installs above, which carry each home's own state, V1 matches on average (but see "who saves more" below). Treat fabric savings for the worst homes as the optimistic end.
+  - The true per-home saving falls inside the engine's low–high band for only 30% (V1) of events. The band reflects uncertainty in the *average* effect (the β range), not how much one home varies (the generator draws each home's effect with a 50% spread), so it should not be read as an 80% interval for a single home.
   - Nothing was tuned on these checks.
 
 **Figures** (`eval/eda_energy.py` → `eval/figures/`, data figures from the train split): target distributions (log-normal, truncated by NEED at 1,000–50,000 kWh gas and 500–25,000 kWh electricity), gas by EPC and age band, the within-cell spread (p10–p90 of use / identical-home median: 0.48–1.73 gas, 0.48–2.23 electricity, the noise ceiling), physics vs metered gas (median ratio 0.505, the prebound effect), the retrofit check, and test calibration by decile.

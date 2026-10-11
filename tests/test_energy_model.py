@@ -206,3 +206,11 @@ def test_mode1_uses_two_years_when_both_are_known():
     assert f.gas_kwh[1] != f.gas_kwh[0] and f.gas_kwh[1] != f.gas_kwh[2]          # the older year is used
     no_recent = m.forecast_frame(frame(home(prior_gas_kwh=9000)))                  # older year alone: 1-year model
     assert no_recent.gas_kwh[0] == pytest.approx(m.forecast_frame(frame(home())).gas_kwh[0])
+
+
+def test_own_heating_share_sets_the_heating_part_of_the_bill():
+    low = savings.simulate_package_savings(home(heating_share=0.6), ["smart_thermostat"])
+    high = savings.simulate_package_savings(home(heating_share=0.9), ["smart_thermostat"])
+    default = savings.simulate_package_savings(home(), ["smart_thermostat"])
+    assert low[0].heat_demand_kwh < default[0].heat_demand_kwh < high[0].heat_demand_kwh
+    assert low[3].gas_kwh < high[3].gas_kwh            # controls act on the heating part only

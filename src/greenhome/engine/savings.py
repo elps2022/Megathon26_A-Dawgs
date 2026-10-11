@@ -222,9 +222,13 @@ def simulate_package_savings(
     # Split each fuel into space heating vs base load (hot water, cooking, appliances). Only the fuel the
     # heating system actually uses carries heating demand: a gas meter in an electrically heated home is cooking.
     heating_fuel = _heating_fuel(p)
-    gas_heat_demand = base_gas * sim["gas_heating_share"]["value"] if heating_fuel == "gas" else 0.0
+    # The home's own space-heating share from its bills (degree-day fit) when known, else the sourced default.
+    own = p.heating_share if p.heating_share is not None and 0 < p.heating_share <= 1 else None
+    gas_share = own if own is not None else sim["gas_heating_share"]["value"]
+    elec_share = own if own is not None else sim["electric_heating_share"]["value"]
+    gas_heat_demand = base_gas * gas_share if heating_fuel == "gas" else 0.0
     gas_base_load = base_gas - gas_heat_demand
-    elec_heat_demand = base_elec * sim["electric_heating_share"]["value"] if heating_fuel == "electricity" else 0.0
+    elec_heat_demand = base_elec * elec_share if heating_fuel == "electricity" else 0.0
     elec_base_load = base_elec - elec_heat_demand
 
     current_heat_demand = gas_heat_demand + elec_heat_demand  # in delivered-fuel kWh

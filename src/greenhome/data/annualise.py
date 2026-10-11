@@ -119,10 +119,17 @@ def annualise_dataset(
     factors: dict[tuple, float] = {}
     needed = {"heating", "gas_meter", "local_authority", "solar_kwp"}
     if needed.issubset(df_props.columns):
-        from greenhome.data.degree_day_fit import heating_fuel, year_weather_factors
+        from greenhome.data.degree_day_fit import fit, heating_fuel, load_hdd, year_weather_factors
         fuel_of = dict(zip(df_props["property_id"], heating_fuel(df_props)))
-        wf = year_weather_factors(df_props, monthly_df)
+        fits = fit(df_props, monthly_df)
+        wf = year_weather_factors(df_props, monthly_df, fits)
         factors = {(r.property_id, r.year, fuel_of[r.property_id]): r.factor for r in wf.itertuples(index=False)}
+        # Space-heating share of the heating fuel at typical weather: slope x HDD_typical / normalised annual.
+        _, typical = load_hdd()
+        ok = fits[fits.fit_ok].merge(df_props[["property_id", "local_authority"]], on="property_id")
+        heat = ok.slope_kwh_per_hdd * ok.local_authority.map(typical)
+        share = dict(zip(ok.property_id, (heat / (heat + 12 * ok.base_kwh_per_month)).round(3)))
+        df_props["heating_share"] = [share.get(pid) for pid in df_props["property_id"]]
     for yr in ("recent", "prior"):
         for fuel in ("elec", "gas"):
             vals = [history.get((pid, yr, fuel)) for pid in df_props["property_id"]]

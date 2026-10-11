@@ -126,6 +126,13 @@ def synthetic_events() -> dict:
     monthly = pd.read_csv(GEN / "monthly_energy.csv", parse_dates=["month"])
     monthly = monthly.merge(ev[["property_id", "install_month"]], on="property_id")
     pre = monthly[monthly.month < pd.to_datetime(monthly.install_month)]
+    # The home's own space-heating share from a degree-day fit on its pre-install months only.
+    from greenhome.data.degree_day_fit import fit, load_hdd
+    _, typical = load_hdd()
+    pre_fit = fit(props.reset_index(), pre.assign(month=pre.month.dt.strftime("%Y-%m-%d"))[["property_id", "month", "elec_import_kwh", "gas_kwh"]])
+    pre_fit = pre_fit[pre_fit.fit_ok].merge(props.reset_index()[["property_id", "local_authority"]], on="property_id")
+    heat = pre_fit.slope_kwh_per_hdd * pre_fit.local_authority.map(typical)
+    own_share = dict(zip(pre_fit.property_id, heat / (heat + 12 * pre_fit.base_kwh_per_month)))
     bills = {}
     for pid, g in pre.groupby("property_id"):
         e, _ = annualise_series(list(g.month.dt.month), list(g.elec_import_kwh), "elec")
@@ -135,20 +142,27 @@ def synthetic_events() -> dict:
     for _, e in ev.iterrows():
         d = _clean(props.loc[e.property_id].to_dict() | {"property_id": e.property_id})
         d["annual_elec_kwh"], d["annual_gas_kwh"] = bills.get(e.property_id, (None, None))
+        # Only pre-install information: the 2-year history fields span the install (fewer than 24 pre-install
+        # months), so they are blanked and the 1-year model runs on the pre-install annualised bill.
+        d |= {f"{h}_{f}_kwh": None for h in ("recent", "prior") for f in ("elec", "gas")}
+        d["heating_share"] = own_share.get(e.property_id)
         p = Property(**d)
         name = TO_ENGINE.get(e.retrofit, e.retrofit)
         rec = {"measure": name, "true_elec": -e.true_elec_change_kwh_yr, "true_gas": -e.true_gas_change_kwh_yr}
         try:
-            for model in ("greybox", "ml"):
-                s = simulate_package_savings(p, [name], model)[3]
-                rec[f"{model}_elec"], rec[f"{model}_gas"] = s.elec_kwh, s.gas_kwh
-                rec[f"{model}_in_band"] = s.low <= rec["true_elec"] + rec["true_gas"] <= s.high
+            runs = (("greybox", "greybox", p), ("ml", "ml", p),
+                    ("greybox_default_share", "greybox", p.model_copy(update={"heating_share": None})))
+            for col, model, prop in runs:
+                s = simulate_package_savings(prop, [name], model)[3]
+                rec[f"{col}_elec"], rec[f"{col}_gas"] = s.elec_kwh, s.gas_kwh
+                rec[f"{col}_in_band"] = s.low <= rec["true_elec"] + rec["true_gas"] <= s.high
+            rec["own_share"] = p.heating_share is not None
         except EnergyUnavailable:
             skipped += 1
             continue
         rows.append(rec)
     df = pd.DataFrame(rows)
-    for who in ("true", "greybox", "ml"):
+    for who in ("true", "greybox", "ml", "greybox_default_share"):
         df[f"{who}_total"] = df[f"{who}_elec"] + df[f"{who}_gas"]
         df[f"{who}_carbon"] = [calculate_carbon_kg(a, b) for a, b in zip(df[f"{who}_elec"], df[f"{who}_gas"])]
     out = {"what": "saving = before - after, kWh/yr typical weather; true = generator's hidden change",
@@ -158,7 +172,8 @@ def synthetic_events() -> dict:
         r = {"n": len(g)}
         for k in ("elec", "gas", "total", "carbon"):
             r[f"true_median_{k}"] = round(float(g[f"true_{k}"].median()), 1)
-        for m, label in (("greybox", "v1"), ("ml", "v2")):
+        r["share_with_own_heating_share"] = round(float(g.own_share.mean()), 3)
+        for m, label in (("greybox", "v1"), ("ml", "v2"), ("greybox_default_share", "v1_default_share")):
             for k in ("elec", "gas", "total", "carbon"):
                 r[f"{label}_median_{k}"] = round(float(g[f"{m}_{k}"].median()), 1)
             r[f"{label}_mae_total"] = round(float((g[f"{m}_total"] - g.true_total).abs().mean()), 1)

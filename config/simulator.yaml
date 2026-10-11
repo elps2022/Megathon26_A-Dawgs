@@ -1,5 +1,5 @@
 version: 1
-note: "Savings-simulator assumptions the energy model does not cover: heating vs base-load shares, heat pump hot water, solar (fabric retrofits use models/energy.py)."
+note: "Defaults for homes whose bills give no usable degree-day fit (otherwise Property.heating_share, from the fit, is used). Savings-simulator assumptions the energy model does not cover: heating vs base-load shares, heat pump hot water, solar (fabric retrofits use models/energy.py)."
 gas_heating_share:
   value: 0.78
   source: "Space-heating share of domestic gas; 1 - 0.22 hot water/cooking, as config/synthetic.yaml consumption.gas_base_share (team share, consistent with NEED cooker-only gas homes using ~0.22 of a gas-heated home's gas, models/energy.py)"
