@@ -26,7 +26,7 @@ import pandas as pd
 import yaml
 
 from greenhome.engine.carbon import calculate_carbon_kg
-from greenhome.engine.feasibility import RETROFIT_CATALOGUE
+from greenhome.engine.feasibility import RETROFIT_CATALOGUE, assess, load_catalogue
 from greenhome.models.energy import ModelUnavailable, load_model, physics_elasticity, similar_home_kwh
 from greenhome.schema import (
     Element,
@@ -178,6 +178,31 @@ def _fabric_ratios(model, fallback: bool, p: Property, ordered: list[str]) -> tu
             for m, ph, pg in zip(model_ratio, physics_ratio, physics_gas_ratio)], pred.iloc[0]
 
 
+def _suitability(bill_gbp: float, carbon_kg: float, cost: tuple[float, float], capped: bool) -> tuple[str, float | None]:
+    """High / Medium / Low from saving per pound (simple payback) and constraints (ARCHITECTURE 3.9; thresholds and
+    source in config/retrofit_catalogue.yaml). Monotone: more saving, more carbon cut or lower cost never lowers it."""
+    t = load_catalogue()["suitability"]
+    payback = (sum(cost) / 2) / bill_gbp if bill_gbp > 0 else None
+    if payback is not None and payback <= t["high_max_payback_years"]:
+        level = "High"
+    elif (payback is not None and payback <= t["medium_max_payback_years"]) or carbon_kg >= t["medium_min_carbon_kg"]:
+        level = "Medium"
+    else:
+        level = "Low"
+    if capped and level == "High":
+        level = "Medium"
+    return level, payback
+
+
+def rank_recommendations(recs: list[RetrofitRec]) -> None:
+    """Set rank (1 = best value): suitability first, then shortest payback, then biggest carbon cut. The list itself
+    stays in simulation order (fabric, controls, heating, generation), which the marginal savings depend on."""
+    tier = {"High": 0, "Medium": 1, "Low": 2}
+    key = lambda r: (tier[r.suitability], r.payback_years if r.payback_years is not None else float("inf"), -r.carbon_kg)
+    for i, r in enumerate(sorted(recs, key=key), start=1):
+        r.rank = i
+
+
 def simulate_package_savings(
     p: Property,
     retrofits: list[str],
@@ -219,6 +244,8 @@ def simulate_package_savings(
     model_label = MODEL_NAMES.get(model.version, model.version)
 
     recs: list[RetrofitRec] = []
+    prices = _cfg("energy_prices.yaml")["gbp_per_kwh"]
+    insulate_first = "insulate_first" in assess(p.model_dump())["flags"].get("heat_pump", [])
     tot_saved_elec = tot_saved_gas = 0.0
     tot_low = tot_high = 0.0
 
@@ -292,10 +319,9 @@ def simulate_package_savings(
         carbon_cut = calculate_carbon_kg(delta_elec, delta_gas)
         cost_range = RETROFIT_CATALOGUE[r]["indicative_cost"]
 
-        # Suitability from carbon cut, energy saved and capital cost (thresholds owned by B, unchanged).
-        suitability = "High" if carbon_cut > 400 or (tot_kwh > 1500 and cost_range[0] < 3000) else "Medium"
-        if cost_range[0] > 8000 and carbon_cut < 600:
-            suitability = "Low"
+        bill_gbp = delta_elec * prices["electricity"] + delta_gas * prices["gas"]
+        capped = r == "heat_pump" and insulate_first and "loft_insulation" not in ordered_retrofits
+        suitability, payback = _suitability(bill_gbp, carbon_cut, cost_range, capped)
 
         recs.append(RetrofitRec(
             retrofit=r,
@@ -305,7 +331,10 @@ def simulate_package_savings(
                                       total_kwh=round(tot_kwh, 1), low=round(low, 1), high=round(high, 1)),
             carbon_kg=round(carbon_cut, 1),
             indicative_cost=cost_range,
+            bill_saving_gbp=round(bill_gbp, 0),
+            payback_years=None if payback is None else round(payback, 1),
         ))
+    rank_recommendations(recs)
 
     package_kwh = tot_saved_elec + tot_saved_gas
     package_saving = FuelDelta(elec_kwh=round(tot_saved_elec, 1), gas_kwh=round(tot_saved_gas, 1),

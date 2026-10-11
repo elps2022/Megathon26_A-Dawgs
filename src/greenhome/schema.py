@@ -125,6 +125,9 @@ class RetrofitRec(BaseModel):
     marginal_saving: FuelDelta
     carbon_kg: float
     indicative_cost: tuple[float, float]
+    bill_saving_gbp: float | None = None    # annual, at config/energy_prices.yaml unit rates; < 0 = bill rises
+    payback_years: float | None = None      # mid cost / bill saving; None = never pays back on bills
+    rank: int | None = None                 # 1 = best value (suitability, then payback); list order stays the simulation order
 
 
 class Infeasible(BaseModel):

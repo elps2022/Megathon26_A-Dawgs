@@ -1,4 +1,4 @@
-.PHONY: data calibrate build epc real sales value labels features train train-value eval-value eval-test models package-models real-data package-data need-raw test eval app api
+.PHONY: data calibrate build epc real sales value labels features train train-value eval-value eval-recommend eval-test models package-models real-data package-data need-raw test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -42,6 +42,10 @@ train-value:
 # The single test scoring of the value model (after make train-value).
 eval-value:
 	@PYTHONPATH="src:." .venv/bin/python eval/eval_value.py
+
+# Recommendation ranking vs the synthetic generator's hidden true savings (after make data; ~2 min).
+eval-recommend:
+	@PYTHONPATH="src:." .venv/bin/python eval/eval_recommend.py
 
 # Install trained energy models from a zip or a (Google Drive) link: make models SRC=...
 models:

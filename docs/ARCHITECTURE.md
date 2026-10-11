@@ -221,8 +221,9 @@ Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml`
 
 ### 3.9 Recommendations
 - Feasibility = hard rules from the catalogue (no cavity insulation on solid walls, no solar on flats without roof access/listed buildings, no double glazing if already double, heat pump needs insulation ≥ threshold or is recommended *after* fabric).
-- Suitability High/Medium/Low from saving per £ and the property's constraints.
-- Simple baseline to compare against: a fixed-order "recommend everything feasible" list. Metrics vs simulator reference labels: precision@k / NDCG.
+- Suitability High/Medium/Low from saving per £ and the property's constraints (`savings._suitability`, thresholds in `config/retrofit_catalogue.yaml`): annual bill saving at Ofgem cap unit rates (`config/energy_prices.yaml`) → simple payback on the mid cost. High ≤ 10 years; Medium ≤ 25 years or a carbon cut ≥ 1,000 kg/yr; else Low. A measure that raises the bill never pays back. A heat pump flagged "insulate first" is capped at Medium unless the package insulates the loft. Monotone in saving, carbon and cost.
+- Each recommendation carries `bill_saving_gbp`, `payback_years` and `rank` (1 = best value: suitability, then payback, then carbon). The list itself stays in simulation order, which the marginal savings depend on.
+- Evaluation (`eval/eval_recommend.py`, `make eval-recommend`): reference labels are the synthetic generator's hidden true savings (hidden occupancy and behaviour, the generator's own retrofit effects), not the engine's own numbers. Compared against the fixed-order "recommend everything feasible" list, cheapest-first and random, with NDCG@3 and top-1 hit rate (`docs/EVALUATION.md`).
 
 ### 3.10 LLM layer
 - Tool-calling with a cheap model (cost is graded). Tools: `get_property_report`, `run_scenario`, `get_memory`, `update_memory`.
@@ -401,6 +402,7 @@ class FuelDelta(BaseModel): elec_kwh: float; gas_kwh: float; total_kwh: float; l
 class RetrofitRec(BaseModel):
     retrofit: str; suitability: Literal["High","Medium","Low"]; reason: str
     marginal_saving: FuelDelta; carbon_kg: float; indicative_cost: tuple[float, float]
+    bill_saving_gbp: float | None; payback_years: float | None; rank: int | None   # 3.9; payback None = never pays back
 class Infeasible(BaseModel): retrofit: str; rule: str
 
 class PropertyReport(BaseModel):

@@ -199,3 +199,21 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
 - **Repeat sales** (the same home sold twice with a newer certificate in between, 2,587 train pairs): +6.4% per band gained (5.5–7.4%). This is an upper bound, because homes re-rated between sales have often been renovated as well. The shipped sector model is the conservative estimate.
 - The uplift in a report is premium(band after) − premium(band before) for the same home on the same date, with the CI of the difference, so it is 0 when a retrofit doesn't change the band, and the range can include 0 (e.g. C → B, since A/B homes are rare). On 500 real homes the median range is 0% to +2.1%, at most +8%. Always labelled indicative, an association in historical sales, not a causal effect.
 - **Rating after a retrofit:** SAP score regressed on the fabric fields over 376,769 real certificates (train-split customers, R² 0.70). Gains vs the base case: loft from < 50 mm +10.7, cavity fill +6.7, solid-wall insulation +8.1, single → new double glazing +6.6, old non-condensing → condensing boiler +14.3, solar +9.1; a smart thermostat vs a programmer ≈ 0 (SAP doesn't credit it).
+
+## Recommendation ranking (ARCHITECTURE §3.9)
+
+`eval/eval_recommend.py` (`make eval-recommend`) → `eval/results/recommend_check.json`. Does the engine put the best-value retrofits first?
+
+- **Reference labels** come from the synthetic generator's hidden world, not from the engine: for each home and each retrofit that both consider possible, the true annual bill saving is the generator's typical-year change under the home's hidden occupancy, behaviour and per-home retrofit effect (mean of 20 effect draws), at Ofgem cap prices. True value = saving per £ of mid cost. The generator uses NEED observed effects and its own assumptions, while the engine uses the grey-box model and only sees the home's description and bills. Both share the NEED calibration, prices and catalogue costs, so this is a semi-independent check.
+- **Sample:** 1,691 synthetic homes with complete descriptions and no mid-series retrofit, 2.7 shared retrofits per home on average. The suitability thresholds were set before this ran; nothing was tuned on it.
+
+| Ranking | NDCG@3, bill saving per £ | Top pick truly best, bill saving per £ | NDCG@3, carbon per £ | Top pick truly best, carbon per £ |
+|---|---|---|---|---|
+| **Engine** (suitability, then payback) | **0.978** | **91.1%** | **0.968** | **89.2%** |
+| Cheapest first | 0.968 | 88.8% | 0.904 | 75.3% |
+| Fixed order, everything feasible (spec baseline) | 0.813 | 37.6% | 0.846 | 45.5% |
+| Random | 0.803 | 39.4% | 0.820 | 39.4% |
+
+- **Against the spec's baseline** (fabric, controls, heating, generation, in fixed order), the engine's top pick is right 53 points more often (CI 51–56). The fixed order is no better than random at choosing the first measure.
+- **Against cheapest first**, a strong no-model reference because costs differ far more than savings, the gain on bill value is small but real: +1.0 NDCG points (CI 0.4–1.6) and +2.2 top-1 points (0.4–4.1). On carbon per £ it is clear: +6.4 NDCG points (5.8–7.0) and +13.8 top-1 points (12.1–15.7), because the engine knows which measures actually cut emissions (heat pumps) rather than just which are cheap.
+- **Limitations:** synthetic truth only (no public data records several measures per home); costs are catalogue mid-points, the same for every home; solar counts only the grid-import cut (no export payments), so it ranks low; a heat pump rarely lowers the bill at October 2026 cap prices (gas 7.97p vs electricity 26.32p/kWh), so it ranks on its carbon cut.

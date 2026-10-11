@@ -1,14 +1,23 @@
 version: 1
 note: >
   Stage order follows docs/ARCHITECTURE.md 3.9: fabric, then controls, then heating,
-  then generation. All cost and saving numbers below are UNVERIFIED placeholders.
-  Replace each with a sourced figure (Energy Saving Trust, Ofgem, MCS) before submission.
+  then generation. Each cost and saving range names its source.
 
 stages: [fabric, controls, heating, generation]
 
 thresholds:
   loft_full_mm: 270            # Energy Saving Trust recommended depth; RdSAP Table S9 roof U 0.16 at 270 mm
   heat_pump_min_loft_mm: 100   # team rule (fabric first): the Boiler Upgrade Scheme dropped its insulation condition in May 2024 (gov.uk)
+
+suitability:   # ARCHITECTURE 3.9: from saving per pound (simple payback) and the home's constraints
+  high_max_payback_years: 10     # pays back well within the life of any measure here
+  medium_max_payback_years: 25   # pays back within a long-lived measure's service life
+  medium_min_carbon_kg: 1000     # a large carbon cut keeps a measure at least Medium even if it doesn't pay back
+  source: >
+    Team rule. Payback = mid indicative cost / annual bill saving at config/energy_prices.yaml unit rates; a
+    measure that raises the bill never pays back. Both payback thresholds are team choices. A heat pump flagged 'insulate first' is capped at Medium
+    unless the package insulates the loft. Monotone: a bigger saving, a bigger carbon cut or a lower cost never
+    lowers suitability.
 
 retrofits:
   loft_insulation:

@@ -80,3 +80,27 @@ def test_feasible_list_is_in_stage_order():
     idx = [order.index(CAT["retrofits"][n]["stage"]) for n in r]
     assert idx == sorted(idx)
     assert r.index("loft_insulation") < r.index("heat_pump") < r.index("solar_pv")
+
+
+def test_suitability_is_monotone_and_capped():
+    from greenhome.engine.savings import _suitability
+    order = {"Low": 0, "Medium": 1, "High": 2}
+    cost = (1000.0, 3000.0)                     # mid 2,000
+    levels = [order[_suitability(g, 0.0, cost, False)[0]] for g in (-50, 0, 50, 100, 150, 250, 500)]
+    assert levels == sorted(levels)             # more bill saving never lowers suitability
+    assert _suitability(250.0, 0.0, cost, False) == ("High", 8.0)
+    assert _suitability(-50.0, 0.0, cost, False) == ("Low", None)          # a higher bill never pays back
+    assert _suitability(-50.0, 2000.0, cost, False)[0] == "Medium"         # a big carbon cut keeps it Medium
+    assert _suitability(250.0, 0.0, cost, True)[0] == "Medium"             # 'insulate first' caps a heat pump
+
+
+def test_rank_orders_by_suitability_then_payback():
+    from greenhome.engine.savings import rank_recommendations
+    from greenhome.schema import FuelDelta, RetrofitRec
+    z = FuelDelta(elec_kwh=0, gas_kwh=0, total_kwh=0, low=0, high=0)
+    rec = lambda name, s, pb, c: RetrofitRec(retrofit=name, suitability=s, reason="", marginal_saving=z,
+                                              carbon_kg=c, indicative_cost=(1, 2), payback_years=pb)
+    recs = [rec("a", "Medium", 20.0, 10), rec("b", "High", 9.0, 5), rec("c", "High", 3.0, 1), rec("d", "Low", None, 50)]
+    rank_recommendations(recs)
+    assert [r.rank for r in recs] == [3, 2, 1, 4]
+    assert [r.retrofit for r in recs] == ["a", "b", "c", "d"]   # list order (simulation order) is untouched
