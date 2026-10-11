@@ -1,5 +1,35 @@
 # Data
 
+## Real data in one command
+
+`make build` (`python -m greenhome.data.build --seed 42`, about 2 min) runs the whole real data layer in dependency order: EPC ingest → synthetic parts → Price Paid join → valuation. Each step is described below and can also be run alone (`make epc`, `make real`, `make sales`, `make value`). The calibration tables (`make calibrate`) are a separate step because their outputs are committed to `config/`. `make data` still builds the interim synthetic dataset, which needs no raw data.
+
+## Sources and licences
+
+Raw files go in `data/raw/` and are never committed. Everything we commit from them is an aggregate (the `config/` calibration tables and `eval/results/*.json`).
+
+| Source | File in `data/raw/` | Publisher and link | Licence | Used for |
+|---|---|---|---|---|
+| EPC domestic certificates: Leeds, Cornwall, Southwark (lodged 2012-01 to 2026-09) | `epc/epc_domestic_leeds_cornwall_southwark.csv` | Ministry of Housing, Communities and Local Government, [Get energy performance of buildings data](https://get-energy-performance-data.communities.gov.uk) | Open Government Licence v3.0 for the non-address data. Address fields: Royal Mail and Ordnance Survey copyright, so they are never shared or committed | The real property book |
+| NEED anonymised 50k sample (2025 release, consumption to 2023) | `need/anon2025_50k.csv`, `need/metadata.ods` | Department for Energy Security and Net Zero, [NEED anonymised data 2025](https://www.gov.uk/government/statistics/national-energy-efficiency-data-framework-need-anonymised-data-2025) | Open Government Licence v3.0 | Energy-model training and test, observed retrofit effects, synthetic-bill calibration |
+| Price Paid Data 2018-2025, filtered to the three local authorities | `ppd/pp-YYYY-filtered.csv` (no header row) | HM Land Registry, [Price Paid Data](https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads) | Open Government Licence v3.0. Contains HM Land Registry data © Crown copyright and database right 2026. Address data: Royal Mail and Ordnance Survey copyright | Sales join, current values, price calibration |
+| UK House Price Index, July 2026 | `hpi/UK-HPI-full-file-2026-07.csv` | HM Land Registry, ONS and partners, [UK HPI data downloads](https://www.gov.uk/government/statistical-data-sets/uk-house-price-index-data-downloads-july-2026) | Open Government Licence v3.0 | Indexing sale prices to today (by local authority and property type) |
+| HadUK-Grid regional monthly mean temperature | `metoffice/Tmean_*.txt` | Met Office, [UK and regional series](https://www.metoffice.gov.uk/research/climate/maps-and-data/uk-and-regional-series) | Open Government Licence v3.0 | Heating degree days (base 15.5 °C) |
+| ONS Postcode Directory, August 2026 (LS, WF, BD, TR, PL, EX, SE files) | `onspd/ONSPD_AUG_2026_UK_*.csv` | Office for National Statistics, Open Geography Portal | Open Government Licence v3.0. Contains OS data © Crown copyright and database right; Royal Mail data © Royal Mail copyright and database right; NRS data © Crown copyright | Postcode → LSOA 2011 for the IMD join |
+| English Indices of Deprivation 2019, File 1 | `imd/File_1_-_IMD2019_Index_of_Multiple_Deprivation.xlsx` | Ministry of Housing, Communities and Local Government, English indices of deprivation 2019 | Open Government Licence v3.0 | IMD quintile per home (fairness audit, energy-model feature) |
+| Greenhouse gas conversion factors 2026 | committed as `config/emission_factors.csv` | Department for Energy Security and Net Zero, [conversion factors 2026](https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2026) | Open Government Licence v3.0 | Carbon (0.13096 kg CO2e/kWh electricity, 0.18231 gas) |
+
+Synthetic fields (bills, `customer_id`, smart-thermostat upgrades, LTV) have no public source. Their rules are in `config/synthetic.yaml`, each with a `source`. These credits also go in the README for the final submission.
+
+### Join and label rules (summary)
+
+- **EPC → home:** the latest certificate per UPRN. `property_id` is a hash of the UPRN.
+- **Postcode → IMD:** ONSPD `lsoa11cd`, then IMD 2019 decile → quintile ((decile + 1) // 2, 1 = most deprived), matching NEED's bands.
+- **Sale → home:** postcode plus flat and house numbers, one UPRN only (92.2% matched). Features come from the certificate lodged on or before the sale date.
+- **Value:** last sale × UK HPI by local authority and type. The historical `price` is kept separate from `current_value_estimate`.
+- **NEED energy-model split:** fixed 70/15/15 (`data/splits/need_split.csv`). Homes that installed a measure during the target year are dropped. Install flags only count installs before the target year. The test set is scored once.
+- **NEED retrofit effects:** difference-in-differences of the median post/pre ratio, 2 years each side, installs 2010-2020 (`config/need_calibration.yaml`).
+
 ## Interim synthetic dataset (use this now)
 
 Run `make data` (or `uv run python -m greenhome.data.generate --seed 42`). It takes ~6 s, needs only `config/`, and writes CSVs to `data/generated/`, which is gitignored. The same seed always gives identical files.
@@ -38,7 +68,7 @@ All constants are in `config/synthetic.yaml`, each block with a `source`. The ca
 
 Consumption = the NEED model × hidden occupancy × behaviour × idiosyncratic noise (the NEED residual variance split across these), times smart-control and retrofit multipliers. This is then spread over months with real HDD. Electric heating converts gas-equivalent heat demand via efficiency (heat pump SCOP 2.6–3.3). Solar reduces grid import through a self-consumption share. Because the bills are built from the NEED-fitted model, **never report energy-model accuracy on them**: headline accuracy comes from the held-out NEED test set (ARCHITECTURE §3.5). SAP points come from a separate synthetic rule.
 
-Prices = Price Paid median for LA × type × (area / reference area)^0.7 × EPC premium × hidden quality × HPI(date) / HPI(2018–21 mean) × noise.
+Prices = Price Paid median for LA × type × (area / reference area)^0.7 × EPC premium × hidden quality × HPI(date) / HPI(mean over the Price Paid years pooled in `price_calibration.yaml`) × noise.
 
 Known limitations: HDD from monthly means understates shoulder months. Storage-heater bills (~10 MWh/yr) are on the high side. Simulated solar savings (~1,150 kWh/yr) are larger than NEED's observed −12% (≈ −320 kWh): NEED's PV is older and smaller, which makes a useful sanity check for the savings model. Glazing, solid wall and smart-control effects are assumptions, not observations.
 

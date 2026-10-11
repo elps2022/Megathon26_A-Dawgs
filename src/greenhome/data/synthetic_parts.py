@@ -237,10 +237,10 @@ def summarise(t: dict) -> dict:
     }
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--seed", type=int, default=42)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     t = build(args.seed)
     (OUT / "monthly_energy").mkdir(parents=True, exist_ok=True)
     (OUT / "_hidden").mkdir(exist_ok=True)

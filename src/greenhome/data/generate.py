@@ -291,7 +291,8 @@ def generate(seed: int = 42) -> dict[str, pd.DataFrame]:
     # Sales and current valuation (hedonic on real Price Paid levels, indexed by real UK HPI).
     s = syn["sales"]
     hpi = hpi.set_index(["local_authority", "date"]).hpi
-    ref = {la: hpi[la][(hpi[la].index >= "2018-01-01") & (hpi[la].index < "2022-01-01")].mean() for la in la_names}
+    # Re-base from the years the Price Paid medians pool (config/price_calibration.yaml) to each sale / valuation date
+    ref = {la: hpi[la][pd.to_datetime(hpi[la].index).year.isin(price["years"])].mean() for la in la_names}
     latest = hpi.index.get_level_values("date").max()
     sale_months = pd.date_range(*s["date_range"], freq="MS")
     quality = np.exp(rng.normal(0, s["quality_log_sd"], n))
