@@ -264,3 +264,19 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
 - A second year cuts val MAE by 1.2% for gas (paired bootstrap 95% CI −1.8% to −0.6%) and 2.2% for electricity (−2.8% to −1.5%); CV agrees. A third year adds ~0.1–0.2%.
 - Averaging past years is **worse** than last year alone (+5.1% gas, +3.3% electricity): the years are not exchangeable (2020–21 lockdowns raised home use, the 2022 price shock cut it), so history has to enter as separate features, not a mean.
 - **Not shipped.** The gain is real but small next to the cost (a second annual figure on `Property`, retraining and re-hosting the models). The home's own last bill is close to the ceiling for single-home accuracy.
+
+## Post-test checks: rating-band bias and who saves more (train / val only)
+
+- **F/G over-prediction is mostly noise.** The test split showed V1 over-predicting gas for F/G-rated homes by +24% (42 homes). On val the same model is +6.9% for F/G (43 homes) and +1.7% for E (372), against −2% to −6% for A–D. NEED has too few F/G homes (< 1%) to fit a correction reliably, so none is applied; the detector caveat above stands.
+- **β does not vary reliably with rating band.** The elasticity implied by loft and cavity installs per EPC band jumps between bands without a pattern (cavity 0.31–0.45 on train, loft noisy and sometimes the wrong sign in bands with < 150 installs). A per-band β would be fitted on noise, so the single β stays.
+- **Physics doesn't tell real homes apart on how much they save.** Splitting the train + val installs into thirds by the physics-predicted cut:
+
+  | Cavity wall installs | Installs | Physics cut | V1 prediction | Observed |
+  |---|---|---|---|---|
+  | Biggest physics cut | 385 | −35.9% | −15.6% | −10.1% |
+  | Middle | 384 | −28.3% | −11.9% | −12.3% |
+  | Smallest physics cut | 384 | −18.0% | −7.3% | −10.1% |
+
+  Real savings are flat (~−10 to −12%) while V1 scales with physics. The slope of observed on physics log-change is 0.01 on train (95% CI −0.12 to 0.15) against V1's 0.38, and 0.21 on val (−0.09 to 0.51, inconclusive). Loft is too noisy to tell (physics barely varies between NEED loft homes). So V1 gets the **average** saving right, but its per-home spread is not supported by real installs: it likely overstates savings for the homes physics rates worst and understates them for the best. This matches the synthetic check (fabric savings 1.6–2× for the worst homes).
+  - Caveat: NEED homes have no fabric fields, so their physics differs only through age, type and size defaults. EPC homes use their real walls, loft and glazing, which may carry real signal this test can't see.
+  - **Not changed.** Shrinking every home toward the measure average would remove the per-home physics (diminishing returns, interactions, the house diagram) on evidence from one measure, and the val estimate is inconclusive. Read per-home fabric savings as the average effect adjusted by physics, with the low–high band as the range; portfolio totals are unaffected.
