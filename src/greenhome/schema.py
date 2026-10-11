@@ -184,3 +184,5 @@ class PortfolioSummary(BaseModel):
     potential_carbon_reduction_tonnes: float
     energy_unavailable_count: int = 0  # homes with no bills and too little data to estimate (excluded from totals)
     high_potential_targets: list[PortfolioPropertySummary] = Field(default_factory=list)
+    avg_retrofit_cost: float = 0.0  # Dynamic average retrofit package cost across homes with recommendations
+

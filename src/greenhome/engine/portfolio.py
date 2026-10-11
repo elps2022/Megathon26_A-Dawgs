@@ -69,6 +69,8 @@ def build_portfolio(
     scores = []
     poor_count = 0
     energy_unavailable = 0
+    total_recs_cost = 0.0
+    homes_with_recs = 0
 
     for _, row in df.iterrows():
         d = row.to_dict()
@@ -87,6 +89,12 @@ def build_portfolio(
         if report.is_poor:
             poor_count += 1
 
+        # Track average recommendation costs dynamically across homes
+        if report.recommendations:
+            home_recs_cost = sum((r.indicative_cost[0] + r.indicative_cost[1]) / 2.0 for r in report.recommendations)
+            total_recs_cost += home_recs_cost
+            homes_with_recs += 1
+
         # Annual operational carbon from the report's baseline energy (bills, or flagged similar-home estimate)
         home_carbon_kg = None
         if report.energy_before is not None:
@@ -96,12 +104,19 @@ def build_portfolio(
         else:
             energy_unavailable += 1
 
-        # PCAF financed carbon = (outstanding balance / property value) * home carbon; needs all three
+        # PCAF financed carbon = (outstanding balance / property value) * home carbon
+        # Under PCAF mortgage standard, LTV directly equals the loan attribution factor
         financed_carbon_kg = None
-        if home_carbon_kg is not None and out_bal is not None and p.current_value_estimate:
-            attribution_factor = min(max(out_bal / p.current_value_estimate, 0.0), 1.0)
-            financed_carbon_kg = home_carbon_kg * attribution_factor
-            total_financed_carbon_kg += financed_carbon_kg
+        if home_carbon_kg is not None:
+            attribution_factor = None
+            if out_bal is not None and p.current_value_estimate and p.current_value_estimate > 0:
+                attribution_factor = min(max(out_bal / p.current_value_estimate, 0.0), 1.0)
+            elif ltv is not None and ltv > 0:
+                attribution_factor = min(max(ltv, 0.0), 1.0)
+
+            if attribution_factor is not None:
+                financed_carbon_kg = home_carbon_kg * attribution_factor
+                total_financed_carbon_kg += financed_carbon_kg
         potential_carbon_cut_kg += report.package_carbon_kg or 0.0  # unavailable homes add no claimed cut
 
         summaries.append(
@@ -128,6 +143,8 @@ def build_portfolio(
     )[:20]
 
     n = len(summaries)
+    avg_recs_cost = round(total_recs_cost / max(homes_with_recs, 1), 0) if homes_with_recs else 8500.0
+
     return PortfolioSummary(
         total_properties=n,
         poor_count=poor_count,
@@ -138,4 +155,6 @@ def build_portfolio(
         potential_carbon_reduction_tonnes=round(potential_carbon_cut_kg / 1000.0, 1),
         energy_unavailable_count=energy_unavailable,
         high_potential_targets=targets,
+        avg_retrofit_cost=avg_recs_cost,
     )
+

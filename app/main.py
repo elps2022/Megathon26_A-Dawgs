@@ -561,32 +561,59 @@ st.markdown(
 
 @st.cache_data
 def load_datasets():
-    p_path = Path("data/generated/properties.csv")
-    l_path = Path("data/generated/loans.csv")
-    df_p = pd.read_csv(p_path) if p_path.exists() else pd.DataFrame()
-    df_l = pd.read_csv(l_path) if l_path.exists() else pd.DataFrame()
-    return df_p, df_l
+    real_p = Path("data/processed/real/properties.parquet")
+    real_l = Path("data/processed/real/loans.parquet")
+    synth_p = Path("data/generated/properties.csv")
+    synth_l = Path("data/generated/loans.csv")
+
+    if real_p.exists():
+        df_p = pd.read_parquet(real_p)
+        source = f"Real UK NEED Dataset ({len(df_p):,} properties)"
+    elif synth_p.exists():
+        df_p = pd.read_csv(synth_p)
+        source = f"Synthetic Dataset ({len(df_p):,} properties)"
+    else:
+        df_p = pd.DataFrame()
+        source = "No Data Found"
+
+    if real_l.exists():
+        df_l = pd.read_parquet(real_l)
+    elif synth_l.exists():
+        df_l = pd.read_csv(synth_l)
+    else:
+        df_l = pd.DataFrame()
+
+    return df_p, df_l, source
 
 
-df_properties, df_loans = load_datasets()
+df_properties, df_loans, data_source_label = load_datasets()
 
 
 @st.cache_data(show_spinner="Building a report for every home in the sample...")
 def cached_portfolio(sample_size: int):
     """The portfolio for a sample size, computed once: slider moves elsewhere on the page don't rebuild it."""
-    return build_portfolio(df_properties, df_loans, max_sample=sample_size)
+    if not df_loans.empty and "property_id" in df_loans.columns:
+        mortgaged = df_properties[df_properties["property_id"].isin(set(df_loans["property_id"]))]
+        sample_props = mortgaged if not mortgaged.empty else df_properties
+    else:
+        sample_props = df_properties
+    return build_portfolio(sample_props, df_loans, max_sample=sample_size)
+
+
 DEFAULT_FACTORS_YEAR = pd.read_csv(Path(__file__).resolve().parents[1] / "config" / "emission_factors.csv")["year"].iloc[0]
 memory_store = CustomerMemoryStore()
 llm_advisor = LLMAdvisor()
 
+
 # Sidebar Navigation with reliable vector branding
 st.sidebar.markdown(
-    """
+    f"""
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 4px 0;">
       <div style="background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); color: white; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">🏛️</div>
       <div>
         <div class="sidebar-brand-name">Lloyds Bank</div>
         <div style="font-size: 11px; color: #a7f3d0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;">Green Intelligence</div>
+        <div style="font-size: 10px; color: rgba(255, 255, 255, 0.85); font-weight: 500; margin-top: 2px;">{data_source_label}</div>
       </div>
     </div>
     """,
@@ -1424,11 +1451,34 @@ if view_mode == "Customer Experience":
     # Property Selector & Quick Overview Card
     col_sel, col_stat = st.columns([2, 1])
     with col_sel:
-        selected_pid = st.selectbox(
-            "Select Property for Assessment",
-            df_properties["property_id"].tolist(),
-            index=0,
-        )
+        sample_count = min(300, len(df_properties))
+        featured_ids = df_properties["property_id"].head(sample_count).tolist()
+
+        sel_sub1, sel_sub2 = st.columns([1, 1])
+        with sel_sub1:
+            chosen_pid = st.selectbox(
+                f"Choose Property ({sample_count} featured of {len(df_properties):,} book)",
+                featured_ids,
+                index=0,
+                key="featured_property_selector",
+            )
+        with sel_sub2:
+            custom_pid = st.text_input(
+                "Or Lookup by Property ID",
+                placeholder="e.g. E4ef6ab13a0",
+                help="Search and inspect any home across the 542k property dataset.",
+                key="custom_property_lookup",
+            )
+
+        if custom_pid.strip():
+            matched_row = df_properties[df_properties["property_id"] == custom_pid.strip()]
+            if not matched_row.empty:
+                selected_pid = custom_pid.strip()
+            else:
+                st.caption(f"⚠️ Property ID '{custom_pid.strip()}' not found in active dataset.")
+                selected_pid = chosen_pid
+        else:
+            selected_pid = chosen_pid
 
     row = df_properties[df_properties["property_id"] == selected_pid].iloc[0].to_dict()
     clean_d = {k: (None if pd.isna(v) else v) for k, v in row.items()}
@@ -1652,21 +1702,77 @@ if view_mode == "Customer Experience":
         st.markdown("### Lloyds Green Banking & UK Grant Matcher")
         st.caption("Automatic matching against national subsidies and Lloyds preferential green financing.")
 
+        # Dynamic UK Grants & Lloyds Terms Matcher
+        has_hp = any(r.retrofit == "heat_pump" for r in report.recommendations)
+        bus_badge = '<span class="badge badge-green">Verified Eligible</span>' if has_hp else '<span class="badge badge-slate">Not Required</span>'
+        bus_detail = '<b style="color: #059669;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.' if has_hp else '£7,500 grant available if an Air Source Heat Pump is recommended.'
+
+        is_eco4 = (p.energy_rating or "D") in ["D", "E", "F", "G"]
+        eco4_badge = '<span class="badge badge-green">Band Eligible</span>' if is_eco4 else '<span class="badge badge-slate">Above Band D</span>'
+        eco4_detail = f'Free or subsidized cavity/loft insulation for homes in EPC Bands D–G (Current: Band {p.energy_rating or "D"}).' if is_eco4 else f'Current Band {p.energy_rating or "C"} exceeds national fuel poverty threshold.'
+
+        has_clean = any(r.retrofit in ["heat_pump", "solar_pv", "loft_insulation", "cavity_wall_insulation", "solid_wall_insulation"] for r in report.recommendations)
+        cashback_amt = 1000 if has_clean else 0
+        cashback_badge = '<span class="badge badge-green">£1,000 Awarded</span>' if has_clean else '<span class="badge badge-slate">£0</span>'
+
+        reached_c = report.score_after.total >= 69
+        discount_badge = '<span class="badge badge-green">Band C Target Met</span>' if reached_c else '<span class="badge badge-blue">Target Pending</span>'
+        discount_detail = '<b>Mortgage Rate Discount:</b> Upgrades project home into Band C (0.10% – 0.25% discount unlocked).' if reached_c else '<b>Mortgage Rate Discount:</b> 0.10% – 0.25% interest discount upon reaching EPC Band C certification.'
+
+        # Dynamic net cashflow calculation from report recommendations and fuel savings
+        if report.package_saving is not None and report.package_saving.total_kwh > 0:
+            # Ofgem default UK price cap: ~24.5p/kWh electricity, ~6.2p/kWh gas
+            annual_fuel_saving = (report.package_saving.elec_kwh * 0.245) + (report.package_saving.gas_kwh * 0.062)
+            monthly_fuel_saving = annual_fuel_saving / 12.0
+
+            total_min_cost = sum(r.indicative_cost[0] for r in report.recommendations)
+            total_max_cost = sum(r.indicative_cost[1] for r in report.recommendations)
+            avg_gross_cost = (total_min_cost + total_max_cost) / 2.0
+
+            bus_grant_val = 7500.0 if has_hp else 0.0
+            cashback_val = 1000.0 if has_clean else 0.0
+            net_borrowing = max(0.0, avg_gross_cost - bus_grant_val - cashback_val)
+
+            # 5-year Lloyds green additional borrowing at preferential 3.5% APR
+            loan_months = 60
+            r_mo = 0.035 / 12.0
+            if net_borrowing > 0:
+                monthly_loan = (net_borrowing * r_mo * ((1.0 + r_mo) ** loan_months)) / (((1.0 + r_mo) ** loan_months) - 1.0)
+            else:
+                monthly_loan = 0.0
+
+            net_monthly = monthly_fuel_saving - monthly_loan
+            if net_monthly >= 0:
+                cashflow_color = "#10b981"
+                cashflow_display = f"+£{net_monthly:,.0f} / mo"
+                cashflow_badge = "CASHFLOW POSITIVE"
+                cashflow_sub = f"Estimated monthly energy bill savings (£{monthly_fuel_saving:,.0f}/mo) exceed green loan repayments (£{monthly_loan:,.0f}/mo)."
+            else:
+                cashflow_color = "#f59e0b"
+                cashflow_display = f"-£{abs(net_monthly):,.0f} / mo"
+                cashflow_badge = "NET INVESTMENT"
+                cashflow_sub = f"Monthly loan repayments (£{monthly_loan:,.0f}/mo) offset by £{monthly_fuel_saving:,.0f}/mo energy savings (net capex: £{net_borrowing:,.0f} after £{bus_grant_val + cashback_val:,.0f} subsidies)."
+        else:
+            cashflow_color = "var(--shadcn-card-text-muted, #64748b)"
+            cashflow_display = "—"
+            cashflow_badge = "NO RETROFITS NEEDED" if not report.recommendations else "DATA PENDING"
+            cashflow_sub = "No capital borrowing required for current property state." if not report.recommendations else "Baseline energy meter readings unavailable for exact cashflow estimation."
+
         b1, b2 = st.columns(2)
         with b1:
             st.markdown(
-                """
+                f"""
                 <div class="shadcn-card">
                   <div class="shadcn-card-header">
                     <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">🇬🇧 UK Government Grant Programs</span>
-                    <span class="badge badge-green">Verified Eligible</span>
+                    {bus_badge}
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: var(--shadcn-card-text-sub, #334155); line-height: 1.55;">
                     <div>
-                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Boiler Upgrade Scheme (BUS):</b> <b style="color: #059669;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Boiler Upgrade Scheme (BUS):</b> {bus_detail}
                     </div>
                     <div>
-                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• ECO4 & Great British Insulation Scheme (GBIS):</b> Free or heavily subsidized cavity/loft insulation for homes in EPC Bands D–G.
+                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• ECO4 & Great British Insulation Scheme (GBIS):</b> {eco4_detail}
                     </div>
                     <div>
                       <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• 0% VAT on Energy Saving Materials:</b> Government zero-rate VAT on heat pumps, solar PV, and insulation installations through 2027.
@@ -1679,11 +1785,11 @@ if view_mode == "Customer Experience":
 
         with b2:
             st.markdown(
-                """
+                f"""
                 <div class="shadcn-card">
                   <div class="shadcn-card-header">
                     <span style="font-size: 16px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">🏦 Lloyds Eco Home Advantage</span>
-                    <span class="badge badge-blue">Preferential Terms</span>
+                    {cashback_badge}
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; color: var(--shadcn-card-text-sub, #334155); line-height: 1.55;">
                     <div>
@@ -1693,7 +1799,7 @@ if view_mode == "Customer Experience":
                       <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Green Additional Borrowing:</b> Preferential 0% / low-interest borrowing rate for retrofit capital expenditures.
                     </div>
                     <div>
-                      <b style="color: var(--shadcn-card-text, var(--text-color, #0f172a));">• Mortgage Rate Discount:</b> 0.10% – 0.25% interest discount upon reaching EPC Band C certification.
+                      {discount_detail}
                     </div>
                   </div>
                 </div>
@@ -1702,16 +1808,16 @@ if view_mode == "Customer Experience":
             )
 
         st.markdown(
-            """
+            f"""
             <div class="shadcn-card" style="background: var(--shadcn-cashflow-grad, linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #ffffff 100%)); border: 1px solid rgba(16, 185, 129, 0.35);">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                  <div style="font-size: 15px; font-weight: 700; color: #10b981;">Net Monthly Household Cashflow Impact</div>
-                  <div style="font-size: 13px; color: var(--shadcn-card-text-muted, #64748b); margin-top: 2px;">Estimated monthly fuel savings exceed green loan borrowing costs.</div>
+                  <div style="font-size: 15px; font-weight: 700; color: {cashflow_color};">Net Monthly Household Cashflow Impact</div>
+                  <div style="font-size: 13px; color: var(--shadcn-card-text-muted, #64748b); margin-top: 2px;">{cashflow_sub}</div>
                 </div>
                 <div style="text-align: right;">
-                  <span style="font-size: 24px; font-weight: 800; color: #10b981;">+£18 / mo</span>
-                  <div style="font-size: 11px; font-weight: 600; color: #10b981;">CASHFLOW POSITIVE</div>
+                  <span style="font-size: 24px; font-weight: 800; color: {cashflow_color};">{cashflow_display}</span>
+                  <div style="font-size: 11px; font-weight: 600; color: {cashflow_color};">{cashflow_badge}</div>
                 </div>
               </div>
             </div>
@@ -1851,10 +1957,18 @@ elif view_mode == "Lender Portfolio (Bank View)":
         st.metric("Total Mortgaged Homes", f"{portfolio.total_properties:,}")
     with k2:
         st.metric("Poor / Very Poor Share", f"{portfolio.poor_share * 100:.1f}%", f"{portfolio.poor_count} homes")
+    # Dynamic book abatement percentage
+    baseline_carbon = portfolio.total_emissions_tonnes if portfolio.total_emissions_tonnes > 0 else portfolio.total_financed_emissions_tonnes
+    abatement_pct = (portfolio.potential_carbon_reduction_tonnes / max(baseline_carbon, 1e-6)) * 100.0 if baseline_carbon > 0 else 0.0
+
     with k3:
         st.metric("PCAF Financed Emissions", f"{portfolio.total_financed_emissions_tonnes:,.1f} tCO₂e", "Scope 3 Cat 15")
     with k4:
-        st.metric("Transition Reduction Potential", f"{portfolio.potential_carbon_reduction_tonnes:,.1f} tCO₂e", "-28.4% Book Abatement")
+        st.metric(
+            "Transition Reduction Potential",
+            f"{portfolio.potential_carbon_reduction_tonnes:,.1f} tCO₂e",
+            f"-{abatement_pct:.1f}% Book Abatement" if abatement_pct > 0 else "0% Book Abatement",
+        )
 
     st.markdown("---")
 
@@ -1865,7 +1979,8 @@ elif view_mode == "Lender Portfolio (Bank View)":
     target_uptake = st.slider("Target Retrofit Uptake (% of High-Risk Homes)", 10, 100, 50, step=5)
     abated_homes = int(portfolio.poor_count * (target_uptake / 100.0))
     avoided_carbon = portfolio.potential_carbon_reduction_tonnes * (target_uptake / 100.0)
-    capital_req = abated_homes * 8500  # Average £8.5k per deep retrofit
+    avg_capex = portfolio.avg_retrofit_cost if portfolio.avg_retrofit_cost > 0 else 8500.0
+    capital_req = abated_homes * avg_capex
 
     s1, s2, s3 = st.columns(3)
     with s1:
@@ -1873,7 +1988,7 @@ elif view_mode == "Lender Portfolio (Bank View)":
     with s2:
         st.metric("Portfolio Carbon Avoided", f"{avoided_carbon:,.1f} tCO₂e / yr", "Annual Saving")
     with s3:
-        st.metric("Lending Capital Required", f"£{capital_req / 1_000_000:.2f}M", "Green Additional Borrowing")
+        st.metric("Lending Capital Required", f"£{capital_req / 1_000_000:.2f}M", f"Avg £{avg_capex:,.0f} / home")
 
     st.markdown("---")
     st.markdown("### Top Priority Borrowers for Green Mortgage Outreach")
