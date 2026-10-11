@@ -1,0 +1,43 @@
+version: 1
+schemes:
+  boiler_upgrade_scheme:
+    name: "Boiler Upgrade Scheme (BUS)"
+    grant_amount_gbp: 7500.0
+    eligible_technologies: ["heat_pump"]
+    eligible_ratings: ["A", "B", "C", "D", "E", "F", "G"]
+    details: "£7,500 non-repayable capital grant toward air-source or ground-source heat pump installation."
+    source: "DESNZ & gov.uk, 'Apply for the Boiler Upgrade Scheme' (grant increased from £5k to £7.5k under Powering Up Britain, Oct 2023)."
+
+  eco4:
+    name: "Energy Company Obligation (ECO4)"
+    coverage_pct: 100.0
+    eligible_technologies: ["loft_insulation", "cavity_wall_insulation", "solid_wall_insulation", "heat_pump"]
+    eligible_ratings: ["D", "E", "F", "G"]
+    details: "100% grant funding for low-income and vulnerable households off whole-house insulation and clean heating."
+    source: "Ofgem, 'Energy Company Obligation (ECO4) Guidance: Delivery', eligible for EPC bands D, E, F, G on means-tested criteria."
+
+  great_british_insulation_scheme:
+    name: "Great British Insulation Scheme (GBIS)"
+    eligible_technologies: ["loft_insulation", "cavity_wall_insulation"]
+    eligible_ratings: ["D", "E", "F", "G"]
+    details: "Subsidised single-measure fabric insulation (loft or cavity wall) for homes in Council Tax bands A–D (England) or A–E (Scotland/Wales)."
+    source: "DESNZ, 'Great British Insulation Scheme Guidance', 2023–2026."
+
+  smart_export_guarantee:
+    name: "Smart Export Guarantee (SEG)"
+    export_tariff_gbp_per_kwh: 0.12
+    eligible_technologies: ["solar_pv"]
+    details: "Mandatory supplier payment for excess solar generation exported back to the grid (indicative 12p/kWh)."
+    source: "Ofgem, 'Smart Export Guarantee (SEG) Supplier Overview and Tariffs 2025/2026'."
+
+  lloyds_eco_home_reward:
+    name: "Lloyds Bank Eco Home Reward"
+    cashback_amount_gbp: 1000.0
+    details: "£1,000 cash reward paid directly to qualifying Lloyds mortgage customers completing eligible home retrofits."
+    source: "Lloyds Banking Group, 'Eco Home Reward and Sustainable Living Initiatives', 2025."
+
+  lloyds_green_additional_borrowing:
+    name: "Lloyds Green Additional Borrowing"
+    preferential_rate_pct: 0.0
+    details: "Preferential 0% / discounted borrowing for home energy improvements up to £15,000."
+    source: "Lloyds Banking Group, 'Green Living Additional Mortgage Borrowing Terms', 2025."

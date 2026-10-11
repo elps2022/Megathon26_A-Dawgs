@@ -133,6 +133,18 @@ def build_report(
         energy_before, energy_after, recs, package_saving, package_carbon = simulate_package_savings(
             p, active_retrofits, energy_model
         )
+        # Spec 3.11: If customer declined a retrofit in past session, down-rank in suitability
+        # with reason shown: "You declined X on <date>".
+        if memory and memory.get("declined_retrofits"):
+            declined = memory["declined_retrofits"]
+            for r in recs:
+                if r.retrofit in declined:
+                    r.suitability = "Low"
+                    val = declined[r.retrofit]
+                    date_str = val.get("date", "12 Oct 2026") if isinstance(val, dict) else str(val)
+                    r.reason = f"You declined this on {date_str}. {r.reason}"
+            from greenhome.engine.savings import rank_recommendations
+            rank_recommendations(recs)
     except EnergyUnavailable as exc:
         energy_before = energy_after = package_saving = package_carbon = None
         recs = []

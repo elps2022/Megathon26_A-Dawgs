@@ -185,3 +185,39 @@ def test_guardrails_off_topic_and_gibberish():
     assert "outside the scope" in resp_d
     assert audit_d.grounded
 
+
+def test_what_if_scenario_rerun_in_query():
+    report = build_mock_report()
+    advisor = LLMAdvisor(provider="offline")
+
+    # Asking what-if scenario triggers engine recalculation
+    resp, audit, label = advisor.query("What if I add solar panels to my roof?", report)
+    assert "Scenario Engine" in label
+    assert "solar_pv" in label
+    assert "Simulating Solar Pv" in resp
+    assert audit.grounded
+    assert len(audit.unsupported_claims) == 0
+
+
+def test_advisor_tools_and_execution():
+    from greenhome.llm.client import ADVISOR_TOOLS, execute_advisor_tool
+
+    # Verify tool declarations
+    tool_names = [t["name"] for t in ADVISOR_TOOLS]
+    assert "get_property_report" in tool_names
+    assert "run_scenario" in tool_names
+    assert "get_customer_memory" in tool_names
+    assert "update_customer_memory" in tool_names
+
+    # Test tool execution
+    report = build_mock_report()
+    prop = report.property
+
+    # 1. get_property_report
+    rep_res = execute_advisor_tool("get_property_report", {"property_id": prop.property_id}, report, prop)
+    assert rep_res["green_home_score"] == report.score.total
+
+    # 2. run_scenario tool
+    scen_res = execute_advisor_tool("run_scenario", {"property_id": prop.property_id, "retrofits": ["solar_pv"]}, report, prop)
+    assert "green_home_score" in scen_res
+

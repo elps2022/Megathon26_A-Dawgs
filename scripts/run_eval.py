@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from greenhome.llm.grounding import verify_grounding
 from greenhome.score.score import load_mappings
 from tests.test_grounding import SCENARIOS_ADVERSARIAL_50, build_mock_report
+from eval.eval_assistant import run_assistant_eval
 
 
 def print_banner(title: str):
@@ -61,32 +62,8 @@ def eval_models():
 
 
 def eval_grounding():
-    print_banner("2. Grounding checker on labelled statements (no LLM in the loop yet)")
-    report = build_mock_report()
-
-    total = len(SCENARIOS_ADVERSARIAL_50)
-    correctly_handled = 0
-    traps_blocked = 0
-    legit_passed = 0
-
-    for statement, expected_pass in SCENARIOS_ADVERSARIAL_50:
-        res = verify_grounding(statement, report)
-        if expected_pass:
-            if res.grounded and len(res.unsupported_claims) == 0:
-                correctly_handled += 1
-                legit_passed += 1
-        else:
-            if not res.grounded or len(res.unsupported_claims) > 0:
-                correctly_handled += 1
-                traps_blocked += 1
-
-    n_legit = sum(1 for _, ok in SCENARIOS_ADVERSARIAL_50 if ok)
-    n_traps = total - n_legit
-    accuracy = correctly_handled / total * 100.0
-    print(f"Total Evaluated Statements: {total}")
-    print(f"  • Traps blocked:          {traps_blocked} / {n_traps} ({traps_blocked / max(n_traps, 1) * 100:.1f}%)")
-    print(f"  • Legitimate passed:      {legit_passed} / {n_legit} ({legit_passed / max(n_legit, 1) * 100:.1f}%)")
-    print(f"  • Checker accuracy:       {accuracy:.1f}% -> {'PASS' if accuracy >= 90.0 else 'FAIL'} (target >= 90%)")
+    print_banner("2. AI Assistant Grounding & Hallucination Audit (50 Held-Out Scenarios)")
+    run_assistant_eval()
 
 
 def eval_invariants():

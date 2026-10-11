@@ -61,18 +61,18 @@ class CustomerMemoryStore:
         self.save_memory(customer_id, mem)
         return mem
 
-    def record_declined(self, customer_id: str, retrofit: str, reason: str = "") -> dict[str, Any]:
-        """Record customer declining a recommendation."""
+    def record_declined(self, customer_id: str, retrofit: str, reason: str = "", date_str: str = "12 Oct 2026") -> dict[str, Any]:
+        """Record customer declining a recommendation (Architecture Spec 3.11)."""
         mem = self.get_memory(customer_id)
-        mem.setdefault("declined_retrofits", {})[retrofit] = reason or "Declined by customer"
-        constraint_key = f"reject_{retrofit}"
-        if constraint_key not in mem.setdefault("constraints", []):
-            mem["constraints"].append(constraint_key)
-
+        mem.setdefault("declined_retrofits", {})[retrofit] = {
+            "reason": reason or "Declined by customer preference",
+            "date": date_str,
+        }
         mem.setdefault("session_timeline", []).append({
             "type": "retrofit_declined",
             "retrofit": retrofit,
-            "reason": reason,
+            "reason": reason or "Declined by customer preference",
+            "date": date_str,
         })
         self.save_memory(customer_id, mem)
         return mem

@@ -119,7 +119,132 @@ def format_report_for_prompt(report: PropertyReport, p: Property | None = None) 
     return json.dumps(summary, indent=2)
 
 
-def generate_rule_fallback(query: str, report: PropertyReport, p: Property | None = None) -> str:
+ADVISOR_TOOLS = [
+    {
+        "name": "get_property_report",
+        "description": "Retrieve current verified Green Home Score and recommendations for a property.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "property_id": {"type": "string", "description": "Unique property identifier"}
+            },
+            "required": ["property_id"]
+        }
+    },
+    {
+        "name": "run_scenario",
+        "description": "Rerun calculation engine for a proposed what-if package of retrofits, recalculating Green Home Score, per-fuel savings, carbon cut, and value uplift.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "property_id": {"type": "string", "description": "Unique property identifier"},
+                "retrofits": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of retrofit measures to simulate (e.g. ['solar_pv', 'heat_pump'])"
+                }
+            },
+            "required": ["retrofits"]
+        }
+    },
+    {
+        "name": "get_customer_memory",
+        "description": "Retrieve customer memory profile, constraints, completed retrofits, and interaction history.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "string", "description": "Customer identifier"}
+            },
+            "required": ["customer_id"]
+        }
+    },
+    {
+        "name": "update_customer_memory",
+        "description": "Record stated customer constraints or completed/declined retrofit decisions in persistent memory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "string", "description": "Customer identifier"},
+                "action": {"type": "string", "enum": ["record_constraint", "record_declined", "record_completed"]},
+                "detail": {"type": "string", "description": "Constraint or retrofit detail"}
+            },
+            "required": ["customer_id", "action", "detail"]
+        }
+    }
+]
+
+RETROFIT_KEYWORDS = {
+    "solar_pv": ["solar", "pv", "solar panel", "solar panels"],
+    "heat_pump": ["heat pump", "ashp", "gshp", "heatpump"],
+    "loft_insulation": ["loft", "roof insulation", "attic insulation", "loft insulation"],
+    "cavity_wall_insulation": ["cavity", "cavity wall", "cavity insulation"],
+    "solid_wall_insulation": ["solid wall", "external wall insulation", "internal wall insulation"],
+    "double_glazing": ["double glazing", "glazing", "windows", "new windows"],
+    "smart_thermostat": ["smart thermostat", "thermostat", "heating controls", "smart controls"],
+}
+
+
+def detect_what_if_retrofits(query: str) -> list[str] | None:
+    """Detect if query is proposing a what-if retrofit scenario (Architecture Spec 3.10)."""
+    q = query.lower()
+    is_scenario = any(phrase in q for phrase in [
+        "what if", "what happens if", "what would happen if", "if i add", "if i install",
+        "if i put", "if i do", "if we add", "if we install", "if we do", "simulate",
+        "scenario", "suppose i", "what if we", "how about adding", "how about installing"
+    ])
+    if not is_scenario:
+        return None
+    found = []
+    for ret_name, keywords in RETROFIT_KEYWORDS.items():
+        if any(kw in q for kw in keywords):
+            found.append(ret_name)
+    return found if found else None
+
+
+def execute_advisor_tool(
+    tool_name: str,
+    args: dict[str, Any],
+    report: PropertyReport,
+    p: Property | None = None,
+) -> dict[str, Any]:
+    """Execute tool calls deterministically via engine and memory layers."""
+    prop = p or getattr(report, "property", None)
+    if tool_name == "get_property_report":
+        return json.loads(format_report_for_prompt(report, prop))
+    elif tool_name == "run_scenario":
+        from greenhome.engine.report import build_report
+        retrofits = args.get("retrofits", [])
+        if prop is None:
+            return {"error": "Property record required for simulation"}
+        scen_report = build_report(prop, retrofits=retrofits)
+        return json.loads(format_report_for_prompt(scen_report, prop))
+    elif tool_name == "get_customer_memory":
+        from greenhome.memory.store import CustomerMemoryStore
+        cust_id = args.get("customer_id") or (prop.customer_id if prop else "DEFAULT")
+        return CustomerMemoryStore().get_memory(cust_id)
+    elif tool_name == "update_customer_memory":
+        from greenhome.memory.store import CustomerMemoryStore
+        cust_id = args.get("customer_id") or (prop.customer_id if prop else "DEFAULT")
+        store = CustomerMemoryStore()
+        action = args.get("action")
+        detail = args.get("detail", "")
+        if action == "record_constraint":
+            return store.record_constraint(cust_id, detail)
+        elif action == "record_declined":
+            return store.record_declined(cust_id, detail)
+        elif action == "record_completed":
+            return store.record_completed(cust_id, detail)
+        return {"status": "unknown_action"}
+    return {"error": f"Unknown tool: {tool_name}"}
+
+
+def generate_rule_fallback(
+    query: str,
+    report: PropertyReport,
+    p: Property | None = None,
+    what_if_retrofits: list[str] | None = None,
+    baseline_report: PropertyReport | None = None,
+) -> str:
     """Deterministic, guaranteed-grounded fallback response covering all key user query intents."""
     # 0. Safety and Domain Guardrail Gate
     g_res = evaluate_guardrails(query)
@@ -129,6 +254,44 @@ def generate_rule_fallback(query: str, report: PropertyReport, p: Property | Non
     q = query.lower().strip()
     score = report.score.total
     cls = report.score.classification
+
+    # 0b. What-if Scenario Engine Response (Architecture Spec 3.10)
+    if what_if_retrofits and baseline_report is not None:
+        ret_names = ", ".join(r.replace("_", " ").title() for r in what_if_retrofits)
+        base_score = baseline_report.score.total
+        new_score = report.score.total
+        diff = new_score - base_score
+
+        score_line = (
+            f"Simulating {ret_names} updates your Green Home Score from {base_score}/100 to {new_score}/100 ({cls})."
+        )
+        save_line = ""
+        if report.package_saving:
+            save_line = (
+                f"\n• Electricity impact: {report.package_saving.elec_kwh:,.0f} kWh/yr"
+                f"\n• Gas saving: {report.package_saving.gas_kwh:,.0f} kWh/yr"
+                f"\n• Net carbon reduction: {report.package_carbon_kg:,.0f} kg CO2e"
+            )
+
+        cost_parts = []
+        for r in report.recommendations:
+            if r.retrofit in what_if_retrofits:
+                cost_parts.append(f"£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}")
+        cost_line = f"\n• Indicative cost: {', '.join(cost_parts)}" if cost_parts else ""
+
+        val_line = ""
+        if report.value.get("status") != "unavailable" and "low" in report.value and "high" in report.value:
+            val_line = f"\n• Property value impact: £{report.value['low']:,.0f} – £{report.value['high']:,.0f}."
+
+        infeas = [inf for inf in report.infeasible if inf.retrofit in what_if_retrofits]
+        infeas_line = ""
+        if infeas:
+            infeas_line = "\n" + "\n".join(f"⚠️ {inf.retrofit.replace('_', ' ').title()} is infeasible: {inf.rule}" for inf in infeas)
+
+        return (
+            f"{score_line}{save_line}{cost_line}{val_line}{infeas_line}\n\n"
+            f"Note: Modelled scenario estimates; on-site surveyor assessment advised."
+        )
 
     # 1. Greetings & introductory queries
     if q in {"hello", "hi", "hey", "good morning", "good afternoon", "good evening"} or "who are you" in q or "what can you do" in q:
@@ -394,14 +557,35 @@ class LLMAdvisor:
                 label = "Domain Guardrail (Off-Topic Refocused)"
             return msg, audit, label
 
-        if self.provider == "offline" or not self.api_key:
-            fallback = generate_rule_fallback(query, report, p)
-            audit = verify_grounding(fallback, report)
-            return fallback, audit, "Deterministic Rule Engine (Offline)"
+        # 2. Check for What-If scenario (Architecture Spec 3.10 & CLAUDE.md invariant)
+        what_if_retrofits = detect_what_if_retrofits(query)
+        target_property = p or getattr(report, "property", None)
+        active_report = report
+        scenario_label_suffix = ""
 
-        report_json_str = format_report_for_prompt(report, p)
+        if what_if_retrofits and target_property is not None:
+            from greenhome.engine.report import build_report
+            active_report = build_report(target_property, retrofits=what_if_retrofits)
+            scenario_label_suffix = f" (Scenario Engine: {', '.join(what_if_retrofits)})"
+
+        if self.provider == "offline" or not self.api_key:
+            fallback = generate_rule_fallback(
+                query, active_report, target_property,
+                what_if_retrofits=what_if_retrofits,
+                baseline_report=report if what_if_retrofits else None,
+            )
+            audit = verify_grounding(fallback, active_report)
+            return fallback, audit, f"Deterministic Rule Engine{scenario_label_suffix or ' (Offline)'}"
+
+        report_json_str = format_report_for_prompt(active_report, target_property)
+        scenario_note = (
+            f"\nNOTE: User proposed what-if scenario [{', '.join(what_if_retrofits)}]. "
+            f"The calculation engine reran build_report() and produced the updated PropertyReport JSON below. "
+            f"Ground your answer strictly in these updated figures."
+            if what_if_retrofits else ""
+        )
         system_with_context = (
-            f"{ADVISOR_SYSTEM_PROMPT}\n\n"
+            f"{ADVISOR_SYSTEM_PROMPT}\n{scenario_note}\n"
             f"=== VERIFIED PROPERTY REPORT JSON (SINGLE SOURCE OF TRUTH) ===\n"
             f"{report_json_str}\n"
             f"===============================================================\n"
@@ -426,10 +610,10 @@ class LLMAdvisor:
         # Attempt 1: Initial Generation
         try:
             raw_response = self._call_llm(messages, system_with_context)
-            audit = verify_grounding(raw_response, report)
+            audit = verify_grounding(raw_response, active_report)
 
             if audit.grounded:
-                model_label = f"{self.provider.title()} ({self.model})"
+                model_label = f"{self.provider.title()} ({self.model}){scenario_label_suffix}"
                 return raw_response, audit, model_label
 
             # Attempt 2: 1-shot corrective retry
@@ -445,20 +629,24 @@ class LLMAdvisor:
             ]
 
             retry_response = self._call_llm(retry_messages, system_with_context)
-            retry_audit = verify_grounding(retry_response, report)
+            retry_audit = verify_grounding(retry_response, active_report)
 
             if retry_audit.grounded:
-                model_label = f"{self.provider.title()} ({self.model} - Shield Corrected)"
+                model_label = f"{self.provider.title()} ({self.model} - Shield Corrected){scenario_label_suffix}"
                 return retry_response, retry_audit, model_label
 
             # Still ungrounded after retry: Fall back safely to deterministic template
-            fallback = generate_rule_fallback(query, report, p)
-            fb_audit = verify_grounding(fallback, report)
+            fallback = generate_rule_fallback(
+                query, active_report, target_property,
+                what_if_retrofits=what_if_retrofits,
+                baseline_report=report if what_if_retrofits else None,
+            )
+            fb_audit = verify_grounding(fallback, active_report)
             shield_notice = "[Shield Notice: Unverified figures were blocked by Grounding Shield]\n\n"
             return (
                 f"{shield_notice}{fallback}",
                 fb_audit,
-                "Deterministic Rule Engine (Shield Intervened)",
+                f"Deterministic Rule Engine (Shield Intervened){scenario_label_suffix}",
             )
 
         except Exception as exc:
@@ -467,6 +655,10 @@ class LLMAdvisor:
             if isinstance(exc, httpx.HTTPStatusError):
                 code = exc.response.status_code
                 reason = "rate limited (429)" if code == 429 else f"HTTP {code}"
-            fallback = generate_rule_fallback(query, report, p)
-            fb_audit = verify_grounding(fallback, report)
-            return fallback, fb_audit, f"Deterministic Rule Engine (Fallback: {reason})"
+            fallback = generate_rule_fallback(
+                query, active_report, target_property,
+                what_if_retrofits=what_if_retrofits,
+                baseline_report=report if what_if_retrofits else None,
+            )
+            fb_audit = verify_grounding(fallback, active_report)
+            return fallback, fb_audit, f"Deterministic Rule Engine (Fallback: {reason}){scenario_label_suffix}"

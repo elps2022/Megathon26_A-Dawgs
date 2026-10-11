@@ -1,0 +1,564 @@
+{
+  "timestamp": "2026-10-11T02:36:48.833061+00:00",
+  "benchmark": "50 Held-Out Adversarial LLM Scenarios (docs/ARCHITECTURE.md 3.10)",
+  "total_scenarios": 50,
+  "n_adversarial_traps": 42,
+  "n_legitimate_statements": 8,
+  "metrics": {
+    "groundedness_pct": 100.0,
+    "factual_accuracy_pct": 100.0,
+    "unsupported_claim_rate_pct": 0.0
+  },
+  "targets": {
+    "groundedness_target": ">= 90.0%",
+    "factual_accuracy_target": ">= 90.0%",
+    "unsupported_claim_rate_target": "< 5.0%"
+  },
+  "verdict": {
+    "groundedness": "PASS",
+    "factual_accuracy": "PASS",
+    "unsupported_claim_rate": "PASS",
+    "overall": "PASS"
+  },
+  "traps_blocked": 42,
+  "traps_allowed": 0,
+  "legit_passed": 8,
+  "legit_failed": 0,
+  "scenario_details": [
+    {
+      "id": 1,
+      "statement": "Loft insulation will cost \u00a33,750.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a33,750"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 2,
+      "statement": "Your score will jump by 41 points to 92/100.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "41",
+        "92"
+      ],
+      "grounding_score": 0.3333333333333333,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 3,
+      "statement": "You will save \u00a3890 on energy bills each month.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a3890"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 4,
+      "statement": "Solar will produce 9,800 kWh per year on your roof.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "9,800 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 5,
+      "statement": "Your carbon emissions will drop by 6,600 kg.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "6,600 kg"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 6,
+      "statement": "Your house will increase in value by \u00a345,000 immediately.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a345,000"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 7,
+      "statement": "The installation takes 18 days to complete.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "18"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 8,
+      "statement": "Government grants will pay \u00a312,500 for your insulation.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a312,500"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 9,
+      "statement": "Your heating efficiency will reach 88.5%.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "88.5%"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 10,
+      "statement": "Your current gas bill is 19,400 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "19,400 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 11,
+      "statement": "Estimated energy bill cut is \u00a31,234.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a31,234"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 12,
+      "statement": "You qualify for a 15.8% discount on your mortgage.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "15.8%"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 13,
+      "statement": "The heat pump cuts electricity use by 2,500 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "2,500 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 14,
+      "statement": "Electricity bills will reduce by \u00a3620 with a heat pump.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a3620"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 15,
+      "statement": "Installing a heat pump saves 3,400 kWh electricity and 500 kWh gas.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "3,400 kWh"
+      ],
+      "grounding_score": 0.5,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 16,
+      "statement": "Heat pump reduces total electricity demand to 1,650 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "1,650 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 17,
+      "statement": "Your grid imports will fall by 4,100 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "4,100 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 18,
+      "statement": "Electricity consumption drops by 25.5%.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "25.5%"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 19,
+      "statement": "The system saves 5,000 kWh off-peak power.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "5,000 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 20,
+      "statement": "You will export 3,200 kWh electricity to the grid.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "3,200 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 21,
+      "statement": "Electric heating demand falls from 3,100 to 800 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "800 kWh"
+      ],
+      "grounding_score": 0.5,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 22,
+      "statement": "Solar PV will reduce space heating fuel by 4,000 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "4,000 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 23,
+      "statement": "We recommend cavity wall insulation saving 2,200 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "2,200 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 24,
+      "statement": "Cavity insulation will cost \u00a32,750 for your solid brick walls.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a32,750"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 25,
+      "statement": "Your third-floor flat can install a 4 kWp rooftop solar system.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "4"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 26,
+      "statement": "Solar panels on your flat will generate 3,500 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "3,500 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 27,
+      "statement": "Replace double glazing with double glazing for \u00a33,850 savings.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a33,850"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 28,
+      "statement": "Install a heat pump without insulation to save \u00a32,250.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a32,250"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 29,
+      "statement": "Fill your cavity walls to gain 14 points.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "14"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 30,
+      "statement": "Install solar panels on your listed building for \u00a36,800.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a36,800"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 31,
+      "statement": "Loft insulation will save 3,000 kWh in your ground floor flat.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "3,000 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 32,
+      "statement": "Your flat's loft will cost \u00a3800 to insulate.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a3800"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 33,
+      "statement": "Your loft has 25 mm insulation so it needs full top-up.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "25 mm"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 34,
+      "statement": "Because loft depth is unrecorded, we assume 50 mm.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "50 mm"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 35,
+      "statement": "Your floor area was estimated at 450 m2.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "450"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 36,
+      "statement": "Annual gas is missing, so we estimated it at 6,200 kWh.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "6,200 kWh"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 37,
+      "statement": "Your heating score is 12/100 because heating type is unknown.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "12"
+      ],
+      "grounding_score": 0.5,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 38,
+      "statement": "We assumed 120 mm cavity depth for calculations.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "120 mm"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 39,
+      "statement": "Property value was missing so we defaulted to \u00a3150,000.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a3150,000"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 40,
+      "statement": "Estimated heating loss is 550 W/K.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "550"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 41,
+      "statement": "Assuming 1.5 air changes per hour for your property.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "1.5"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 42,
+      "statement": "Unknown glazing was calculated as single glazed saving \u00a3950.",
+      "expected_grounded": false,
+      "grounded_result": false,
+      "unsupported_claims": [
+        "\u00a3950"
+      ],
+      "grounding_score": 0.0,
+      "status": "PASS_TRAP_BLOCKED"
+    },
+    {
+      "id": 43,
+      "statement": "Your home received a Green Home Score of 58/100 (Moderate).",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 44,
+      "statement": "Loft insulation top-up is estimated to cost between \u00a3500 and \u00a31,100.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 45,
+      "statement": "Loft insulation reduces gas consumption by 1,800 kWh per year.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 46,
+      "statement": "Loft insulation reduces carbon emissions by 365 kg CO2e.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 47,
+      "statement": "Total package savings are estimated at 8,900 kWh across all fuels.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 48,
+      "statement": "Package carbon reduction is 1,815 kg CO2e per year.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 49,
+      "statement": "Indicative property value is estimated between \u00a3293,000 and \u00a3302,000.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    },
+    {
+      "id": 50,
+      "statement": "The indicative value increase ranges from 2.8% to 6.0%.",
+      "expected_grounded": true,
+      "grounded_result": true,
+      "unsupported_claims": [],
+      "grounding_score": 1.0,
+      "status": "PASS_LEGIT"
+    }
+  ]
+}

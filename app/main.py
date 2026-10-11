@@ -20,6 +20,17 @@ from greenhome.llm.client import LLMAdvisor, generate_rule_fallback
 from greenhome.llm.grounding import GroundingResult, extract_numbers_from_text, verify_grounding
 from greenhome.memory.store import CustomerMemoryStore
 from greenhome.schema import Property, PropertyReport
+import yaml
+
+
+@st.cache_data
+def load_app_configs():
+    with open("config/energy_prices.yaml", "r", encoding="utf-8") as f:
+        energy_prices = yaml.safe_load(f)
+    with open("config/grants.yaml", "r", encoding="utf-8") as f:
+        grants = yaml.safe_load(f)
+    return energy_prices, grants
+
 
 st.set_page_config(
     page_title="Lloyds Green Home Engine",
@@ -561,14 +572,18 @@ st.markdown(
 
 @st.cache_data
 def load_datasets():
+    real_share_p = Path("data/processed/real/properties_share.parquet")
     real_p = Path("data/processed/real/properties.parquet")
     real_l = Path("data/processed/real/loans.parquet")
     synth_p = Path("data/generated/properties.csv")
     synth_l = Path("data/generated/loans.csv")
 
-    if real_p.exists():
+    if real_share_p.exists():
+        df_p = pd.read_parquet(real_share_p)
+        source = f"Real EPC Properties Dataset ({len(df_p):,} properties)"
+    elif real_p.exists():
         df_p = pd.read_parquet(real_p)
-        source = f"Real UK NEED Dataset ({len(df_p):,} properties)"
+        source = f"Real EPC Properties Dataset ({len(df_p):,} properties)"
     elif synth_p.exists():
         df_p = pd.read_csv(synth_p)
         source = f"Synthetic Dataset ({len(df_p):,} properties)"
@@ -1659,6 +1674,49 @@ if view_mode == "Customer Experience":
                 st.info("Heat-loss diagram unavailable: floor area could not be determined.")
             st.caption("Elements glow in infrared spectrum based on specific heat loss ($W/K$). Toggling retrofits recolours the building envelope.")
 
+            # Element Click-Through Inspector (Architecture Spec 3.13)
+            st.markdown("##### 🔍 Inspect Envelope Element & Fix")
+            elem_names = ["roof", "wall", "window", "floor"]
+            elem_labels = {"roof": "Roof / Loft", "wall": "External Walls", "window": "Glazing", "floor": "Ground Floor"}
+            selected_elem_key = st.radio(
+                "Envelope Element",
+                elem_names,
+                format_func=lambda k: elem_labels.get(k, k.title()),
+                horizontal=True,
+                key=f"elem_inspect_{p.property_id}",
+            )
+            elem_obj = next((e for e in elements if e.name == selected_elem_key), None)
+            if elem_obj:
+                elem_rec_match = {
+                    "roof": "loft_insulation",
+                    "wall": "cavity_wall_insulation" if p.wall_type == "cavity" else "solid_wall_insulation",
+                    "window": "double_glazing",
+                    "floor": None,
+                }
+                target_retrofit = elem_rec_match.get(selected_elem_key)
+                matched_rec = next((r for r in report.recommendations if r.retrofit == target_retrofit), None)
+                matched_inf = next((inf for inf in report.infeasible if inf.retrofit == target_retrofit), None)
+
+                loss_pct = elem_obj.share * 100
+                st.markdown(
+                    f"**{elem_labels[selected_elem_key]}**: Heat loss **{elem_obj.heat_loss_w_per_k:.1f} W/K** ({loss_pct:.0f}% of total). "
+                    f"U-value: `{elem_obj.u_value:.2f} W/m²K` across `{elem_obj.area_m2:.1f} m²`."
+                )
+                if matched_rec:
+                    st.markdown(
+                        f"👉 **Target Upgrade:** {matched_rec.retrofit.replace('_', ' ').title()} "
+                        f"(saves {matched_rec.marginal_saving.total_kwh:,.0f} kWh/yr, cuts {matched_rec.carbon_kg:,.0f} kg CO₂e). "
+                        f"Suitability: **{matched_rec.suitability}**."
+                    )
+                    if target_retrofit and target_retrofit not in (chosen_retrofits or []):
+                        if st.button(f"Simulate {matched_rec.retrofit.replace('_', ' ').title()}", key=f"sim_btn_{target_retrofit}"):
+                            st.session_state[f"retrofit_{target_retrofit}"] = True
+                            st.rerun()
+                elif matched_inf:
+                    st.caption(f"⚠️ Upgrade disqualified: {matched_inf.rule}")
+                else:
+                    st.caption("✅ Currently meets modern thermal efficiency standards.")
+
         with col_waterfall:
             st.markdown("### Score Component Breakdown")
             for c in report.score.components:
@@ -1697,22 +1755,30 @@ if view_mode == "Customer Experience":
                         </div>
                       </div>
                       <p style="color: var(--shadcn-card-text-muted, #64748b); font-size: 13.5px; margin: 4px 0 14px 0; line-height: 1.5;">{r.reason}</p>
-                      <div class="shadcn-subcard" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: var(--shadcn-subcard-bg, #f8fafc); border: 1px solid var(--shadcn-subcard-border, #e2e8f0); padding: 10px 14px; border-radius: 8px;">
+                      <div class="shadcn-subcard" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: var(--shadcn-subcard-bg, #f8fafc); border: 1px solid var(--shadcn-subcard-border, #e2e8f0); padding: 10px 14px; border-radius: 8px;">
                         <div>
                           <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">ELEC SAVING</div>
-                          <div style="font-size: 14px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
+                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.elec_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
                         </div>
                         <div>
                           <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">GAS SAVING</div>
-                          <div style="font-size: 14px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 11px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
+                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{r.marginal_saving.gas_kwh:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kWh/yr</span></div>
+                        </div>
+                        <div>
+                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">BILL IMPACT</div>
+                          <div style="font-size: 13.5px; font-weight: 700; color: {'#10b981' if (r.bill_saving_gbp or 0) >= 0 else '#ef4444'};">{f'+£{r.bill_saving_gbp:,.0f}' if (r.bill_saving_gbp or 0) >= 0 else f'-£{abs(r.bill_saving_gbp or 0):,.0f}'} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">/yr</span></div>
+                        </div>
+                        <div>
+                          <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">PAYBACK</div>
+                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">{f'{r.payback_years:.1f} yrs' if r.payback_years is not None else 'N/A'}</div>
                         </div>
                         <div>
                           <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">CARBON CUT</div>
-                          <div style="font-size: 14px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 11px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kg CO₂e</span></div>
+                          <div style="font-size: 13.5px; font-weight: 700; color: #10b981;">{r.carbon_kg:,.0f} <span style="font-size: 10.5px; font-weight: normal; color: var(--shadcn-card-text-muted, #64748b);">kg CO₂e</span></div>
                         </div>
                         <div>
                           <div style="font-size: 11px; color: var(--shadcn-card-text-muted, #64748b); font-weight: 600;">INDICATIVE COST</div>
-                          <div style="font-size: 14px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
+                          <div style="font-size: 13.5px; font-weight: 700; color: var(--shadcn-card-text, var(--text-color, #0f172a));">£{r.indicative_cost[0]:,.0f} – £{r.indicative_cost[1]:,.0f}</div>
                         </div>
                       </div>
                     </div>
@@ -1732,18 +1798,24 @@ if view_mode == "Customer Experience":
             f"({p.property_type.title()} • {p.heating.replace('_', ' ').title()}). Subsidies and borrowing impact adapt based on property eligibility."
         )
 
-        # Dynamic UK Grants & Lloyds Terms Matcher
+        # Dynamic UK Grants & Lloyds Terms Matcher (sourced from config/grants.yaml and config/energy_prices.yaml)
+        energy_prices_cfg, grants_cfg = load_app_configs()
+        p_elec = energy_prices_cfg["gbp_per_kwh"]["electricity"]
+        p_gas = energy_prices_cfg["gbp_per_kwh"]["gas"]
+        bus_grant_amount = grants_cfg["schemes"]["boiler_upgrade_scheme"]["grant_amount_gbp"]
+        reward_cashback = grants_cfg["schemes"]["lloyds_eco_home_reward"]["cashback_amount_gbp"]
+
         has_hp = any(r.retrofit == "heat_pump" for r in report.recommendations)
         bus_badge = '<span class="badge badge-green">Verified Eligible</span>' if has_hp else '<span class="badge badge-slate">Not Required</span>'
-        bus_detail = '<b style="color: #059669;">£7,500 non-repayable grant</b> off Air Source Heat Pump installation.' if has_hp else '£7,500 grant available if an Air Source Heat Pump is recommended.'
+        bus_detail = f'<b style="color: #059669;">£{bus_grant_amount:,.0f} non-repayable grant</b> off Air Source Heat Pump installation.' if has_hp else f'£{bus_grant_amount:,.0f} grant available if an Air Source Heat Pump is recommended.'
 
         is_eco4 = (p.energy_rating or "D") in ["D", "E", "F", "G"]
         eco4_badge = '<span class="badge badge-green">Band Eligible</span>' if is_eco4 else '<span class="badge badge-slate">Above Band D</span>'
         eco4_detail = f'Free or subsidized cavity/loft insulation for homes in EPC Bands D–G (Current: Band {p.energy_rating or "D"}).' if is_eco4 else f'Current Band {p.energy_rating or "C"} exceeds national fuel poverty threshold.'
 
         has_clean = any(r.retrofit in ["heat_pump", "solar_pv", "loft_insulation", "cavity_wall_insulation", "solid_wall_insulation"] for r in report.recommendations)
-        cashback_amt = 1000 if has_clean else 0
-        cashback_badge = '<span class="badge badge-green">£1,000 Awarded</span>' if has_clean else '<span class="badge badge-slate">£0</span>'
+        cashback_amt = int(reward_cashback) if has_clean else 0
+        cashback_badge = f'<span class="badge badge-green">£{cashback_amt:,.0f} Awarded</span>' if has_clean else '<span class="badge badge-slate">£0</span>'
 
         reached_c = report.score_after.total >= 69
         discount_badge = '<span class="badge badge-green">Band C Target Met</span>' if reached_c else '<span class="badge badge-blue">Target Pending</span>'
@@ -1751,16 +1823,16 @@ if view_mode == "Customer Experience":
 
         # Dynamic net cashflow calculation from report recommendations and fuel savings
         if report.package_saving is not None and report.package_saving.total_kwh > 0:
-            # Ofgem default UK price cap: ~24.5p/kWh electricity, ~6.2p/kWh gas
-            annual_fuel_saving = (report.package_saving.elec_kwh * 0.245) + (report.package_saving.gas_kwh * 0.062)
+            # Sourced from config/energy_prices.yaml (Ofgem price cap)
+            annual_fuel_saving = (report.package_saving.elec_kwh * p_elec) + (report.package_saving.gas_kwh * p_gas)
             monthly_fuel_saving = annual_fuel_saving / 12.0
 
             total_min_cost = sum(r.indicative_cost[0] for r in report.recommendations)
             total_max_cost = sum(r.indicative_cost[1] for r in report.recommendations)
             avg_gross_cost = (total_min_cost + total_max_cost) / 2.0
 
-            bus_grant_val = 7500.0 if has_hp else 0.0
-            cashback_val = 1000.0 if has_clean else 0.0
+            bus_grant_val = bus_grant_amount if has_hp else 0.0
+            cashback_val = reward_cashback if has_clean else 0.0
             net_borrowing = max(0.0, avg_gross_cost - bus_grant_val - cashback_val)
 
             # 5-year Lloyds green additional borrowing at preferential 3.5% APR
@@ -1893,6 +1965,53 @@ if view_mode == "Customer Experience":
                     "audit": init_audit.to_dict(),
                 }
             ]
+
+        # 3-Session Customer Memory Learning Demo (Spec 3.11)
+        with st.expander("🧠 Customer Memory & 3-Session Adaptive Learning Demo (Spec 3.11)", expanded=False):
+            st.markdown(
+                "Demonstrates how persistent memory learns constraints and completed works across separate sessions: "
+                "completed retrofits update the physical property state, while declined measures are down-ranked with date citations."
+            )
+            col_s1, col_s2, col_s3, col_s_reset = st.columns([1, 1, 1, 0.8])
+            if col_s1.button("Session 1: Initial Baseline", key="mem_sess_1"):
+                memory_store.save_memory(p.customer_id, {
+                    "customer_id": p.customer_id,
+                    "constraints": [],
+                    "completed_retrofits": [],
+                    "declined_retrofits": {},
+                    "session_timeline": [{"session": 1, "note": "Initial baseline assessment", "date": "10 Oct 2026"}],
+                })
+                st.session_state[chat_key] = []
+                st.rerun()
+
+            if col_s2.button("Session 2: Decline Solar", key="mem_sess_2"):
+                memory_store.record_declined(p.customer_id, "solar_pv", reason="Roof structural works delayed", date_str="11 Oct 2026")
+                st.session_state[chat_key] = []
+                st.rerun()
+
+            if col_s3.button("Session 3: Complete Loft Insulation", key="mem_sess_3"):
+                memory_store.record_completed(p.customer_id, "loft_insulation", date_str="12 Oct 2026")
+                st.session_state[chat_key] = []
+                st.rerun()
+
+            if col_s_reset.button("Reset Memory", key="mem_sess_reset"):
+                memory_store.save_memory(p.customer_id, {
+                    "customer_id": p.customer_id,
+                    "constraints": [],
+                    "completed_retrofits": [],
+                    "declined_retrofits": {},
+                    "session_timeline": [],
+                })
+                st.session_state[chat_key] = []
+                st.rerun()
+
+            curr_mem = memory_store.get_memory(p.customer_id)
+            if curr_mem.get("completed_retrofits") or curr_mem.get("declined_retrofits"):
+                st.caption(
+                    f"**Current Memory Profile ({p.customer_id}):** "
+                    f"Completed: `{curr_mem.get('completed_retrofits', [])}` | "
+                    f"Declined: `{list(curr_mem.get('declined_retrofits', {}).keys())}`"
+                )
 
         # Preset suggestion chips + Clear button
         c_p1, c_p2, c_p3, c_p4 = st.columns([1, 1, 1, 0.4])
