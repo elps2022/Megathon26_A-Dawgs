@@ -1727,7 +1727,10 @@ if view_mode == "Customer Experience":
 
     with tab_banking:
         st.markdown("### Lloyds Green Banking & UK Grant Matcher")
-        st.caption("Automatic matching against national subsidies and Lloyds preferential green financing.")
+        st.caption(
+            f"Statutory UK schemes and Lloyds green finance terms automatically matched to Band {p.energy_rating or 'D'} "
+            f"({p.property_type.title()} • {p.heating.replace('_', ' ').title()}). Subsidies and borrowing impact adapt based on property eligibility."
+        )
 
         # Dynamic UK Grants & Lloyds Terms Matcher
         has_hp = any(r.retrofit == "heat_pump" for r in report.recommendations)
@@ -1773,17 +1776,25 @@ if view_mode == "Customer Experience":
                 cashflow_color = "#10b981"
                 cashflow_display = f"+£{net_monthly:,.0f} / mo"
                 cashflow_badge = "CASHFLOW POSITIVE"
-                cashflow_sub = f"Estimated monthly energy bill savings (£{monthly_fuel_saving:,.0f}/mo) exceed green loan repayments (£{monthly_loan:,.0f}/mo)."
+                cashflow_sub = (
+                    f"Estimated monthly energy bill savings (£{monthly_fuel_saving:,.0f}/mo) exceed green loan repayments (£{monthly_loan:,.0f}/mo) "
+                    f"on a 5-yr Lloyds borrowing term at 3.5% APR."
+                )
             else:
                 cashflow_color = "#f59e0b"
                 cashflow_display = f"-£{abs(net_monthly):,.0f} / mo"
                 cashflow_badge = "NET INVESTMENT"
-                cashflow_sub = f"Monthly loan repayments (£{monthly_loan:,.0f}/mo) offset by £{monthly_fuel_saving:,.0f}/mo energy savings (net capex: £{net_borrowing:,.0f} after £{bus_grant_val + cashback_val:,.0f} subsidies)."
+                cashflow_sub = (
+                    f"Deep retrofit capital repayments (£{monthly_loan:,.0f}/mo over 5 yrs) offset by £{monthly_fuel_saving:,.0f}/mo energy savings "
+                    f"(net borrowing: £{net_borrowing:,.0f} after £{bus_grant_val + cashback_val:,.0f} grants). "
+                    f"A 10-yr mortgage equity extension lowers payments to ~£{monthly_loan * 0.54:,.0f}/mo."
+                )
         else:
             cashflow_color = "var(--shadcn-card-text-muted, #64748b)"
             cashflow_display = "—"
             cashflow_badge = "NO RETROFITS NEEDED" if not report.recommendations else "DATA PENDING"
             cashflow_sub = "No capital borrowing required for current property state." if not report.recommendations else "Baseline energy meter readings unavailable for exact cashflow estimation."
+
 
         b1, b2 = st.columns(2)
         with b1:
