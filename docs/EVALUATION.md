@@ -263,7 +263,7 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
 
 - A second year cuts val MAE by 1.2% for gas (paired bootstrap 95% CI −1.8% to −0.6%) and 2.2% for electricity (−2.8% to −1.5%); CV agrees. A third year adds ~0.1–0.2%.
 - Averaging past years is **worse** than last year alone (+5.1% gas, +3.3% electricity): the years are not exchangeable (2020–21 lockdowns raised home use, the 2022 price shock cut it), so history has to enter as separate features, not a mean.
-- **Not shipped.** The gain is real but small next to the cost (a second annual figure on `Property`, retraining and re-hosting the models). The home's own last bill is close to the ceiling for single-home accuracy.
+- **Shipped (2 years).** Added to the existing artifacts with `python -m greenhome.models.energy add-two-year` (V1, V2, the bands and the 1-year model are unchanged, so the test results above still describe them). Saved model on val homes with both years: gas MAE 1,705 vs 1,730 kWh for the 1-year model (−1.5%), electricity 832 vs 855 (−2.7%); val totals within 0.2%. The engine uses it when a home's latest 12 months and the 12 before are both known (98% of real homes for electricity, 66% for gas, i.e. the gas-heated ones). It has **not** been scored on test: these are val numbers, post-test. The home's own last bill remains close to the ceiling for single-home accuracy.
 
 ## Post-test checks: rating-band bias and who saves more (train / val only)
 

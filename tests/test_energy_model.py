@@ -191,3 +191,18 @@ def test_detector_unavailable_without_bills_or_for_cooker_gas():
     assert c["status"] == "unavailable" and c["flagged"] == []
     cooker = similar_homes_check(home(heating="storage_heaters"))
     assert cooker["fuels"]["gas"]["status"] == "unavailable"
+
+
+@needs_artifacts
+def test_mode1_uses_two_years_when_both_are_known():
+    m = load_model("greybox")
+    if "two_year" not in m.meta["gas"]["mode1"]:
+        pytest.skip("2-year mode 1 not trained (python -m greenhome.models.energy add-two-year)")
+    one = home(recent_gas_kwh=12000, recent_elec_kwh=3000)
+    rising = home(recent_gas_kwh=12000, recent_elec_kwh=3000, prior_gas_kwh=9000, prior_elec_kwh=2400)
+    falling = home(recent_gas_kwh=12000, recent_elec_kwh=3000, prior_gas_kwh=15000, prior_elec_kwh=3600)
+    f = m.forecast_frame(frame(one, rising, falling))
+    assert 0.7 < f.gas_kwh[1] / 12000 < 1.3 and 0.7 < f.gas_kwh[2] / 12000 < 1.3   # anchored on the latest year
+    assert f.gas_kwh[1] != f.gas_kwh[0] and f.gas_kwh[1] != f.gas_kwh[2]          # the older year is used
+    no_recent = m.forecast_frame(frame(home(prior_gas_kwh=9000)))                  # older year alone: 1-year model
+    assert no_recent.gas_kwh[0] == pytest.approx(m.forecast_frame(frame(home())).gas_kwh[0])

@@ -212,6 +212,8 @@ class _Trained(_Base):
                           for fuel in FUELS if "band" in self.meta[fuel]}
         self.mode1 = {fuel: lgb.Booster(model_file=str(path / self.meta[fuel]["mode1"]["file"]))
                       for fuel in FUELS if "mode1" in self.meta[fuel]}
+        self.mode1_2yr = {fuel: lgb.Booster(model_file=str(path / self.meta[fuel]["mode1"]["two_year"]["file"]))
+                          for fuel in FUELS if "two_year" in self.meta[fuel].get("mode1", {})}
 
     def _x(self, props, phys, fuel) -> pd.DataFrame:
         x = features_frame(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
@@ -241,7 +243,7 @@ class GreyboxModel(_Trained):
         """Mode 1: next year's expected (mean) use from each home's own billed annual use + description.
         NaN where the home has no bill for that fuel (or, for gas, isn't gas heated). Cached like predict_frame."""
         props = props.reset_index(drop=True)
-        cols = [*INPUT_COLS, "annual_elec_kwh", "annual_gas_kwh"]
+        cols = [*INPUT_COLS, *(f"{h}_{f}_kwh" for h in ("annual", "recent", "prior") for f in FUELS)]
         keys = [_row_key(r) for r in props.reindex(columns=cols).itertuples(index=False)]
         cache = self.__dict__.setdefault("_fcache", {})
         miss = [i for i, k in enumerate(keys) if k not in cache]
@@ -262,12 +264,24 @@ class GreyboxModel(_Trained):
             if m is None or prior is None:
                 out[f"{fuel}_kwh"] = np.nan
                 continue
-            prior = prior.where(prior > 0)
-            x = features_frame(props).assign(log_physics=phys[f"log_physics_{fuel}"].to_numpy(),
-                                             log_prior=np.log(prior.to_numpy()))
-            x = x[m["features"]].fillna({"imd_quintile": self.meta.get("imd_fill", 3.0)})
-            change = self.mode1[fuel].predict(x)
-            out[f"{fuel}_kwh"] = np.where(prior.notna(), np.exp(x.log_prior.to_numpy() + change) * m["total_factor"], np.nan)
+            num = lambda c: pd.to_numeric(props[c], errors="coerce") if c in props else pd.Series(np.nan, index=props.index)
+            recent, older = num(f"recent_{fuel}_kwh"), num(f"prior_{fuel}_kwh")
+            recent, older = recent.where(recent > 0), older.where(older > 0)
+            # Anchor on the latest 12 months when known (what the model was trained on: last year's use), else the
+            # annualised bill over the whole series.
+            prior = recent.fillna(prior.where(prior > 0))
+            base = features_frame(props).assign(log_physics=phys[f"log_physics_{fuel}"].to_numpy(),
+                                                log_prior=np.log(prior.to_numpy()), log_p2=np.log(older.to_numpy()))
+            fill = {"imd_quintile": self.meta.get("imd_fill", 3.0)}
+            x = base[m["features"]].fillna(fill)
+            pred = np.exp(x.log_prior.to_numpy() + self.mode1[fuel].predict(x)) * m["total_factor"]
+            two = m.get("two_year")
+            if two is not None:   # both years known: the 2-year change model (docs/EVALUATION.md, mode 1 history)
+                has2 = (recent.notna() & older.notna()).to_numpy()
+                if has2.any():
+                    x2 = base[two["features"]].fillna(fill)[has2]
+                    pred[has2] = np.exp(x2.log_prior.to_numpy() + self.mode1_2yr[fuel].predict(x2)) * two["total_factor"]
+            out[f"{fuel}_kwh"] = np.where(prior.notna(), pred, np.nan)
         out.loc[~_gas_heated(props), "gas_kwh"] = np.nan
         return out
 
@@ -429,6 +443,53 @@ def fit_mode1(fuel: str, path: Path) -> dict:
     return out
 
 
+def fit_mode1_two_year(fuel: str, path: Path) -> dict:
+    """Mode 1 with two years of the home's history: the 1-year change model's inputs plus log of the year before
+    (2021 for a 2023 target), trained on train rows that have both years valid, same objective and early-stopping
+    slice. Chosen in the post-test experiment (eval/exp_mode1_history.py: val MAE -1.2% gas, -2.2% electricity vs
+    the 1-year model); val metrics are reported on homes with both years."""
+    import lightgbm as lgb
+    from greenhome.models.energy_greybox import with_physics
+    from greenhome.models.energy_ml import LGB_PARAMS, metrics
+    from greenhome.models.need_data import TARGET_YEAR, dataset, load_need
+    d = load_need()
+    x, y, split = dataset(fuel, d=d, own_bills=True)
+    cons, flag = ("Gcons", "GasValFlag") if fuel == "gas" else ("Econs", "ElecValFlag")
+    p2 = d[f"{cons}{TARGET_YEAR - 2}"].where(d[f"{flag}{TARGET_YEAR - 2}"] == "V")
+    x = with_physics(x, fuel).assign(log_p2=np.log(p2.loc[x.index]))
+    tr, va = (split == "train").to_numpy(), (split == "val").to_numpy()
+    xtr, ytr = x[tr], y[tr]
+    es = np.random.default_rng(0).random(len(xtr)) < 0.15
+    mm = (xtr.log_prior.notna() & xtr.log_p2.notna()).to_numpy()
+    xm, ym, esm = xtr[mm], (ytr - xtr.log_prior)[mm], es[mm]
+    m = lgb.LGBMRegressor(**{**LGB_PARAMS, "objective": "l1"})
+    m.fit(xm[~esm], ym[~esm], eval_X=(xm[esm],), eval_y=(ym[esm],), callbacks=[lgb.early_stopping(100, verbose=False)])
+    fname = f"mode1_2yr_{fuel}.txt"
+    m.booster_.save_model(str(path / fname), num_iteration=m.booster_.best_iteration)
+    xv, yv = x[va], y[va]
+    hv = (xv.log_prior.notna() & xv.log_p2.notna()).to_numpy()
+    pv = xv.log_prior.to_numpy()[hv] + m.predict(xv[hv])
+    one = lgb.Booster(model_file=str(path / f"mode1_{fuel}.txt"))
+    p1 = xv.log_prior.to_numpy()[hv] + one.predict(xv[hv][one.feature_name()])
+    factor = float(np.exp(ytr[mm]).sum() / np.exp(xm.log_prior.to_numpy() + m.predict(xm)).sum())
+    return {"file": fname, "features": list(xm.columns), "iterations": int(m.best_iteration_),
+            "total_factor": round(factor, 4),
+            "val_homes_with_two_years": metrics(yv.to_numpy()[hv], pv),
+            "val_one_year_model_same_homes": metrics(yv.to_numpy()[hv], p1),
+            "val_total_ratio": round(float((np.exp(pv) * factor).sum() / np.exp(yv[hv]).sum()), 4)}
+
+
+def add_two_year(path: Path = ARTIFACTS) -> dict:
+    """Add the 2-year mode 1 models to already-trained artifacts, leaving V1 / V2 / bands / 1-year mode 1 untouched
+    (so the scored test results still describe the shipped models)."""
+    meta = json.loads((path / "meta.json").read_text())
+    for fuel in FUELS:
+        meta["greybox"][fuel]["mode1"]["two_year"] = fit_mode1_two_year(fuel, path)
+    (path / "meta.json").write_text(json.dumps(meta, indent=2))
+    load_model.cache_clear()
+    return meta
+
+
 def train(path: Path = ARTIFACTS) -> dict:
     """Fit V1 and V2 per fuel on the NEED train split (early stopping on a train slice, as in evaluation), save
     them, and check the saved models reproduce the evaluated validation scores. Val and test are not fitted on."""
@@ -473,12 +534,21 @@ def train(path: Path = ARTIFACTS) -> dict:
                                          "quantiles": list(BAND), "files": files, "conformal_q": round(q, 5),
                                          "val_coverage": round(cov, 4)}
         meta["greybox"][fuel]["mode1"] = fit_mode1(fuel, path)
+        meta["greybox"][fuel]["mode1"]["two_year"] = fit_mode1_two_year(fuel, path)
     (path / "meta.json").write_text(json.dumps(meta, indent=2))
     load_model.cache_clear()
     return meta
 
 
 def main() -> None:
+    import sys
+    if sys.argv[1:] == ["add-two-year"]:
+        meta = add_two_year()
+        for fuel in FUELS:
+            t = meta["greybox"][fuel]["mode1"]["two_year"]
+            print(f"{fuel}: 2-year val MAE {t['val_homes_with_two_years']['mae_kwh']:.1f} vs 1-year "
+                  f"{t['val_one_year_model_same_homes']['mae_kwh']:.1f} (same homes), total ratio {t['val_total_ratio']}")
+        return
     meta = train()
     for kind in ("greybox", "ml"):
         for fuel in FUELS:

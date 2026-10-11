@@ -38,7 +38,7 @@ The data covers 10,000 EPC-like homes in Leeds, Cornwall and Southwark, with 24 
 
 | File | Grain | Columns / notes |
 |---|---|---|
-| `properties.csv` | 1 row per home | `Property` fields (ARCHITECTURE §4) plus `local_authority`, `wall_type` (solid/cavity), `has_own_roof`, `gas_meter`. The state is **at series start, before any retrofit event**. `annual_elec_kwh` / `annual_gas_kwh` are annualised from the monthly bills by `data/annualise.py` (§3.2). They're None when a fuel has no readings, and `data_flags` records low coverage or unavailability. For the ~12% of homes with a retrofit event, the annual figure mixes pre- and post-retrofit months. |
+| `properties.csv` | 1 row per home | `Property` fields (ARCHITECTURE §4) plus `local_authority`, `wall_type` (solid/cavity), `has_own_roof`, `gas_meter`. The state is **at series start, before any retrofit event**. `annual_elec_kwh` / `annual_gas_kwh` are annualised from the monthly bills by `data/annualise.py` (§3.2). They're None when a fuel has no readings, and `data_flags` records low coverage or unavailability. `recent_*_kwh` / `prior_*_kwh` are the latest 12 months and the 12 before, each annualised on its own (None when that year's coverage isn't good, or for gas without a gas meter); the mode 1 two-year model uses them. For the ~12% of homes with a retrofit event, the annual figure mixes pre- and post-retrofit months. |
 | `monthly_energy.csv` | home × month | `elec_import_kwh` (grid import, already net of solar self-consumption), `gas_kwh`. **Missing month = row absent.** `gas_kwh` NaN = gas meter not matched (data missing). `gas_kwh` 0 = home has no gas supply (`gas_meter` false), a real zero. |
 | `retrofit_events.csv` | 1 per retrofitted home (~12%) | `retrofit`, `install_month`. Bills from that month onward reflect the change, so these give observed before/after pairs. |
 | `sales.csv` | sale | `sale_date`, `price` (2018-01 to 2026-07). A historical price, separate from `current_value_estimate` in properties. |
@@ -96,7 +96,7 @@ Known limitations:
 
 | File | Content |
 |---|---|
-| `properties.parquet` / `properties_share.parquet` | The 542,711 real homes plus `annual_elec_kwh` / `annual_gas_kwh` (annualised by `data/annualise.py`), `customer_id` and the final `smart_controls`. The share file has no postcode |
+| `properties.parquet` / `properties_share.parquet` | The 542,711 real homes plus `annual_elec_kwh` / `annual_gas_kwh` (annualised by `data/annualise.py`), `recent_*_kwh` / `prior_*_kwh` (latest 12 months and the 12 before), `customer_id` and the final `smart_controls`. The share file has no postcode |
 | `monthly_energy/part-*.parquet` | 12,637,637 monthly readings (Oct 2024 to Sep 2026): `elec_import_kwh`, `gas_kwh`. A missing month = absent row; gas NaN = unmatched meter |
 | `loans.parquet` | 222,973 mortgages: `ltv`, plus `outstanding_balance` = LTV × value once `make value` has run (unavailable for homes with no value) |
 | `splits.parquet` | train/val/test per customer (70/15/15) |

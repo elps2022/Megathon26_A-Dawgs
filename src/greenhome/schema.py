@@ -34,6 +34,12 @@ class Property(BaseModel):
     current_value_estimate: float | None = None
     annual_elec_kwh: float | None = None
     annual_gas_kwh: float | None = None
+    # Mode 1 history (ARCHITECTURE 3.5): the latest 12 months and the 12 before, each annualised; None when that
+    # year's bills are too sparse. The 2-year change model uses both; otherwise the 1-year model is used.
+    recent_elec_kwh: float | None = None
+    recent_gas_kwh: float | None = None
+    prior_elec_kwh: float | None = None
+    prior_gas_kwh: float | None = None
     data_flags: list[str] = Field(default_factory=list)
 
     @field_validator("data_flags", mode="before")

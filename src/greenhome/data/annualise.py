@@ -54,6 +54,18 @@ def annualise_dataset(
     monthly = monthly_df.copy()
     monthly["month_num"] = pd.to_datetime(monthly["month"]).dt.month
 
+    # Per-year history for mode 1: the latest 12 months of each home's series and the 12 before, each
+    # annualised on its own; kept only when that year has good coverage (else None -> the 1-year model is used).
+    monthly["_date"] = pd.to_datetime(monthly["month"])
+    end = monthly.groupby("property_id")["_date"].transform("max")
+    age = (end.dt.year - monthly["_date"].dt.year) * 12 + (end.dt.month - monthly["_date"].dt.month)
+    monthly["_year"] = np.where(age < 12, "recent", np.where(age < 24, "prior", ""))
+    history: dict[tuple, float | None] = {}
+    for (pid, yr), g in monthly[monthly["_year"] != ""].groupby(["property_id", "_year"]):
+        for fuel, col in (("elec", "elec_import_kwh"), ("gas", "gas_kwh")):
+            kwh, qual = annualise_series(g["month_num"].tolist(), g[col].tolist(), fuel)
+            history[(pid, yr, fuel)] = kwh if qual == "good" else None
+
     # Group by property
     grouped = monthly.groupby("property_id")
 
@@ -102,5 +114,11 @@ def annualise_dataset(
     df_props["annual_elec_kwh"] = elec_kwhs
     df_props["annual_gas_kwh"] = gas_kwhs
     df_props["data_flags"] = flags_list
+    for yr in ("recent", "prior"):
+        for fuel in ("elec", "gas"):
+            vals = [history.get((pid, yr, fuel)) for pid in df_props["property_id"]]
+            if fuel == "gas":   # no gas meter: no gas history (the gas model isn't used for these homes)
+                vals = [v if bool(m) else None for v, m in zip(vals, df_props.get("gas_meter", pd.Series(True, index=df_props.index)))]
+            df_props[f"{yr}_{fuel}_kwh"] = vals
 
     return df_props
