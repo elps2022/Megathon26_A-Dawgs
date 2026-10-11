@@ -2,17 +2,21 @@
   "homes": 542711,
   "heating_fuel_fits": {
     "gas": {
-      "homes": 351398,
+      "homes": 351680,
       "fit_ok_share": 0.9773,
       "median_r2": 0.992,
       "median_normalised_over_annualised": 1.0707
     },
     "elec": {
       "homes": 114732,
-      "fit_ok_share": 0.9983,
+      "fit_ok_share": 0.9816,
       "median_r2": 0.987,
-      "median_normalised_over_annualised": 1.0548
+      "median_normalised_over_annualised": 1.0543
     }
+  },
+  "fit_issues": {
+    "no_readings": 8035,
+    "solar_confounded": 2051
   },
   "parity_features_missing_share": {
     "prop_type": 0.0021,
@@ -31,7 +35,7 @@
   "intensity_available_share": 0.9781,
   "flags": {
     "heating_fuel_unmetered": 72557,
-    "intensity_unavailable": 11883,
-    "weather_normalisation_unavailable": 8155
+    "intensity_unavailable": 11895,
+    "weather_normalisation_unavailable": 10086
   }
 }

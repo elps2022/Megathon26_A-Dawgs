@@ -3,7 +3,7 @@
   "homes_with_bills": 537732,
   "monthly_rows": 12637637,
   "annual_elec_available_share": 0.9908,
-  "annual_gas_available_share_gas_heated": 0.9774,
+  "annual_gas_available_share_gas_heated": 0.9773,
   "median_annual_kwh_by_heating": {
     "direct_electric": {
       "elec": 7392,
@@ -15,11 +15,11 @@
     },
     "gas_condensing": {
       "elec": 2464,
-      "gas": 7832
+      "gas": 7836
     },
     "gas_non_condensing": {
       "elec": 2473,
-      "gas": 8995
+      "gas": 9022
     },
     "heat_pump": {
       "elec": 4924,

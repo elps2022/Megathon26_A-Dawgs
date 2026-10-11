@@ -5,7 +5,9 @@ For each home and heating fuel: monthly kWh = base + slope x HDD_month (regional
 ordinary least squares over the months observed. Missing months simply drop out of the fit.
   normalised annual = 12 x base + slope x HDD_typical_year   (typical = mean annual HDD over normal_years)
 A fit is used only with >= min_months, slope > 0, base >= 0 and R^2 >= min_r2 (config/annualisation.yaml);
-otherwise the home keeps its annualised figure and is flagged weather_normalisation_unavailable.
+otherwise the home keeps its annualised figure and is flagged weather_normalisation_unavailable, with the
+reason in fit_issue. Electrically heated homes with solar are not fitted: solar lowers summer grid import,
+which bills alone can't separate from weather, so the heating slope would be overstated.
 The slope is also V1's "actual heating response" for its calibration factor k = actual / physics slope.
 
 Heating fuel per home: gas for gas-heated homes, electricity for electrically heated homes. Other fuels
@@ -45,6 +47,7 @@ def fit(props: pd.DataFrame, monthly: pd.DataFrame) -> pd.DataFrame:
     """One row per home: heating fuel, months used, base (kWh/month), slope (kWh/HDD), R^2, normalised annual."""
     hdd, typical = load_hdd()
     fuel = heating_fuel(props).rename("fuel")
+    solar_elec = (fuel == "elec") & (props.solar_kwp.fillna(0) > 0)
     m = monthly.merge(props[["property_id", "local_authority"]].assign(fuel=fuel.to_numpy()), on="property_id")
     m = m[m.fuel.notna()]
     month = pd.to_datetime(m.month)
@@ -61,9 +64,12 @@ def fit(props: pd.DataFrame, monthly: pd.DataFrame) -> pd.DataFrame:
     slope = sxy_c / sxx_c.where(sxx_c > 0)
     base = (g.sy - slope * g.sx) / g.n
     r2 = (sxy_c ** 2 / (sxx_c * syy_c)).where((sxx_c > 0) & (syy_c > 0))
-    ok = (g.n >= CFG["min_months"]) & (slope > 0) & (base >= 0) & (r2 >= CFG["min_r2"])
+    confounded = g.index.isin(props.property_id[solar_elec])
+    issue = np.select([confounded, g.n < CFG["min_months"], ~(slope > 0) | ~(base >= 0), ~(r2 >= CFG["min_r2"])],
+                      ["solar_confounded", "too_few_months", "implausible_fit", "weak_fit"], default="")
+    ok = issue == ""
     normalised = 12 * base + slope * g.la.map(typical)
     out = pd.DataFrame({"heating_fuel": g.fuel, "fit_months": g.n, "base_kwh_per_month": base.round(1),
-                        "slope_kwh_per_hdd": slope.round(3), "fit_r2": r2.round(3), "fit_ok": ok,
+                        "slope_kwh_per_hdd": slope.round(3), "fit_r2": r2.round(3), "fit_ok": ok, "fit_issue": issue,
                         "annual_heating_fuel_kwh_normalised": normalised.where(ok).round(1)})
     return out.reset_index()

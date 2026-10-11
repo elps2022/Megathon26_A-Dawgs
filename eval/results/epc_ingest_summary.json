@@ -105,6 +105,7 @@
     "unknown_wall_insulation": 2308,
     "unknown_built_form": 1152,
     "unknown_loft_insulation": 1121,
+    "gas_meter_inferred_from_heating": 282,
     "unknown_wall_type": 180,
     "implausible_floor_area": 85,
     "unknown_glazing": 49,

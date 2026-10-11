@@ -4,8 +4,9 @@ import pandas as pd
 from greenhome.data.degree_day_fit import fit, load_hdd
 
 
-def _home(heating="gas_condensing", gas_meter=True):
-    return pd.DataFrame([{"property_id": "H1", "local_authority": "Leeds", "heating": heating, "gas_meter": gas_meter}])
+def _home(heating="gas_condensing", gas_meter=True, solar_kwp=0.0):
+    return pd.DataFrame([{"property_id": "H1", "local_authority": "Leeds", "heating": heating, "gas_meter": gas_meter,
+                          "solar_kwp": solar_kwp}])
 
 
 def _bills(base, slope, months, fuel="gas"):
@@ -39,3 +40,11 @@ def test_electric_heating_fits_electricity_and_oil_is_not_fitted():
     e = fit(_home("storage_heaters", False), _bills(100.0, 2.0, months, fuel="elec")).iloc[0]
     assert e.heating_fuel == "elec" and abs(e.slope_kwh_per_hdd - 2) < 1e-3
     assert fit(_home("oil", False), _bills(100.0, 2.0, months, fuel="elec")).empty
+
+
+def test_electric_heating_with_solar_is_not_normalised():
+    months = pd.date_range("2024-10-01", periods=24, freq="MS")
+    out = fit(_home("heat_pump", False, solar_kwp=3.0), _bills(100.0, 2.0, months, fuel="elec")).iloc[0]
+    assert not out.fit_ok and out.fit_issue == "solar_confounded" and np.isnan(out.annual_heating_fuel_kwh_normalised)
+    few = fit(_home(), _bills(150.0, 3.0, months[:4])).iloc[0]
+    assert few.fit_issue == "too_few_months"

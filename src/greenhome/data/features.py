@@ -60,6 +60,7 @@ def build(props: pd.DataFrame, monthly: pd.DataFrame) -> pd.DataFrame:
     f = x.merge(fit(props, monthly).drop(columns="heating_fuel"), on="property_id", how="left").merge(
         coverage(monthly), left_on="property_id", right_index=True, how="left")
     f["fit_ok"] = f.fit_ok.fillna(False).astype(bool)
+    f["fit_issue"] = np.where(f.heating_fuel.notna() & f.fit_issue.isna(), "no_readings", f.fit_issue.fillna(""))
     f["fit_months"] = f.fit_months.fillna(0).astype(int)
     base = props.set_index("property_id")[["annual_elec_kwh", "annual_gas_kwh", "floor_area_m2", "data_flags"]]
     f = f.join(base, on="property_id")
@@ -85,7 +86,7 @@ def build(props: pd.DataFrame, monthly: pd.DataFrame) -> pd.DataFrame:
         flags[i].append("intensity_unavailable")
     f["feature_flags"] = [",".join(fl) for fl in flags]
     cols = (["property_id"] + PARITY_FEATURES +
-            ["heating_fuel", "fit_months", "base_kwh_per_month", "slope_kwh_per_hdd", "fit_r2", "fit_ok",
+            ["heating_fuel", "fit_months", "base_kwh_per_month", "slope_kwh_per_hdd", "fit_r2", "fit_ok", "fit_issue",
              "annual_elec_kwh_wn", "annual_gas_kwh_wn", "elec_kwh_per_m2", "gas_kwh_per_m2", "purchased_kwh_per_m2",
              "elec_months", "gas_months", "elec_year_share", "gas_year_share", "feature_flags"])
     return f[cols]
@@ -101,6 +102,7 @@ def summarise(f: pd.DataFrame, props: pd.DataFrame) -> dict:
                          "median_r2": round(float(h.fit_r2.median()), 3),
                          "median_normalised_over_annualised": round(float(np.nanmedian(ratio)), 4)}
     return {"homes": len(f), "heating_fuel_fits": by_fuel,
+            "fit_issues": f.loc[f.fit_issue != "", "fit_issue"].value_counts().to_dict(),
             "parity_features_missing_share": {c: round(float(f[c].isna().mean()), 4) for c in PARITY_FEATURES},
             "median_purchased_kwh_per_m2": round(float(f.purchased_kwh_per_m2.median()), 1),
             "intensity_available_share": round(float(f.purchased_kwh_per_m2.notna().mean()), 4),

@@ -112,8 +112,14 @@ def map_certificates(d: pd.DataFrame) -> pd.DataFrame:
     gas_flag = d.mains_gas_flag.map({"Y": True, "N": False})
     inferred = gas_flag.isna()
     gas_flag[inferred] = d.main_fuel[inferred].fillna("").str.contains("mains gas", case=False)
+    # Mains-gas heating implies a gas supply, even when the certificate's mains-gas flag says otherwise
+    # (a natural EPC conflict): otherwise the home would have gas bills but an annual gas use of 0.
+    gas_heating = heating.isin(["gas_condensing", "gas_non_condensing"])
+    contradicted = gas_heating & ~gas_flag.astype(bool)
+    gas_flag[contradicted] = True
     x["gas_meter"] = gas_flag.astype(bool)
     flag(inferred, "gas_meter_inferred")
+    flag(contradicted, "gas_meter_inferred_from_heating")
 
     # Walls
     w = CFG["walls"]
