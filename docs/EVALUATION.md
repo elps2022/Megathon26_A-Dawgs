@@ -280,3 +280,16 @@ Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd o
   Real savings are flat (~−10 to −12%) while V1 scales with physics. The slope of observed on physics log-change is 0.01 on train (95% CI −0.12 to 0.15) against V1's 0.38, and 0.21 on val (−0.09 to 0.51, inconclusive). Loft is too noisy to tell (physics barely varies between NEED loft homes). So V1 gets the **average** saving right, but its per-home spread is not supported by real installs: it likely overstates savings for the homes physics rates worst and understates them for the best. This matches the synthetic check (fabric savings 1.6–2× for the worst homes).
   - Caveat: NEED homes have no fabric fields, so their physics differs only through age, type and size defaults. EPC homes use their real walls, loft and glazing, which may carry real signal this test can't see.
   - **Not changed.** Shrinking every home toward the measure average would remove the per-home physics (diminishing returns, interactions, the house diagram) on evidence from one measure, and the val estimate is inconclusive. Read per-home fabric savings as the average effect adjusted by physics, with the low–high band as the range; portfolio totals are unaffected.
+
+## Weather-corrected bill history for mode 1 (`eval/eval_weather_history.py`)
+
+Mode 1 is trained on NEED, whose gas is weather corrected, but customer bills are as metered: a mild billing year passed straight into the forecast as lower use. Each history year of the heating fuel is now rescaled to the typical year (2015–2024 HDD) with the home's own degree-day fit, (12·base + slope·HDD_typical) / (12·base + slope·HDD_that_year), only where the fit is usable. NEED can't test this (already corrected), so the reference is the synthetic generator's hidden typical-year gas (6,302 gas-heated homes, no retrofit event, both years; labels only, nothing tuned). Optimistic: synthetic bills are exactly linear in degree days.
+
+| | MAE vs true typical-year gas | Median APE | Median forecast / truth |
+|---|---|---|---|
+| Mode 1, history as billed | 798 kWh | 6.9% | 0.93 |
+| **Mode 1, history weather-corrected** | **308 kWh** | **2.7%** | **1.02** |
+
+- The latest synthetic year (Oct 2025 – Sep 2026, real Met Office weather) was mild: the median correction is ×1.10 (×1.04 for the year before), so as-billed history understated typical use by ~7–10%. On the real homes the median gas correction is ×1.098 / ×1.044, the same weather.
+- The corrected bill alone is closer still on synthetic data (149 kWh), because the synthetic world has no year-on-year trend while mode 1 applies NEED's learned 2022 → 2023 change; that comparison does not carry over to real homes.
+

@@ -48,3 +48,19 @@ def test_electric_heating_with_solar_is_not_normalised():
     assert not out.fit_ok and out.fit_issue == "solar_confounded" and np.isnan(out.annual_heating_fuel_kwh_normalised)
     few = fit(_home(), _bills(150.0, 3.0, months[:4])).iloc[0]
     assert few.fit_issue == "too_few_months"
+
+
+def test_year_weather_factors_take_each_year_to_the_typical_year():
+    from greenhome.data.annualise import annualise_dataset
+    from greenhome.data.degree_day_fit import year_weather_factors
+    months = pd.date_range("2024-10-01", periods=24, freq="MS")
+    bills = _bills(150.0, 3.0, months)
+    f = year_weather_factors(_home(), bills).set_index("year").factor
+    _, typical = load_hdd()
+    target = 12 * 150 + 3 * typical["Leeds"]
+    for name, part in (("recent", bills.iloc[12:]), ("prior", bills.iloc[:12])):
+        assert abs(part.gas_kwh.sum() * f[name] - target) < 1        # corrected year = typical-year use
+    props = _home().assign(glazing="double_new", data_flags="")
+    out = annualise_dataset(props, bills).iloc[0]
+    assert abs(out.recent_gas_kwh - target) < 2 and abs(out.prior_gas_kwh - target) < 2
+    assert abs(out.recent_elec_kwh - 2400) < 1                         # non-heating fuel stays as billed

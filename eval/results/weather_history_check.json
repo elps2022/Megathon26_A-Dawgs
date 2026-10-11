@@ -1,0 +1,38 @@
+{
+  "homes": 6302,
+  "reference": "hidden true typical-year gas (synthetic generator)",
+  "median_weather_factor": {
+    "recent": 1.1019,
+    "prior": 1.044
+  },
+  "inputs": {
+    "recent_as_billed": {
+      "mae_kwh": 966.8,
+      "median_ape_pct": 9.3,
+      "median_ratio_to_truth": 0.907
+    },
+    "recent_corrected": {
+      "mae_kwh": 148.8,
+      "median_ape_pct": 1.23,
+      "median_ratio_to_truth": 1.0014
+    },
+    "annualised_24_months": {
+      "mae_kwh": 676.4,
+      "median_ape_pct": 6.42,
+      "median_ratio_to_truth": 0.9358
+    }
+  },
+  "mode1_forecast": {
+    "history_as_billed": {
+      "mae_kwh": 798.2,
+      "median_ape_pct": 6.87,
+      "median_ratio_to_truth": 0.9318
+    },
+    "history_weather_corrected": {
+      "mae_kwh": 308.2,
+      "median_ape_pct": 2.68,
+      "median_ratio_to_truth": 1.0175
+    }
+  },
+  "caveat": "optimistic: synthetic bills are exactly linear in degree days"
+}

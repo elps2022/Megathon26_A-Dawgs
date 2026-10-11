@@ -73,3 +73,32 @@ def fit(props: pd.DataFrame, monthly: pd.DataFrame) -> pd.DataFrame:
                         "slope_kwh_per_hdd": slope.round(3), "fit_r2": r2.round(3), "fit_ok": ok, "fit_issue": issue,
                         "annual_heating_fuel_kwh_normalised": normalised.where(ok).round(1)})
     return out.reset_index()
+
+
+def year_weather_factors(props: pd.DataFrame, monthly: pd.DataFrame, fits: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Per home and history year ("recent" = latest 12 months of its series, "prior" = the 12 before): the factor
+    that takes that year's heating-fuel use from its actual weather to the typical year,
+        (12 x base + slope x HDD_typical) / (12 x base + slope x HDD_that_year),
+    from the home's own fit (only where fit_ok). Applied to the annualised year by data/annualise.py, so mode 1
+    sees weather-corrected history, as NEED's gas is. Columns: property_id, year, factor."""
+    hdd, typical = load_hdd()
+    fits = fit(props, monthly) if fits is None else fits
+    fits = fits[fits.fit_ok].set_index("property_id")
+    m = monthly[["property_id", "month"]].assign(date=pd.to_datetime(monthly.month))
+    end = m.groupby("property_id").date.max().rename("end")
+    rows = []
+    la = props.set_index("property_id").local_authority
+    hdd_idx = hdd.set_index(["local_authority", "year", "month"]).hdd
+    for pid, e in end.items():
+        if pid not in fits.index:
+            continue
+        b, s_ = fits.at[pid, "base_kwh_per_month"], fits.at[pid, "slope_kwh_per_hdd"]
+        for name, back in (("recent", 0), ("prior", 12)):
+            months = pd.date_range(end=e - pd.DateOffset(months=back), periods=12, freq="MS")
+            try:
+                h = sum(hdd_idx[(la[pid], d.year, d.month)] for d in months)
+            except KeyError:
+                continue
+            rows.append((pid, name, (12 * b + s_ * typical[la[pid]]) / (12 * b + s_ * h)))
+    return pd.DataFrame(rows, columns=["property_id", "year", "factor"])
+

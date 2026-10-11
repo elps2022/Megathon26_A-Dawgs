@@ -114,9 +114,20 @@ def annualise_dataset(
     df_props["annual_elec_kwh"] = elec_kwhs
     df_props["annual_gas_kwh"] = gas_kwhs
     df_props["data_flags"] = flags_list
+    # Weather-correct each history year of the heating fuel to the typical year with the home's own degree-day
+    # fit (data/degree_day_fit.py), as NEED's gas is weather corrected; homes without a usable fit stay as billed.
+    factors: dict[tuple, float] = {}
+    needed = {"heating", "gas_meter", "local_authority", "solar_kwp"}
+    if needed.issubset(df_props.columns):
+        from greenhome.data.degree_day_fit import heating_fuel, year_weather_factors
+        fuel_of = dict(zip(df_props["property_id"], heating_fuel(df_props)))
+        wf = year_weather_factors(df_props, monthly_df)
+        factors = {(r.property_id, r.year, fuel_of[r.property_id]): r.factor for r in wf.itertuples(index=False)}
     for yr in ("recent", "prior"):
         for fuel in ("elec", "gas"):
             vals = [history.get((pid, yr, fuel)) for pid in df_props["property_id"]]
+            vals = [None if v is None else round(v * factors.get((pid, yr, fuel), 1.0), 1)
+                    for v, pid in zip(vals, df_props["property_id"])]
             if fuel == "gas":   # no gas meter: no gas history (the gas model isn't used for these homes)
                 vals = [v if bool(m) else None for v, m in zip(vals, df_props.get("gas_meter", pd.Series(True, index=df_props.index)))]
             df_props[f"{yr}_{fuel}_kwh"] = vals
