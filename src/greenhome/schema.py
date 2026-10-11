@@ -80,6 +80,11 @@ class EnergyBreakdown(BaseModel):
     calibrated: bool = False
     model_version: str = "greybox"
     elements: list[Element] = Field(default_factory=list)  # per-element heat loss (house diagram)
+    # 80% band for this home's actual annual use (conformalised, V1 only); None when not estimated by the model
+    elec_p10: float | None = None
+    elec_p90: float | None = None
+    gas_p10: float | None = None
+    gas_p90: float | None = None
 
 
 class SubScore(BaseModel):

@@ -155,3 +155,19 @@ Known limitations:
 - **Normalisation effect:** the billing period (Oct 2024 – Sep 2026) was 9–11% milder than 2015–2024, so normalised heating-fuel use is ~7% (gas) / ~5% (electric heating) above the raw annualised figure.
 - **Circularity:** synthetic bills are generated from the same HDD, so the median R² (0.99) only shows the pipeline works. It is not evidence about real homes.
 - Median purchased intensity: 126 kWh/m²/yr; available for 97.8% of homes. Oil, LPG and district homes understate it (heating fuel not metered) and carry `heating_fuel_unmetered`.
+
+## Held-out energy test predictions (`make eval-test`, deliverable I)
+
+`eval/results/test_predictions.csv` (committed): the energy models' predictions for the NEED **test** split, scored once (`eval/eval_energy.py`; metrics in `docs/EVALUATION.md` and `eval/results/energy_test.json`).
+
+| Column | Meaning |
+|---|---|
+| `need_row` | Row number (0-based) in the public NEED anonymised 50k file (`anon2025_50k.csv`); the split is in `data/splits/need_split.csv` |
+| `fuel` | `gas` (gas-heated homes, weather-corrected annual gas) or `elec` (all homes, annual electricity) |
+| `actual_kwh` | Metered 2023 use, valid (`V`) readings only; homes that installed a measure in 2023 are excluded |
+| `v1_p10`, `v1_p50`, `v1_p90` | V1 (shipped) conformalised 80% band and median prediction for the home's actual use |
+| `v1_mean` | V1 expected (mean) use, smearing-corrected: the value to sum for totals |
+| `v2_ml_kwh`, `log_linear_kwh`, `cell_median_kwh`, `global_median_kwh`, `physics_scaled_kwh` | Description-only models and baselines (typical-home predictions) |
+| `mode1_last_year_kwh`, `mode1_last_year_x_trend_kwh`, `mode1_change_model_l1_kwh` | "This home" mode: last year's (2022) bill, the bill x median trend, and the change model; homes without a valid 2022 reading fall back to V1 |
+
+Every model was fitted on the train split only; V1's bands were calibrated on val. Description-only features: property type, age band, floor-area band, EPC band, region, conservatory, deprivation quintile, gas heated, cavity / PV installed before 2023.

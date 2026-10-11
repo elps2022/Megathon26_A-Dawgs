@@ -10,7 +10,7 @@
 | F | Architecture diagram | B | [ ] |
 | G | `docs/EVALUATION.md` (validation vs baselines, limitations) | A + B | [ ] |
 | H | `docs/RESPONSIBLE_AI.md` | C | [ ] |
-| I | Held-out test predictions + data documentation (`docs/DATA.md`) | A | [ ] |
+| I | Held-out test predictions + data documentation (`docs/DATA.md`) | A | [x] `eval/results/test_predictions.csv` |
 
 ## Golden rules to re-check before submitting
 - [ ] 1. Every number comes from code, the AI only explains

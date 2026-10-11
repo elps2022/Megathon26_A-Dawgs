@@ -185,7 +185,7 @@ The input is the (post-retrofit) `Property`, not a `HomeState`: V1 and V2 need t
 4. **Monotone constraints:** worse EPC band → higher use, larger area → higher use, insulation flags → lower gas. Keep them if their CV cost is < ~1% MAE.
 5. **Feature work:** ordinal bands, interactions (type × area, EPC × age), years since install, IMD. Keep only what improves CV. For V1, the physics prediction itself is a feature of the residual model.
 6. **Library bake-off:** LightGBM vs CatBoost on the same folds and trial budget (XGBoost only if time allows). Ship the winner, or the average of the top two (3.15).
-7. **Uncertainty:** conformalised p10/p90 from val. Report test coverage, target ~80%.
+7. **Uncertainty:** conformalised p10/p90 from val (CQR: quantile GBDTs on the V1 residual, fitted on train, one correction Q from val; `models/energy.fit_band`). Test coverage 79.2% gas / 80.7% electricity (`docs/EVALUATION.md`).
 
 **Choosing the shipped version.** Default to V1, because it answers every retrofit physically and gives per-element heat loss for the house diagram (3.13), **unless V2 is clearly more accurate** on NEED CV (beyond fold noise). Either way, both are reported side by side. A config switch (`energy_model: greybox | ml`) selects the version, and the dashboard can show both.
 
@@ -383,7 +383,7 @@ class EnergyBreakdown(BaseModel):
     elec_kwh: float; gas_kwh: float; heat_demand_kwh: float; base_load_kwh: float
     hlc_w_per_k: float | None; calibration_k: float | None; calibrated: bool; model_version: str
     elements: list[Element]   # per-element heat loss (house diagram), default []
-    # planned (optional, default None): elec_p10, elec_p90, gas_p10, gas_p90 from conformal bands (3.5)
+    elec_p10: float | None; elec_p90: float | None; gas_p10: float | None; gas_p90: float | None  # V1 conformal 80% band (3.5)
 
 class SubScore(BaseModel):  component: str; weight: float; score: float; contribution: float; inputs_used: dict; flags: list[str]
 class ScoreResult(BaseModel): total: int; classification: str; components: list[SubScore]

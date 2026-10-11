@@ -1,0 +1,928 @@
+{
+  "split": "NEED test (15%, fixed, data/splits/need_split.csv); scored once",
+  "models_scored": "shipped artifacts: V1 greybox_v1, V2 ml_v2 (fitted on train, bands on val)",
+  "gas": {
+    "n_test": 5494,
+    "n_train": 25732,
+    "share_with_prior_bill": 0.956,
+    "models": {
+      "global_median": {
+        "mae_kwh": 4993.2,
+        "mape_pct": 67.38,
+        "median_ape_pct": 36.49,
+        "r2_log": -0.0126,
+        "within_20pct": 0.2732,
+        "within_30pct": 0.4152,
+        "r2_raw": -0.0314
+      },
+      "cell_median": {
+        "mae_kwh": 4176.5,
+        "mape_pct": 53.7,
+        "median_ape_pct": 30.65,
+        "r2_log": 0.246,
+        "within_20pct": 0.3327,
+        "within_30pct": 0.4914,
+        "r2_raw": 0.2522
+      },
+      "log_linear": {
+        "mae_kwh": 4060.5,
+        "mape_pct": 50.93,
+        "median_ape_pct": 30.34,
+        "r2_log": 0.2812,
+        "within_20pct": 0.3373,
+        "within_30pct": 0.4958,
+        "r2_raw": 0.284,
+        "mae_kwh_95ci": [
+          3960.2775,
+          4161.505
+        ],
+        "r2_log_95ci": [
+          0.2564,
+          0.3027
+        ]
+      },
+      "physics_scaled": {
+        "mae_kwh": 4545.8,
+        "mape_pct": 60.61,
+        "median_ape_pct": 33.54,
+        "r2_log": 0.135,
+        "within_20pct": 0.2976,
+        "within_30pct": 0.4448,
+        "r2_raw": 0.1757
+      },
+      "v2_ml": {
+        "mae_kwh": 4008.1,
+        "mape_pct": 52.92,
+        "median_ape_pct": 29.35,
+        "r2_log": 0.2786,
+        "within_20pct": 0.3498,
+        "within_30pct": 0.5095,
+        "r2_raw": 0.3131,
+        "mae_kwh_95ci": [
+          3901.8975,
+          4107.52
+        ],
+        "r2_log_95ci": [
+          0.2553,
+          0.302
+        ]
+      },
+      "v1_greybox": {
+        "mae_kwh": 4018.1,
+        "mape_pct": 53.16,
+        "median_ape_pct": 29.61,
+        "r2_log": 0.2731,
+        "within_20pct": 0.3517,
+        "within_30pct": 0.5058,
+        "r2_raw": 0.3102,
+        "mae_kwh_95ci": [
+          3919.0875,
+          4123.605
+        ],
+        "r2_log_95ci": [
+          0.2506,
+          0.2968
+        ]
+      },
+      "mode1_last_year": {
+        "mae_kwh": 2004.5,
+        "mape_pct": 25.1,
+        "median_ape_pct": 11.38,
+        "r2_log": 0.6705,
+        "within_20pct": 0.6951,
+        "within_30pct": 0.8096,
+        "r2_raw": 0.7169,
+        "mae_kwh_95ci": [
+          1928.6875,
+          2084.1125
+        ],
+        "r2_log_95ci": [
+          0.6379,
+          0.6996
+        ]
+      },
+      "mode1_last_year_x_trend": {
+        "mae_kwh": 2003.3,
+        "mape_pct": 25.53,
+        "median_ape_pct": 11.08,
+        "r2_log": 0.6725,
+        "within_20pct": 0.6969,
+        "within_30pct": 0.8069,
+        "r2_raw": 0.7099
+      },
+      "mode1_change_model_l1": {
+        "mae_kwh": 1952.7,
+        "mape_pct": 25.49,
+        "median_ape_pct": 10.86,
+        "r2_log": 0.6932,
+        "within_20pct": 0.7,
+        "within_30pct": 0.8069,
+        "r2_raw": 0.7296,
+        "mae_kwh_95ci": [
+          1877.465,
+          2028.71
+        ],
+        "r2_log_95ci": [
+          0.664,
+          0.7205
+        ]
+      }
+    },
+    "mode1_vs_last_year_mae_change_pct": {
+      "point": -2.59,
+      "95ci": [
+        -3.12,
+        -2.03
+      ]
+    },
+    "band": {
+      "target_coverage": 0.8,
+      "test_coverage": 0.7923,
+      "below_p10": 0.1061,
+      "above_p90": 0.1016,
+      "median_width_kwh": 12232.2,
+      "median_width_pct_of_p50": 122.0,
+      "val_coverage": 0.8001
+    },
+    "portfolio_totals_v1": {
+      "homes_100": {
+        "median_abs_pct_error": 3.41,
+        "p90_abs_pct_error": 8.23
+      },
+      "homes_1000": {
+        "median_abs_pct_error": 1.67,
+        "p90_abs_pct_error": 3.45
+      }
+    },
+    "group_level_r2_v1": {
+      "groups": 172,
+      "homes": 4000,
+      "min_homes_per_group": 10,
+      "r2_weighted": 0.7854
+    },
+    "top_quartile_v1": {
+      "precision": 0.5473,
+      "recall": 0.5398
+    },
+    "top_quartile_v2": {
+      "precision": 0.5531,
+      "recall": 0.5456
+    },
+    "subgroups_v1": {
+      "region": {
+        "label": "region",
+        "levels": {
+          "E12000001": {
+            "n": 289,
+            "mae_kwh": 3954.2,
+            "median_ape_pct": 27.67,
+            "median_bias_pct": -3.71,
+            "band_coverage": 0.7924
+          },
+          "E12000002": {
+            "n": 770,
+            "mae_kwh": 4111.3,
+            "median_ape_pct": 30.04,
+            "median_bias_pct": -1.74,
+            "band_coverage": 0.7883
+          },
+          "E12000003": {
+            "n": 549,
+            "mae_kwh": 4139.5,
+            "median_ape_pct": 29.08,
+            "median_bias_pct": 0.54,
+            "band_coverage": 0.7796
+          },
+          "E12000004": {
+            "n": 480,
+            "mae_kwh": 3817.1,
+            "median_ape_pct": 28.06,
+            "median_bias_pct": -1.14,
+            "band_coverage": 0.8042
+          },
+          "E12000005": {
+            "n": 575,
+            "mae_kwh": 3987.1,
+            "median_ape_pct": 28.96,
+            "median_bias_pct": -3.15,
+            "band_coverage": 0.7948
+          },
+          "E12000006": {
+            "n": 556,
+            "mae_kwh": 4016.3,
+            "median_ape_pct": 29.16,
+            "median_bias_pct": -1.4,
+            "band_coverage": 0.7734
+          },
+          "E12000007": {
+            "n": 684,
+            "mae_kwh": 4675.8,
+            "median_ape_pct": 32.42,
+            "median_bias_pct": -3.57,
+            "band_coverage": 0.788
+          },
+          "E12000008": {
+            "n": 864,
+            "mae_kwh": 3928.8,
+            "median_ape_pct": 28.5,
+            "median_bias_pct": -0.97,
+            "band_coverage": 0.8044
+          },
+          "E12000009": {
+            "n": 473,
+            "mae_kwh": 3360.1,
+            "median_ape_pct": 32.13,
+            "median_bias_pct": 3.97,
+            "band_coverage": 0.7907
+          },
+          "W92000004": {
+            "n": 254,
+            "mae_kwh": 3757.5,
+            "median_ape_pct": 30.7,
+            "median_bias_pct": -5.71,
+            "band_coverage": 0.8189
+          }
+        }
+      },
+      "prop_type": {
+        "label": "property type",
+        "levels": {
+          "Bungalow": {
+            "n": 475,
+            "mae_kwh": 4061.3,
+            "median_ape_pct": 29.45,
+            "median_bias_pct": 2.62,
+            "band_coverage": 0.7853
+          },
+          "Detached": {
+            "n": 852,
+            "mae_kwh": 4910.3,
+            "median_ape_pct": 25.24,
+            "median_bias_pct": -4.21,
+            "band_coverage": 0.7829
+          },
+          "End terrace": {
+            "n": 561,
+            "mae_kwh": 3640.7,
+            "median_ape_pct": 26.92,
+            "median_bias_pct": -1.36,
+            "band_coverage": 0.7932
+          },
+          "Flat": {
+            "n": 755,
+            "mae_kwh": 3514.1,
+            "median_ape_pct": 40.51,
+            "median_bias_pct": 0.8,
+            "band_coverage": 0.7894
+          },
+          "Mid terrace": {
+            "n": 1264,
+            "mae_kwh": 3921.6,
+            "median_ape_pct": 32.33,
+            "median_bias_pct": -0.38,
+            "band_coverage": 0.7983
+          },
+          "Semi detached": {
+            "n": 1587,
+            "mae_kwh": 3976.2,
+            "median_ape_pct": 27.17,
+            "median_bias_pct": -2.12,
+            "band_coverage": 0.7958
+          }
+        }
+      },
+      "age_band": {
+        "label": "age band (1 = pre-1930 ... 4 = 2000+)",
+        "levels": {
+          "1930-1972": {
+            "n": 2287,
+            "mae_kwh": 4100.5,
+            "median_ape_pct": 29.32,
+            "median_bias_pct": -0.26,
+            "band_coverage": 0.7897
+          },
+          "1973-1999": {
+            "n": 1138,
+            "mae_kwh": 3535.6,
+            "median_ape_pct": 28.98,
+            "median_bias_pct": -1.44,
+            "band_coverage": 0.7926
+          },
+          "2000+": {
+            "n": 710,
+            "mae_kwh": 3126.6,
+            "median_ape_pct": 27.87,
+            "median_bias_pct": -2.72,
+            "band_coverage": 0.7789
+          },
+          "pre-1930": {
+            "n": 1359,
+            "mae_kwh": 4749.2,
+            "median_ape_pct": 31.46,
+            "median_bias_pct": -1.41,
+            "band_coverage": 0.8035
+          }
+        }
+      },
+      "epc_band": {
+        "label": "EPC band (1 = A/B ... 5 = F/G, blank = no EPC)",
+        "levels": {
+          "A/B": {
+            "n": 394,
+            "mae_kwh": 3011.7,
+            "median_ape_pct": 31.66,
+            "median_bias_pct": -5.97,
+            "band_coverage": 0.7563
+          },
+          "C": {
+            "n": 1211,
+            "mae_kwh": 3336.8,
+            "median_ape_pct": 30.79,
+            "median_bias_pct": -0.08,
+            "band_coverage": 0.7969
+          },
+          "D": {
+            "n": 1483,
+            "mae_kwh": 4113.3,
+            "median_ape_pct": 29.76,
+            "median_bias_pct": -2.08,
+            "band_coverage": 0.7943
+          },
+          "E": {
+            "n": 419,
+            "mae_kwh": 4855.3,
+            "median_ape_pct": 28.23,
+            "median_bias_pct": 1.91,
+            "band_coverage": 0.8091
+          },
+          "F/G": {
+            "n": 42,
+            "mae_kwh": 5900.7,
+            "median_ape_pct": 39.66,
+            "median_bias_pct": 24.06,
+            "band_coverage": 0.7619
+          },
+          "no EPC": {
+            "n": 1945,
+            "mae_kwh": 4352.6,
+            "median_ape_pct": 28.61,
+            "median_bias_pct": -1.15,
+            "band_coverage": 0.7923
+          }
+        }
+      },
+      "floor_area_band": {
+        "label": "floor area band",
+        "levels": {
+          "1.0": {
+            "n": 533,
+            "mae_kwh": 3239.1,
+            "median_ape_pct": 40.79,
+            "median_bias_pct": 0.58,
+            "band_coverage": 0.7992
+          },
+          "2.0": {
+            "n": 2904,
+            "mae_kwh": 3654.7,
+            "median_ape_pct": 30.47,
+            "median_bias_pct": -1.09,
+            "band_coverage": 0.7889
+          },
+          "3.0": {
+            "n": 1640,
+            "mae_kwh": 4388.9,
+            "median_ape_pct": 26.81,
+            "median_bias_pct": -2.34,
+            "band_coverage": 0.7963
+          },
+          "4.0": {
+            "n": 319,
+            "mae_kwh": 5628.6,
+            "median_ape_pct": 25.42,
+            "median_bias_pct": 0.08,
+            "band_coverage": 0.79
+          },
+          "5.0": {
+            "n": 98,
+            "mae_kwh": 7575.9,
+            "median_ape_pct": 24.24,
+            "median_bias_pct": -1.98,
+            "band_coverage": 0.7959
+          }
+        }
+      },
+      "imd_quintile": {
+        "label": "deprivation quintile (1 = most deprived)",
+        "levels": {
+          "1.0": {
+            "n": 1178,
+            "mae_kwh": 3820.9,
+            "median_ape_pct": 32.35,
+            "median_bias_pct": -0.57,
+            "band_coverage": 0.7869
+          },
+          "2.0": {
+            "n": 1050,
+            "mae_kwh": 3950.5,
+            "median_ape_pct": 31.29,
+            "median_bias_pct": -1.05,
+            "band_coverage": 0.7952
+          },
+          "3.0": {
+            "n": 1033,
+            "mae_kwh": 4099.3,
+            "median_ape_pct": 31.44,
+            "median_bias_pct": -2.81,
+            "band_coverage": 0.7812
+          },
+          "4.0": {
+            "n": 1092,
+            "mae_kwh": 4083.6,
+            "median_ape_pct": 28.11,
+            "median_bias_pct": -1.95,
+            "band_coverage": 0.7995
+          },
+          "5.0": {
+            "n": 1141,
+            "mae_kwh": 4147.6,
+            "median_ape_pct": 25.7,
+            "median_bias_pct": 0.09,
+            "band_coverage": 0.7984
+          }
+        }
+      }
+    }
+  },
+  "elec": {
+    "n_test": 6799,
+    "n_train": 31721,
+    "share_with_prior_bill": 0.9463,
+    "models": {
+      "global_median": {
+        "mae_kwh": 1670.2,
+        "mape_pct": 56.63,
+        "median_ape_pct": 40.91,
+        "r2_log": -0.0029,
+        "within_20pct": 0.245,
+        "within_30pct": 0.3564,
+        "r2_raw": -0.0858
+      },
+      "cell_median": {
+        "mae_kwh": 1569.4,
+        "mape_pct": 52.94,
+        "median_ape_pct": 37.93,
+        "r2_log": 0.1043,
+        "within_20pct": 0.2674,
+        "within_30pct": 0.3976,
+        "r2_raw": 0.0349
+      },
+      "log_linear": {
+        "mae_kwh": 1573.1,
+        "mape_pct": 53.9,
+        "median_ape_pct": 38.63,
+        "r2_log": 0.1074,
+        "within_20pct": 0.2668,
+        "within_30pct": 0.4002,
+        "r2_raw": 0.0353,
+        "mae_kwh_95ci": [
+          1523.97,
+          1622.7025
+        ],
+        "r2_log_95ci": [
+          0.0919,
+          0.1216
+        ]
+      },
+      "physics_scaled": {
+        "mae_kwh": 1603.4,
+        "mape_pct": 52.99,
+        "median_ape_pct": 39.17,
+        "r2_log": 0.0334,
+        "within_20pct": 0.2634,
+        "within_30pct": 0.3992,
+        "r2_raw": -0.0086
+      },
+      "v2_ml": {
+        "mae_kwh": 1533.0,
+        "mape_pct": 52.5,
+        "median_ape_pct": 37.23,
+        "r2_log": 0.161,
+        "within_20pct": 0.2746,
+        "within_30pct": 0.4121,
+        "r2_raw": 0.0881,
+        "mae_kwh_95ci": [
+          1486.175,
+          1578.4025
+        ],
+        "r2_log_95ci": [
+          0.1426,
+          0.1784
+        ]
+      },
+      "v1_greybox": {
+        "mae_kwh": 1534.6,
+        "mape_pct": 52.56,
+        "median_ape_pct": 37.19,
+        "r2_log": 0.159,
+        "within_20pct": 0.2714,
+        "within_30pct": 0.4099,
+        "r2_raw": 0.0875,
+        "mae_kwh_95ci": [
+          1485.4875,
+          1583.5025
+        ],
+        "r2_log_95ci": [
+          0.14,
+          0.1769
+        ]
+      },
+      "mode1_last_year": {
+        "mae_kwh": 916.7,
+        "mape_pct": 32.53,
+        "median_ape_pct": 16.0,
+        "r2_log": 0.5435,
+        "within_20pct": 0.5885,
+        "within_30pct": 0.7176,
+        "r2_raw": 0.5581,
+        "mae_kwh_95ci": [
+          881.5925,
+          949.9
+        ],
+        "r2_log_95ci": [
+          0.5108,
+          0.5726
+        ]
+      },
+      "mode1_last_year_x_trend": {
+        "mae_kwh": 927.0,
+        "mape_pct": 33.26,
+        "median_ape_pct": 15.54,
+        "r2_log": 0.5438,
+        "within_20pct": 0.5808,
+        "within_30pct": 0.717,
+        "r2_raw": 0.5459
+      },
+      "mode1_change_model_l1": {
+        "mae_kwh": 886.1,
+        "mape_pct": 31.94,
+        "median_ape_pct": 15.62,
+        "r2_log": 0.5843,
+        "within_20pct": 0.5845,
+        "within_30pct": 0.7225,
+        "r2_raw": 0.6,
+        "mae_kwh_95ci": [
+          851.2925,
+          920.2025
+        ],
+        "r2_log_95ci": [
+          0.5592,
+          0.6102
+        ]
+      }
+    },
+    "mode1_vs_last_year_mae_change_pct": {
+      "point": -3.34,
+      "95ci": [
+        -4.11,
+        -2.6
+      ]
+    },
+    "band": {
+      "target_coverage": 0.8,
+      "test_coverage": 0.807,
+      "below_p10": 0.0959,
+      "above_p90": 0.0971,
+      "median_width_kwh": 4229.4,
+      "median_width_pct_of_p50": 161.4,
+      "val_coverage": 0.8002
+    },
+    "portfolio_totals_v1": {
+      "homes_100": {
+        "median_abs_pct_error": 4.38,
+        "p90_abs_pct_error": 11.04
+      },
+      "homes_1000": {
+        "median_abs_pct_error": 1.58,
+        "p90_abs_pct_error": 3.72
+      }
+    },
+    "group_level_r2_v1": {
+      "groups": 221,
+      "homes": 5365,
+      "min_homes_per_group": 10,
+      "r2_weighted": 0.1256
+    },
+    "group_level_r2_v1_with_heating_exploratory": {
+      "groups": 189,
+      "homes": 4501,
+      "min_homes_per_group": 10,
+      "r2_weighted": 0.0916
+    },
+    "top_quartile_v1": {
+      "precision": 0.4465,
+      "recall": 0.4395
+    },
+    "top_quartile_v2": {
+      "precision": 0.4524,
+      "recall": 0.4453
+    },
+    "subgroups_v1": {
+      "region": {
+        "label": "region",
+        "levels": {
+          "E12000001": {
+            "n": 320,
+            "mae_kwh": 1126.4,
+            "median_ape_pct": 32.43,
+            "median_bias_pct": 0.12,
+            "band_coverage": 0.8281
+          },
+          "E12000002": {
+            "n": 868,
+            "mae_kwh": 1328.5,
+            "median_ape_pct": 34.44,
+            "median_bias_pct": 1.62,
+            "band_coverage": 0.8387
+          },
+          "E12000003": {
+            "n": 628,
+            "mae_kwh": 1464.7,
+            "median_ape_pct": 36.66,
+            "median_bias_pct": 1.54,
+            "band_coverage": 0.8232
+          },
+          "E12000004": {
+            "n": 567,
+            "mae_kwh": 1563.6,
+            "median_ape_pct": 39.79,
+            "median_bias_pct": -0.81,
+            "band_coverage": 0.7795
+          },
+          "E12000005": {
+            "n": 667,
+            "mae_kwh": 1450.8,
+            "median_ape_pct": 38.62,
+            "median_bias_pct": 0.32,
+            "band_coverage": 0.8066
+          },
+          "E12000006": {
+            "n": 716,
+            "mae_kwh": 1602.0,
+            "median_ape_pct": 38.34,
+            "median_bias_pct": 0.62,
+            "band_coverage": 0.8031
+          },
+          "E12000007": {
+            "n": 972,
+            "mae_kwh": 1645.0,
+            "median_ape_pct": 38.55,
+            "median_bias_pct": -0.19,
+            "band_coverage": 0.7901
+          },
+          "E12000008": {
+            "n": 1092,
+            "mae_kwh": 1662.2,
+            "median_ape_pct": 37.71,
+            "median_bias_pct": 1.84,
+            "band_coverage": 0.7921
+          },
+          "E12000009": {
+            "n": 644,
+            "mae_kwh": 1693.8,
+            "median_ape_pct": 37.03,
+            "median_bias_pct": 1.56,
+            "band_coverage": 0.8199
+          },
+          "W92000004": {
+            "n": 325,
+            "mae_kwh": 1520.8,
+            "median_ape_pct": 36.78,
+            "median_bias_pct": -1.8,
+            "band_coverage": 0.8031
+          }
+        }
+      },
+      "prop_type": {
+        "label": "property type",
+        "levels": {
+          "Bungalow": {
+            "n": 555,
+            "mae_kwh": 1496.0,
+            "median_ape_pct": 36.85,
+            "median_bias_pct": 3.18,
+            "band_coverage": 0.8324
+          },
+          "Detached": {
+            "n": 1040,
+            "mae_kwh": 1915.7,
+            "median_ape_pct": 34.93,
+            "median_bias_pct": 0.38,
+            "band_coverage": 0.824
+          },
+          "End terrace": {
+            "n": 619,
+            "mae_kwh": 1386.6,
+            "median_ape_pct": 36.75,
+            "median_bias_pct": 1.53,
+            "band_coverage": 0.7964
+          },
+          "Flat": {
+            "n": 1502,
+            "mae_kwh": 1587.9,
+            "median_ape_pct": 41.45,
+            "median_bias_pct": 1.04,
+            "band_coverage": 0.7796
+          },
+          "Mid terrace": {
+            "n": 1334,
+            "mae_kwh": 1289.2,
+            "median_ape_pct": 35.85,
+            "median_bias_pct": -0.33,
+            "band_coverage": 0.8208
+          },
+          "Semi detached": {
+            "n": 1749,
+            "mae_kwh": 1514.1,
+            "median_ape_pct": 36.06,
+            "median_bias_pct": 0.32,
+            "band_coverage": 0.8056
+          }
+        }
+      },
+      "age_band": {
+        "label": "age band (1 = pre-1930 ... 4 = 2000+)",
+        "levels": {
+          "1930-1972": {
+            "n": 2500,
+            "mae_kwh": 1452.6,
+            "median_ape_pct": 36.32,
+            "median_bias_pct": 1.21,
+            "band_coverage": 0.8056
+          },
+          "1973-1999": {
+            "n": 1412,
+            "mae_kwh": 1462.1,
+            "median_ape_pct": 37.83,
+            "median_bias_pct": -1.63,
+            "band_coverage": 0.8031
+          },
+          "2000+": {
+            "n": 1233,
+            "mae_kwh": 1713.5,
+            "median_ape_pct": 38.4,
+            "median_bias_pct": 2.16,
+            "band_coverage": 0.7843
+          },
+          "pre-1930": {
+            "n": 1654,
+            "mae_kwh": 1587.1,
+            "median_ape_pct": 36.56,
+            "median_bias_pct": 1.2,
+            "band_coverage": 0.8295
+          }
+        }
+      },
+      "epc_band": {
+        "label": "EPC band (1 = A/B ... 5 = F/G, blank = no EPC)",
+        "levels": {
+          "A/B": {
+            "n": 691,
+            "mae_kwh": 1456.6,
+            "median_ape_pct": 37.41,
+            "median_bias_pct": 3.36,
+            "band_coverage": 0.7945
+          },
+          "C": {
+            "n": 1525,
+            "mae_kwh": 1355.1,
+            "median_ape_pct": 38.97,
+            "median_bias_pct": -0.24,
+            "band_coverage": 0.7843
+          },
+          "D": {
+            "n": 1702,
+            "mae_kwh": 1469.6,
+            "median_ape_pct": 35.02,
+            "median_bias_pct": -1.43,
+            "band_coverage": 0.8237
+          },
+          "E": {
+            "n": 541,
+            "mae_kwh": 1608.2,
+            "median_ape_pct": 34.79,
+            "median_bias_pct": 3.14,
+            "band_coverage": 0.8189
+          },
+          "F/G": {
+            "n": 90,
+            "mae_kwh": 2516.4,
+            "median_ape_pct": 42.88,
+            "median_bias_pct": 12.98,
+            "band_coverage": 0.8333
+          },
+          "no EPC": {
+            "n": 2250,
+            "mae_kwh": 1672.5,
+            "median_ape_pct": 38.25,
+            "median_bias_pct": 1.22,
+            "band_coverage": 0.8098
+          }
+        }
+      },
+      "floor_area_band": {
+        "label": "floor area band",
+        "levels": {
+          "1.0": {
+            "n": 1065,
+            "mae_kwh": 1464.8,
+            "median_ape_pct": 41.12,
+            "median_bias_pct": -0.78,
+            "band_coverage": 0.7878
+          },
+          "2.0": {
+            "n": 3330,
+            "mae_kwh": 1370.3,
+            "median_ape_pct": 37.07,
+            "median_bias_pct": 1.97,
+            "band_coverage": 0.7943
+          },
+          "3.0": {
+            "n": 1840,
+            "mae_kwh": 1565.5,
+            "median_ape_pct": 35.27,
+            "median_bias_pct": -1.05,
+            "band_coverage": 0.837
+          },
+          "4.0": {
+            "n": 384,
+            "mae_kwh": 2157.8,
+            "median_ape_pct": 35.33,
+            "median_bias_pct": 4.04,
+            "band_coverage": 0.8151
+          },
+          "5.0": {
+            "n": 180,
+            "mae_kwh": 3341.7,
+            "median_ape_pct": 39.62,
+            "median_bias_pct": -5.59,
+            "band_coverage": 0.8333
+          }
+        }
+      },
+      "imd_quintile": {
+        "label": "deprivation quintile (1 = most deprived)",
+        "levels": {
+          "1.0": {
+            "n": 1383,
+            "mae_kwh": 1331.3,
+            "median_ape_pct": 39.13,
+            "median_bias_pct": 3.04,
+            "band_coverage": 0.8185
+          },
+          "2.0": {
+            "n": 1358,
+            "mae_kwh": 1473.9,
+            "median_ape_pct": 37.52,
+            "median_bias_pct": -0.37,
+            "band_coverage": 0.8056
+          },
+          "3.0": {
+            "n": 1391,
+            "mae_kwh": 1621.8,
+            "median_ape_pct": 38.35,
+            "median_bias_pct": 1.53,
+            "band_coverage": 0.7958
+          },
+          "4.0": {
+            "n": 1367,
+            "mae_kwh": 1597.2,
+            "median_ape_pct": 35.47,
+            "median_bias_pct": 1.23,
+            "band_coverage": 0.8135
+          },
+          "5.0": {
+            "n": 1300,
+            "mae_kwh": 1655.2,
+            "median_ape_pct": 35.54,
+            "median_bias_pct": -1.53,
+            "band_coverage": 0.8015
+          }
+        }
+      }
+    }
+  },
+  "retrofit_installs_test": {
+    "loft_insulation": {
+      "n": 319,
+      "observed_median_change": -0.0127,
+      "physics_only_median_change": -0.0529,
+      "v1_median_change": -0.0205
+    },
+    "cavity_wall_insulation": {
+      "n": 225,
+      "observed_median_change": -0.1137,
+      "physics_only_median_change": -0.3147,
+      "v1_median_change": -0.1341
+    }
+  }
+}

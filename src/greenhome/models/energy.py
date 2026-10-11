@@ -18,6 +18,11 @@ Conventions match training exactly (energy_greybox / energy_ml), so deployment s
 Gas is NaN for homes that aren't gas heated (the NEED gas model only covers gas-heated homes). Predictions are
 the expected (mean) use, Duan smearing included, so totals and savings stay unbiased.
 
+V1 also gives an 80% band for one home's actual use (`{fuel}_p10` / `{fuel}_p90`): conformalised quantile
+regression (CQR). Quantile GBDTs (10% / 90%) on the same V1 residual are fitted on train; the val split then
+widens (or narrows) both ends by the one amount Q that makes 80% of val homes fall inside. Coverage is
+guaranteed on average for new homes like NEED's, and reported on the test split (eval/eval_energy.py).
+
 Trained artifacts (LightGBM text models + meta.json) live in models/artifacts/, gitignored: model weights are
 hosted outside the repo. `make train` rebuilds them from NEED in about a minute:
 
@@ -40,6 +45,7 @@ from greenhome.schema import Element, EnergyBreakdown, Property
 
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 FUELS = ("gas", "elec")
+BAND = (0.1, 0.9)  # p10 / p90: an 80% interval
 V1_RESULTS = ROOT / "eval" / "results" / "energy_v1.json"
 
 
@@ -96,6 +102,8 @@ class _Base:
         r = self.predict_frame(df).iloc[0]
         if np.isnan(r.elec_kwh):
             raise ModelUnavailable("Too little property data for the energy model (e.g. floor area unknown).")
+        band = {k: (None if k not in r or np.isnan(r[k]) else round(float(r[k]), 1))
+                for k in ("elec_p10", "elec_p90", "gas_p10", "gas_p90")}
         gas = 0.0 if np.isnan(r.gas_kwh) else float(r.gas_kwh)
         space = r.physics_space_heat_kwh / (r.physics_space_heat_kwh + r.physics_hot_water_kwh)
         heat = gas * space
@@ -104,7 +112,7 @@ class _Base:
             elec_kwh=round(float(r.elec_kwh), 1), gas_kwh=round(gas, 1), heat_demand_kwh=round(heat, 1),
             base_load_kwh=round(float(r.elec_kwh) + gas - heat, 1), hlc_w_per_k=round(float(r.physics_hlc_w_per_k), 1),
             calibration_k=None, calibrated=False, model_version=self.version,
-            elements=[Element(**e) for e in physics.elements(env)])
+            elements=[Element(**e) for e in physics.elements(env)], **band)
 
 
 class PhysicsModel(_Base):
@@ -132,6 +140,8 @@ class _Trained(_Base):
         self.version = self.meta["version"]
         self.smear = {fuel: self.meta[fuel]["smearing_factor"] for fuel in FUELS}
         self.boosters = {fuel: lgb.Booster(model_file=str(path / self.meta[fuel]["file"])) for fuel in FUELS}
+        self.quantiles = {fuel: [lgb.Booster(model_file=str(path / f)) for f in self.meta[fuel]["band"]["files"]]
+                          for fuel in FUELS if "band" in self.meta[fuel]}
 
     def _x(self, props, phys, fuel) -> pd.DataFrame:
         return epc_features(props)[self.meta[fuel]["features"]]   # training columns (gas: no gas_heated)
@@ -146,6 +156,23 @@ class GreyboxModel(_Trained):
     def _log_pred(self, props, phys, fuel):
         beta = self.meta[fuel]["physics_elasticity"]
         return beta * phys[f"log_physics_{fuel}"].to_numpy() + self.boosters[fuel].predict(self._x(props, phys, fuel))
+
+    def log_band(self, props: pd.DataFrame, phys: pd.DataFrame, fuel: str) -> tuple[np.ndarray, np.ndarray]:
+        """Conformalised 80% band in log kWh for each home's actual use."""
+        beta, q = self.meta[fuel]["physics_elasticity"], self.meta[fuel]["band"]["conformal_q"]
+        base, x = beta * phys[f"log_physics_{fuel}"].to_numpy(), self._x(props, phys, fuel)
+        lo, hi = (base + m.predict(x) for m in self.quantiles[fuel])
+        return lo - q, hi + q
+
+    def predict_frame(self, props: pd.DataFrame) -> pd.DataFrame:
+        out = super().predict_frame(props)
+        props = props.reset_index(drop=True)
+        phys = physics_frame(props)
+        for fuel in self.quantiles:
+            lo, hi = self.log_band(props, phys, fuel)
+            out[f"{fuel}_p10"], out[f"{fuel}_p90"] = np.exp(lo), np.exp(hi)
+        out.loc[out.gas_kwh.isna(), ["gas_p10", "gas_p90"]] = np.nan
+        return out
 
 
 class MLModel(_Trained):
@@ -181,6 +208,30 @@ def load_model(name: str = "greybox") -> EnergyModel:
     return MODELS[name]()
 
 
+def fit_band(xtr, ytr, xva, yva, fuel: str, beta: float) -> tuple[list, float, float]:
+    """CQR for V1: quantile GBDTs (BAND) on log(actual) - beta x log(physics) from the description, fitted on
+    train; Q = the conformal correction from val. Returns (models, Q, val coverage after correction)."""
+    import lightgbm as lgb
+    from greenhome.models.energy_ml import LGB_PARAMS, tuned_params
+    tuned = {k: v for k, v in tuned_params(fuel).items() if k not in ("objective", "alpha", "tweedie_variance_power")}
+    es = np.random.default_rng(0).random(len(xtr)) < 0.15
+    f = lambda d: d.drop(columns="log_physics")
+    r = ytr - beta * xtr.log_physics
+    models = []
+    for a in BAND:
+        m = lgb.LGBMRegressor(**{**LGB_PARAMS, **tuned, "objective": "quantile", "alpha": a})
+        m.fit(f(xtr)[~es], r[~es], eval_X=(f(xtr)[es],), eval_y=(r[es],), callbacks=[lgb.early_stopping(100, verbose=False)])
+        models.append(m)
+    base = beta * xva.log_physics.to_numpy()
+    lo, hi = (base + m.predict(f(xva)) for m in models)
+    yv = yva.to_numpy()
+    scores = np.maximum(lo - yv, yv - hi)          # CQR conformity score
+    n, level = len(yv), BAND[1] - BAND[0]
+    q = float(np.quantile(scores, min(1.0, np.ceil((n + 1) * level) / n)))
+    coverage = float(np.mean((yv >= lo - q) & (yv <= hi + q)))
+    return models, q, coverage
+
+
 def train(path: Path = ARTIFACTS) -> dict:
     """Fit V1 and V2 per fuel on the NEED train split (early stopping on a train slice, as in evaluation), save
     them, and check the saved models reproduce the evaluated validation scores. Val and test are not fitted on."""
@@ -213,6 +264,14 @@ def train(path: Path = ARTIFACTS) -> dict:
                 "iterations": int(m.best_iteration_), **({"physics_elasticity": beta} if kind == "greybox" else {}),
                 "smearing_factor": round(float(np.mean(np.exp(ytr.to_numpy() - log_pred(xtr)))), 4),
                 "val": metrics(yva.to_numpy(), log_pred(xva))}
+        qmodels, q, cov = fit_band(xtr, ytr, xva, yva, fuel, beta)
+        files = []
+        for a, m in zip(BAND, qmodels):
+            files.append(f"greybox_{fuel}_q{int(a * 100):02d}.txt")
+            m.booster_.save_model(str(path / files[-1]), num_iteration=m.booster_.best_iteration)
+        meta["greybox"][fuel]["band"] = {"method": "CQR, quantile GBDT on train, conformal Q on val",
+                                         "quantiles": list(BAND), "files": files, "conformal_q": round(q, 5),
+                                         "val_coverage": round(cov, 4)}
     (path / "meta.json").write_text(json.dumps(meta, indent=2))
     load_model.cache_clear()
     return meta
@@ -224,7 +283,8 @@ def main() -> None:
         for fuel in FUELS:
             m = meta[kind][fuel]
             print(f"{kind:8s} {fuel:4s} iters {m['iterations']:5d}  smear {m['smearing_factor']:.4f}  "
-                  f"val MAE {m['val']['mae_kwh']:7.1f}  R2(log) {m['val']['r2_log']:.3f}")
+                  f"val MAE {m['val']['mae_kwh']:7.1f}  R2(log) {m['val']['r2_log']:.3f}"
+                  + (f"  band Q {m['band']['conformal_q']:+.3f} val coverage {m['band']['val_coverage']:.3f}" if "band" in m else ""))
     print(f"saved to {ARTIFACTS}")
 
 

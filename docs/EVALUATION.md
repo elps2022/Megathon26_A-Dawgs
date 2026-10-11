@@ -117,4 +117,37 @@ Tuning bought ~1% on gas and nothing on electricity, consistent with the feature
 
 **Deployment.** `models/energy.py` is the one interface (`load_model("greybox" | "ml" | "physics")`). `python -m greenhome.models.energy` (end of `make train`) refits V1 and V2 on the train split, saves them to `src/greenhome/models/artifacts/` (gitignored), and checks the saved models reproduce the val scores above exactly. The savings simulator calls it for every fabric retrofit.
 
-**Next:** conformal p10/p90, subgroup errors, then a single scoring of the test split (including the test-split installs). The LightGBM vs CatBoost bake-off is dropped for time: tuning showed the settings aren't the limit.
+## Held-out test set (scored once)
+
+`make eval-test` → `eval/results/energy_test.json` and `eval/results/test_predictions.csv`. The NEED test split (15%: 5,494 gas-heated homes, 6,799 for electricity) was never used for fitting, tuning, the elasticity or the bands. Every model choice above was fixed before this run. The shipped artifacts are scored as deployed; baselines are refitted on train. 95% CIs are bootstraps over test homes (1,000 draws).
+
+| Fuel | Model | MAE (kWh) [95% CI] | Median APE | R² (log) [95% CI] | R² (kWh) | Within ±20% |
+|---|---|---|---|---|---|---|
+| Gas | Global median | 4,993 | 36.5% | −0.01 | −0.03 | 27.3% |
+| Gas | Median of similar homes | 4,177 | 30.7% | 0.25 | 0.25 | 33.3% |
+| Gas | Log-linear | 4,061 | 30.3% | 0.28 | 0.28 | 33.7% |
+| Gas | Physics × one scale factor | 4,546 | 33.5% | 0.14 | 0.18 | 29.8% |
+| Gas | V2: LightGBM, tuned | 4,008 [3,902–4,108] | 29.4% | 0.28 [0.26–0.30] | 0.31 | 35.0% |
+| Gas | **V1 shipped (physics^β × residual)** | **4,018 [3,919–4,124]** | **29.6%** | **0.27 [0.25–0.30]** | **0.31** | **35.2%** |
+| Gas | This home: last year's bill (no model) | 2,005 [1,929–2,084] | 11.4% | 0.67 | 0.72 | 69.5% |
+| Gas | **This home: mode 1 change model** | **1,953 [1,877–2,029]** | **10.9%** | **0.69 [0.66–0.72]** | **0.73** | **70.0%** |
+| Elec | Global median | 1,670 | 40.9% | 0.00 | −0.09 | 24.5% |
+| Elec | Median of similar homes | 1,569 | 37.9% | 0.10 | 0.03 | 26.7% |
+| Elec | Log-linear | 1,573 | 38.6% | 0.11 | 0.04 | 26.7% |
+| Elec | V2: LightGBM, tuned | 1,533 [1,486–1,578] | 37.2% | 0.16 [0.14–0.18] | 0.09 | 27.5% |
+| Elec | **V1 shipped** | **1,535 [1,485–1,584]** | **37.2%** | **0.16 [0.14–0.18]** | **0.09** | **27.1%** |
+| Elec | This home: last year's bill (no model) | 917 [882–950] | 16.0% | 0.54 | 0.56 | 58.9% |
+| Elec | **This home: mode 1 change model** | **886 [851–920]** | **15.6%** | **0.58 [0.56–0.61]** | **0.60** | **58.5%** |
+
+- **Test agrees with CV and val.** V1 gas 4,018 (val 3,987, CV 4,089); V1 and V2 are tied within their CIs, so V1 ships (ARCHITECTURE §3.5). Every trained model beats every no-model baseline on description only.
+- **Mode 1 beats last year's bill on the same homes:** −2.6% MAE for gas (paired bootstrap 95% CI −3.1% to −2.0%) and −3.3% for electricity (−4.1% to −2.6%). Small but real; the bill carries most of the signal.
+- **80% bands hold on new homes:** test coverage 79.2% gas, 80.7% electricity (val 80.0%), with misses split evenly above and below. They are wide (median width 122% of the prediction for gas, 161% for electricity), which honestly reflects how much occupants vary.
+- **At scale, errors cancel:** predicted totals for random groups of 100 test homes are within 3.4% (gas) / 4.4% (electricity) of the metered total (median), and within 1.7% / 1.6% for 1,000 homes. Group-level R² (test homes grouped by region × type × age × floor-area band, ≥ 10 homes per group, weighted): **0.79 for gas**, 0.13 for electricity (0.09 adding heating type, an exploratory check added after the first run). Electricity differences between building groups are small next to occupant variation, so even group averages are hard to predict from buildings.
+- **Ranking:** picking the top 25% of users, V1 precision / recall 0.55 / 0.54 (gas) and 0.45 / 0.44 (electricity) vs 0.25 random.
+- **Retrofit installs, test split (first look):** loft observed −1.3% (319 homes) vs V1 −2.1% and physics −5.3%; cavity observed −11.4% (225) vs V1 −13.4% and physics −31.5%. V1 stays within ~1–2 points; physics alone overstates by 3–4×.
+
+**Errors by subgroup (V1, test; full table in `energy_test.json` `subgroups_v1`, for the fairness audit).** Band coverage stays 76–84% in every region, type, age, EPC and deprivation group with ≥ 30 homes, so no group gets falsely confident bands. Single-home error is higher for flats (gas median APE 40.5% vs 25–33% for houses) and the smallest homes (40.8% under 50 m²); it falls with deprivation quintile (32.4% most deprived → 25.7% least). Median bias is within ±6% everywhere except gas in F/G-rated homes (+24%, only 42 homes): the model over-predicts their use, consistent with the prebound effect being strongest in the worst-rated homes. That matters for the "worse than similar homes" detector, which should not flag F/G homes on this basis alone.
+
+**Test predictions file (deliverable I).** `eval/results/test_predictions.csv`: one row per test home and fuel (12,293 rows), keyed by `need_row` (row number in the public NEED 50k file), with the actual 2023 use, V1 p10 / p50 / p90 / mean and every other model's prediction (kWh). Schema in `docs/DATA.md`.
+
+**Not done:** the LightGBM vs CatBoost bake-off (dropped for time: tuning showed the settings aren't the limit) and quantile bands for V2.

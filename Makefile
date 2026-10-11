@@ -1,4 +1,4 @@
-.PHONY: data calibrate build epc real sales value labels features train test eval app api
+.PHONY: data calibrate build epc real sales value labels features train eval-test test eval app api
 
 # Regenerate the synthetic dataset in data/generated/ from config/ (no raw data needed).
 data:
@@ -29,6 +29,9 @@ train:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_bills
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy
 
+# The single scoring of the NEED test split (after make train; every model choice must be final first).
+eval-test:
+	@PYTHONPATH="src:." .venv/bin/python eval/eval_energy.py
 
 # Real property book from EPC certificates (needs data/raw/epc, onspd, imd). Writes data/processed/*.parquet.
 epc:

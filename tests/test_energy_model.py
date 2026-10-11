@@ -112,3 +112,14 @@ def test_predict_breakdown_and_unknown_floor_area():
     assert b.heat_demand_kwh + b.base_load_kwh == pytest.approx(b.gas_kwh + b.elec_kwh, abs=0.2)
     with pytest.raises(ModelUnavailable):
         load_model("greybox").predict(home(floor_area_m2=None))
+
+
+@needs_artifacts
+def test_v1_band_brackets_the_prediction():
+    out = load_model("greybox").predict_frame(frame(home(), home(heating="storage_heaters", gas_meter=False)))
+    for fuel in ("gas", "elec"):
+        r = out.iloc[0]
+        assert r[f"{fuel}_p10"] < r[f"{fuel}_kwh"] < r[f"{fuel}_p90"]
+    assert np.isnan(out.gas_p10[1]) and np.isnan(out.gas_p90[1])
+    b = load_model("greybox").predict(home())
+    assert b.gas_p10 < b.gas_kwh < b.gas_p90 and b.elec_p10 < b.elec_kwh < b.elec_p90
