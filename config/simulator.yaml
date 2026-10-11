@@ -12,6 +12,10 @@ heat_pump_hot_water_share_of_base_load:
 solar:
   default_kwp: 3.5
   yield_kwh_per_kwp: {Leeds: 850, Cornwall: 1000, Southwark: 950, default: 900}
-  self_consumption: 0.40
+  self_consumption: 0.155   # effective share of generation that cuts import; was 0.40 (VERIFY), which doubled real savings
+  self_consumption_source: >
+    Calibrated on the 193 TRAIN-split NEED solar installs (data/need_labels.py): median difference-in-differences
+    drop in metered import 487 kWh/yr = 3.5 kWp x 900 kWh/kWp x 0.155. It bundles real self-consumption with the
+    smaller systems of 2010-2020 installs (NEED has no kWp). Checked on val / test installs: eval/eval_savings.py.
   max_share_of_import: 0.50
   source: "PVGIS-style regional yields and EST self-consumption, as config/synthetic.yaml solar block (VERIFY)"

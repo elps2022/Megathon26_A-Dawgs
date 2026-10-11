@@ -12,3 +12,4 @@ CLAUDE.md
 .agents/
 skills-lock.json
 src/greenhome/models/artifacts/
+catboost_info/

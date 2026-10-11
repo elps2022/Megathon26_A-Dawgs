@@ -29,9 +29,12 @@ train:
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy_bills
 	@PYTHONPATH="src:." .venv/bin/python -m greenhome.models.energy
 
-# The single scoring of the NEED test split (after make train; every model choice must be final first).
+# The single scoring of the NEED test split (after make train; every model choice must be final first),
+# then the savings checks and the report figures (eval/figures/).
 eval-test:
 	@PYTHONPATH="src:." .venv/bin/python eval/eval_energy.py
+	@PYTHONPATH="src:." .venv/bin/python eval/eval_savings.py
+	@PYTHONPATH="src:." .venv/bin/python eval/eda_energy.py
 
 # Real property book from EPC certificates (needs data/raw/epc, onspd, imd). Writes data/processed/*.parquet.
 epc:

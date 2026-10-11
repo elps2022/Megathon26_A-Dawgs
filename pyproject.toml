@@ -18,6 +18,7 @@ dependencies = [
     "streamlit>=1.65.0",
     "httpx>=0.28.1",
     "optuna>=5.0.0",
+    "catboost>=1.2.10",
 ]
 
 [dependency-groups]

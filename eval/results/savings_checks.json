@@ -1,0 +1,72 @@
+{
+  "solar_vs_need_pv_installs": {
+    "fitted_on": "train (self_consumption, config/simulator.yaml); val and test are checks",
+    "rule": "3.5 kWp x 900 kWh/kWp x 0.155 self-consumption, capped at 50% of import",
+    "test": {
+      "n": 29,
+      "observed_median_change": -0.0408,
+      "observed_median_did_kwh": -189.7,
+      "rule_median_change": -0.111,
+      "observed_median_kwh": -300.0,
+      "rule_median_kwh": -488.2
+    },
+    "train": {
+      "n": 193,
+      "observed_median_change": -0.1635,
+      "observed_median_did_kwh": -486.9,
+      "rule_median_change": -0.1252,
+      "observed_median_kwh": -600.0,
+      "rule_median_kwh": -488.2
+    },
+    "val": {
+      "n": 57,
+      "observed_median_change": -0.1277,
+      "observed_median_did_kwh": -482.8,
+      "rule_median_change": -0.1285,
+      "observed_median_kwh": -600.0,
+      "rule_median_kwh": -488.2
+    }
+  },
+  "model_savings_vs_catalogue_ranges": {
+    "loft_insulation": {
+      "n": 344,
+      "catalogue_range_pct": [
+        10,
+        25
+      ],
+      "median_pct_of_heating": 4.2,
+      "below_range": 0.831,
+      "above_range": 0.0
+    },
+    "cavity_wall_insulation": {
+      "n": 99,
+      "catalogue_range_pct": [
+        10,
+        30
+      ],
+      "median_pct_of_heating": 19.0,
+      "below_range": 0.04,
+      "above_range": 0.0
+    },
+    "solid_wall_insulation": {
+      "n": 219,
+      "catalogue_range_pct": [
+        15,
+        35
+      ],
+      "median_pct_of_heating": 25.9,
+      "below_range": 0.055,
+      "above_range": 0.0
+    },
+    "double_glazing": {
+      "n": 64,
+      "catalogue_range_pct": [
+        5,
+        15
+      ],
+      "median_pct_of_heating": 7.1,
+      "below_range": 0.031,
+      "above_range": 0.0
+    }
+  }
+}

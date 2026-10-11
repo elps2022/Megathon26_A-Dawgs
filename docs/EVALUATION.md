@@ -150,4 +150,21 @@ Tuning bought ~1% on gas and nothing on electricity, consistent with the feature
 
 **Test predictions file (deliverable I).** `eval/results/test_predictions.csv`: one row per test home and fuel (12,293 rows), keyed by `need_row` (row number in the public NEED 50k file), with the actual 2023 use, V1 p10 / p50 / p90 / mean and every other model's prediction (kWh). Schema in `docs/DATA.md`.
 
-**Not done:** the LightGBM vs CatBoost bake-off (dropped for time: tuning showed the settings aren't the limit) and quantile bands for V2.
+**Not done:** quantile bands for V2 (V1 ships, so only V1 has them).
+
+## Post-test checks (train-split CV only; the test score above is unaffected)
+
+**Library bake-off and interactions** (`python -m greenhome.models.bakeoff --trials 30` → `eval/results/energy_bakeoff.json`), on the shipped V1 target, same 5 folds:
+
+| Fuel | LightGBM (shipped) | + type × area, EPC × age | CatBoost, 30 Optuna trials | Average of the two |
+|---|---|---|---|---|
+| Gas CV MAE | 4,089 ± 28 | 4,088 ± 31 | 4,082 ± 31 | 4,080 ± 30 |
+| Elec CV MAE | 1,549 ± 23 | 1,549 ± 24 | 1,550 ± 24 | 1,548 ± 23 |
+
+Every contender is within 9 kWh (0.2%) of the shipped model, against a fold sd of ~28: no library or interaction is clearly better, so LightGBM stays and the test score stands for the shipped model. Trees already find the interactions; as with tuning, the inputs are the limit.
+
+**Savings checks** (`eval/eval_savings.py` → `eval/results/savings_checks.json`):
+- **Solar, recalibrated.** The simulator's solar rule (3.5 kWp × 900 kWh/kWp × 40% self-consumption) predicted a 1,260 kWh/yr cut in import, but real NEED PV installs cut it by a median of 487 kWh (difference-in-differences, train split): the rule doubled real savings. `self_consumption` is now 0.155, calibrated on the 193 train installs (it bundles real self-consumption with the smaller systems of 2010–2020 installs; NEED has no kWp). Held-out check: val installs (57) observed −483 kWh vs rule −488; the 29 test installs show −190 kWh, too few to read much into.
+- **Catalogue ranges** (1,000 real homes): model-based savings as % of heating demand are inside the catalogue's typical range for cavity walls (median 19%), solid walls (26%) and glazing (7%), with 3–6% of homes below. **Loft is below the catalogue's 10–25% for 83% of homes** (median 4.2%). Here the real installs side with the model: NEED loft installs cut gas by ~1–3% (above). The catalogue range is a placeholder (VERIFY) and should be lowered for loft top-ups.
+
+**Figures** (`eval/eda_energy.py` → `eval/figures/`, data figures from the train split): target distributions (log-normal, truncated by NEED at 1,000–50,000 kWh gas and 500–25,000 kWh electricity), gas by EPC and age band, the within-cell spread (p10–p90 of use / identical-home median: 0.48–1.73 gas, 0.48–2.23 electricity, the noise ceiling), physics vs metered gas (median ratio 0.505, the prebound effect), the retrofit check, and test calibration by decile.

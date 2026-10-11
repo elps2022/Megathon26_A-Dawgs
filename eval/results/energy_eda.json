@@ -1,0 +1,61 @@
+{
+  "data": {
+    "homes": 50000,
+    "train_homes": 35000,
+    "gas": {
+      "missing_share": 0.2209,
+      "flag_counts": {
+        "V": 25806,
+        "E": 1462,
+        "L": 685,
+        "O": 401,
+        "G": 141
+      },
+      "min_reported": 1000.0,
+      "max_reported": 50000.0,
+      "median": 10100.0,
+      "mean": 11424.7
+    },
+    "elec": {
+      "missing_share": 0.0717,
+      "flag_counts": {
+        "V": 31822,
+        "L": 1393,
+        "E": 670,
+        "O": 498,
+        "G": 102
+      },
+      "min_reported": 500.0,
+      "max_reported": 24900.0,
+      "median": 2600.0,
+      "mean": 3373.1
+    },
+    "truncation_note": "NEED blanks gas outside 1,000-50,000 kWh and electricity outside 500-25,000 kWh: the target is truncated, so extreme homes are under-represented (documented, not fixed)"
+  },
+  "gas_median_by_epc": {
+    "A/B": 6799.999999999999,
+    "C": 8199.999999999998,
+    "D": 10400.000000000002,
+    "E": 12399.999999999996,
+    "F/G": 13699.999999999996
+  },
+  "gas_within_cell": {
+    "homes_in_cells_ge_20": 15751,
+    "p10_ratio_to_cell_median": 0.482,
+    "p90_ratio_to_cell_median": 1.73
+  },
+  "elec_within_cell": {
+    "homes_in_cells_ge_20": 20546,
+    "p10_ratio_to_cell_median": 0.48,
+    "p90_ratio_to_cell_median": 2.227
+  },
+  "gas_median_actual_over_physics": 0.505,
+  "figures": [
+    "eval/figures/eda_target_distribution.png",
+    "eval/figures/eda_gas_by_band.png",
+    "eval/figures/eda_within_cell_spread.png",
+    "eval/figures/eda_physics_vs_actual.png",
+    "eval/figures/eval_retrofit_check.png",
+    "eval/figures/eval_test_calibration.png"
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "note": "post-test check: train split, 5-fold CV only",
+  "gas": {
+    "beta": 0.381,
+    "n_train": 25732,
+    "lightgbm_tuned": {
+      "cv_mae_kwh": 4088.6,
+      "cv_mae_sd": 28.3,
+      "cv_r2_log": 0.2732,
+      "fold_mae": [
+        4115.5,
+        4095.6,
+        4054.7,
+        4056.4,
+        4121.0
+      ]
+    },
+    "lgb_interactions": {
+      "cv_mae_kwh": 4087.8,
+      "cv_mae_sd": 30.6,
+      "cv_r2_log": 0.2738,
+      "fold_mae": [
+        4105.7,
+        4100.1,
+        4053.9,
+        4050.6,
+        4128.6
+      ]
+    },
+    "catboost_params": {
+      "depth": 4,
+      "learning_rate": 0.058914950239843486,
+      "l2_leaf_reg": 2.2360252317773113,
+      "subsample": 0.6280030021329147,
+      "bootstrap_type": "Bernoulli"
+    },
+    "catboost_tuned": {
+      "cv_mae_kwh": 4081.5,
+      "cv_mae_sd": 31.3,
+      "cv_r2_log": 0.2754,
+      "fold_mae": [
+        4098.5,
+        4096.4,
+        4045.1,
+        4044.5,
+        4122.8
+      ]
+    },
+    "average": {
+      "cv_mae_kwh": 4079.8,
+      "cv_mae_sd": 29.7,
+      "cv_r2_log": 0.2757,
+      "fold_mae": [
+        4101.4,
+        4089.9,
+        4045.2,
+        4045.0,
+        4117.6
+      ]
+    },
+    "catboost_trials": 30,
+    "seconds": 159
+  },
+  "elec": {
+    "beta": 0.3,
+    "n_train": 31721,
+    "lightgbm_tuned": {
+      "cv_mae_kwh": 1548.8,
+      "cv_mae_sd": 22.9,
+      "cv_r2_log": 0.1479,
+      "fold_mae": [
+        1559.3,
+        1552.9,
+        1505.0,
+        1554.9,
+        1571.8
+      ]
+    },
+    "lgb_interactions": {
+      "cv_mae_kwh": 1548.8,
+      "cv_mae_sd": 24.3,
+      "cv_r2_log": 0.1479,
+      "fold_mae": [
+        1560.0,
+        1552.8,
+        1502.7,
+        1554.1,
+        1574.4
+      ]
+    },
+    "catboost_params": {
+      "depth": 7,
+      "learning_rate": 0.020235504521895233,
+      "l2_leaf_reg": 5.13069245672855,
+      "subsample": 0.817647732384333,
+      "bootstrap_type": "Bernoulli"
+    },
+    "catboost_tuned": {
+      "cv_mae_kwh": 1550.1,
+      "cv_mae_sd": 23.9,
+      "cv_r2_log": 0.1469,
+      "fold_mae": [
+        1560.7,
+        1555.2,
+        1504.4,
+        1555.5,
+        1574.7
+      ]
+    },
+    "average": {
+      "cv_mae_kwh": 1548.2,
+      "cv_mae_sd": 23.4,
+      "cv_r2_log": 0.149,
+      "fold_mae": [
+        1558.6,
+        1552.8,
+        1503.4,
+        1553.7,
+        1572.3
+      ]
+    },
+    "catboost_trials": 30,
+    "seconds": 360
+  }
+}
