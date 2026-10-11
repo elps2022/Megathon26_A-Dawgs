@@ -54,12 +54,13 @@ def pack(out: Path = DIST) -> Path:
 
 def _drive_direct(url: str) -> str:
     m = re.search(r"drive\.google\.com/(?:file/d/|open\?id=|uc\?(?:export=download&)?id=)([\w-]+)", url)
-    return f"https://drive.google.com/uc?export=download&id={m.group(1)}" if m else url
+    # drive.usercontent with confirm=t skips the "can't scan this file for viruses" page Drive shows for large files
+    return f"https://drive.usercontent.google.com/download?id={m.group(1)}&export=download&confirm=t" if m else url
 
 
 def _read(src: str) -> bytes:
     if re.match(r"^https?://", src):
-        with urllib.request.urlopen(_drive_direct(src), timeout=60) as r:
+        with urllib.request.urlopen(_drive_direct(src), timeout=600) as r:
             return r.read()
     return Path(src).expanduser().read_bytes()
 
