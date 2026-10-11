@@ -519,12 +519,12 @@ Why this split works: C's pieces are pure functions with small inputs and output
 
 ## 7. Submission checklist (map to PS section 13)
 
-- [ ] A Working dashboard — B
-- [ ] B Code + `make data`, `make train`, `make eval`, `make app` — all
+- [x] A Working dashboard — B
+- [x] B Code + `make data`, `make train`, `make eval`, `make app` — all
 - [x] C Trained models in `models/artifacts/` + inference code — A (weights hosted externally, link in README)
-- [ ] D `docs/SCORING.md` — C
-- [ ] E `docs/LLM.md` — B
-- [ ] F Architecture diagram — B
-- [~] G `docs/EVALUATION.md` (validation metrics, baselines, limitations) — A, B (A's part done)
-- [ ] H `docs/RESPONSIBLE_AI.md` — C
+- [x] D `docs/SCORING.md` — C
+- [x] E `docs/LLM.md` — B
+- [x] F Architecture diagram — B
+- [x] G `docs/EVALUATION.md` (validation metrics, baselines, limitations) — A, B
+- [x] H `docs/RESPONSIBLE_AI.md` — C
 - [x] I Held-out test predictions + schema/label docs — A
