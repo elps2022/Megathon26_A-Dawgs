@@ -589,6 +589,32 @@ def load_datasets():
 df_properties, df_loans, data_source_label = load_datasets()
 
 
+@st.cache_data
+def get_featured_properties(df_p: pd.DataFrame, max_count: int = 300) -> list[str]:
+    """Curate a diverse showcase sample covering all EPC bands (A–G), property types, and heating fuels."""
+    if df_p.empty or "energy_rating" not in df_p.columns:
+        return df_p["property_id"].head(max_count).tolist() if not df_p.empty else []
+
+    valid = df_p[df_p["annual_elec_kwh"].notna() & (df_p["annual_elec_kwh"] > 0)]
+    diverse_chunks = []
+    # Prime showcase homes first: high-impact Band D/E homes with gas heating (high-savings demo homes)
+    gas_col = valid["annual_gas_kwh"] if "annual_gas_kwh" in valid.columns else 0
+    prime = valid[(valid["energy_rating"].isin(["D", "E"])) & (valid["heating"] == "gas_condensing") & (gas_col > 6000)]
+    if not prime.empty:
+        diverse_chunks.append(prime.head(15))
+
+    for band in ["D", "E", "C", "F", "B", "G", "A"]:
+        for heating in ["gas_condensing", "storage_heaters", "direct_electric", "gas_non_condensing", "heat_pump", "oil"]:
+            subset = valid[(valid["energy_rating"] == band) & (valid["heating"] == heating)]
+            if not subset.empty:
+                diverse_chunks.append(subset.head(7))
+
+    if diverse_chunks:
+        sampled_df = pd.concat(diverse_chunks).drop_duplicates("property_id").head(max_count)
+        return sampled_df["property_id"].tolist()
+    return df_p["property_id"].head(max_count).tolist()
+
+
 @st.cache_data(show_spinner="Building a report for every home in the sample...")
 def cached_portfolio(sample_size: int):
     """The portfolio for a sample size, computed once: slider moves elsewhere on the page don't rebuild it."""
@@ -598,6 +624,7 @@ def cached_portfolio(sample_size: int):
     else:
         sample_props = df_properties
     return build_portfolio(sample_props, df_loans, max_sample=sample_size)
+
 
 
 DEFAULT_FACTORS_YEAR = pd.read_csv(Path(__file__).resolve().parents[1] / "config" / "emission_factors.csv")["year"].iloc[0]
@@ -1452,7 +1479,7 @@ if view_mode == "Customer Experience":
     col_sel, col_stat = st.columns([2, 1])
     with col_sel:
         sample_count = min(300, len(df_properties))
-        featured_ids = df_properties["property_id"].head(sample_count).tolist()
+        featured_ids = get_featured_properties(df_properties, sample_count)
 
         sel_sub1, sel_sub2 = st.columns([1, 1])
         with sel_sub1:
@@ -2008,7 +2035,8 @@ elif view_mode == "AI Grounding Inspector":
     st.subheader("AI Explanation & Grounding Verification Gate")
     st.caption("Automated deterministic shield proving LLM never fabricates or computes numbers.")
 
-    test_pid = st.selectbox("Select Property for Grounding Audit", df_properties["property_id"].head(20).tolist())
+    test_choices = get_featured_properties(df_properties, 25)
+    test_pid = st.selectbox("Select Property for Grounding Audit", test_choices)
     row = df_properties[df_properties["property_id"] == test_pid].iloc[0].to_dict()
     clean_d = {k: (None if pd.isna(v) else v) for k, v in row.items()}
     p = Property(**clean_d)
