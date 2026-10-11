@@ -11,6 +11,7 @@ import yaml
 from greenhome.schema import Infeasible, Property
 
 _CFG = Path(__file__).resolve().parents[3] / "config" / "retrofit_catalogue.yaml"
+DECLINED_RULE = "Previously declined by customer preference."  # a preference, not a hard rule
 
 
 def load_catalogue(path=_CFG) -> dict:
@@ -165,7 +166,7 @@ def check_feasibility(
     final_feasible = []
     for r in feasible:
         if f"reject_{r}" in constraints:
-            infeasible.append(Infeasible(retrofit=r, rule="Previously declined by customer preference."))
+            infeasible.append(Infeasible(retrofit=r, rule=DECLINED_RULE))
         else:
             final_feasible.append(r)
 

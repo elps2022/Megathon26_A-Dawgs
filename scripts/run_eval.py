@@ -3,7 +3,10 @@
 Executes and reports 4-tier validation matrix:
 1. Model evaluation: GBDT vs cell-median & log-linear baselines (MAE, MAPE, R2).
 2. LLM grounding audit: 50-scenario adversarial hallucination benchmark.
-3. Rule layer verification: Monotonicity and physical invariants.
+3. Rule layer verification: weights and monotonicity of the piecewise score mappings.
+
+Energy numbers are 5-fold CV on the NEED train split plus the validation split; the test split is untouched
+until the final evaluation. The grounding numbers measure the checker on labelled statements (no LLM yet).
 
 Usage:
     python scripts/run_eval.py
@@ -27,7 +30,7 @@ def print_banner(title: str):
 
 
 def eval_models():
-    print_banner("1. Energy Model Evaluation (Held-Out NEED Benchmark)")
+    print_banner("1. Energy Model Evaluation (NEED 5-fold CV + validation split; test untouched)")
     res_path = Path("eval/results/energy_first_cut.json")
     if not res_path.exists():
         print("  [!] eval/results/energy_first_cut.json not found.")
@@ -36,10 +39,11 @@ def eval_models():
     with open(res_path) as f:
         data = json.load(f)
 
-    for fuel in ("gas", "electricity"):
+    for fuel, label in (("gas", "gas"), ("elec", "electricity")):
         if fuel not in data:
+            print(f"  [!] no {label} results in {res_path}")
             continue
-        print(f"\n[{fuel.upper()} CONSUMPTION MODEL — 5-Fold Cross Validation]")
+        print(f"\n[{label.upper()} CONSUMPTION MODEL — 5-Fold Cross Validation on train]")
         print(f"{'Model':<18} | {'MAE (kWh)':<10} | {'MAPE (%)':<10} | {'Med APE (%)':<12} | {'R²':<8}")
         print("-" * 68)
         cv = data[fuel]["cv"]
@@ -49,14 +53,15 @@ def eval_models():
                 print(f"{m_name:<18} | {m['mae_kwh']:<10.1f} | {m['mape_pct']:<10.2f} | {m['median_ape_pct']:<12.2f} | {m['r2_log']:<8.4f}")
 
         val = data[fuel]["val"]
-        print(f"\n[{fuel.upper()} VALIDATION SET PERFORMANCE (Tuned vs Baselines)]")
+        print(f"\n[{label.upper()} VALIDATION SPLIT (first cut, untuned)]")
         print(f"LightGBM Validation MAE: {val['lightgbm']['mae_kwh']:.1f} kWh | MAPE: {val['lightgbm']['mape_pct']:.2f}% | R²: {val['lightgbm']['r2_log']:.4f}")
         improvement = (val['global_median']['mae_kwh'] - val['lightgbm']['mae_kwh']) / val['global_median']['mae_kwh'] * 100.0
-        print(f"--> LightGBM beats global median baseline by +{improvement:.1f}% MAE error reduction.")
+        vs_ll = (val['log_linear']['mae_kwh'] - val['lightgbm']['mae_kwh']) / val['log_linear']['mae_kwh'] * 100.0
+        print(f"--> LightGBM MAE vs global median: {improvement:+.1f}% reduction; vs log-linear: {vs_ll:+.1f}% reduction.")
 
 
 def eval_grounding():
-    print_banner("2. AI Grounding & Hallucination Shield (50 Scenarios)")
+    print_banner("2. Grounding checker on labelled statements (no LLM in the loop yet)")
     report = build_mock_report()
 
     total = len(SCENARIOS_ADVERSARIAL_50)
@@ -75,12 +80,13 @@ def eval_grounding():
                 correctly_handled += 1
                 traps_blocked += 1
 
-    groundedness_rate = correctly_handled / total * 100.0
-    print(f"Total Evaluated Scenarios: {total}")
-    print(f"  • Adversarial Traps Blocked:   {traps_blocked} / 42 ({traps_blocked / 42 * 100:.1f}%)")
-    print(f"  • Legitimate Claims Passed:    {legit_passed} / 8   ({legit_passed / 8 * 100:.1f}%)")
-    print(f"  • Overall Shield Accuracy:     {groundedness_rate:.1f}%")
-    print(f"  • Target Compliance:           PASSED (Target >= 90.0%, Unsupported < 5.0%)")
+    n_legit = sum(1 for _, ok in SCENARIOS_ADVERSARIAL_50 if ok)
+    n_traps = total - n_legit
+    accuracy = correctly_handled / total * 100.0
+    print(f"Total Evaluated Statements: {total}")
+    print(f"  • Traps blocked:          {traps_blocked} / {n_traps} ({traps_blocked / max(n_traps, 1) * 100:.1f}%)")
+    print(f"  • Legitimate passed:      {legit_passed} / {n_legit} ({legit_passed / max(n_legit, 1) * 100:.1f}%)")
+    print(f"  • Checker accuracy:       {accuracy:.1f}% -> {'PASS' if accuracy >= 90.0 else 'FAIL'} (target >= 90%)")
 
 
 def eval_invariants():
@@ -91,7 +97,13 @@ def eval_invariants():
 
     comps = len(mappings["weights"])
     print(f"Score Components Defined:    {comps} components (Target: 7) -> {'PASS' if comps == 7 else 'FAIL'}")
-    print("Monotonicity Checks (Heating, Glazing, Controls, Insulation): ALL MONOTONIC PASS")
+    piecewise = {"consumption_intensity": (mappings["consumption_intensity"]["points"], -1),
+                 "insulation.loft_mm": (mappings["insulation"]["loft_mm_points"], +1)}
+    for name, (pts, direction) in piecewise.items():
+        xs, ys = [x for x, _ in pts], [y for _, y in pts]
+        ok = all(b > a for a, b in zip(xs, xs[1:])) and all(direction * (b - a) >= 0 for a, b in zip(ys, ys[1:]))
+        print(f"Monotonic {name:<22}: {'PASS' if ok else 'FAIL'}")
+    print("Categorical mappings (heating, glazing, controls, walls): ordering is tested in tests/test_score.py")
 
 
 def main():
@@ -99,7 +111,7 @@ def main():
     eval_grounding()
     eval_invariants()
     print("\n" + "=" * 70)
-    print(" ALL EVALUATION SUITES EXECUTED SUCCESSFULLY")
+    print(" EVALUATION SUITES EXECUTED")
     print("=" * 70 + "\n")
 
 

@@ -37,7 +37,7 @@ class Property(BaseModel):
     @field_validator("data_flags", mode="before")
     @classmethod
     def clean_flags(cls, v: Any) -> list[str]:
-        if v is None or (isinstance(v, float) and pd.isna(v)):
+        if v is None or (isinstance(v, float) and v != v):  # None or NaN
             return []
         if isinstance(v, str):
             return [f.strip() for f in v.split(",") if f.strip() and f != "nan"]

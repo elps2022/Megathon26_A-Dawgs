@@ -9,14 +9,14 @@ from typing import Any
 
 import yaml
 
-from greenhome.engine.feasibility import check_feasibility
+from greenhome.engine.feasibility import DECLINED_RULE, RETROFIT_CATALOGUE, check_feasibility
 from greenhome.engine.savings import (
     EnergyUnavailable,
     apply_retrofits_to_property,
     baseline_energy,
     simulate_package_savings,
 )
-from greenhome.schema import Property, PropertyReport
+from greenhome.schema import Infeasible, Property, PropertyReport
 
 from greenhome.score.score import calculate_green_home_score
 
@@ -102,15 +102,25 @@ def build_report(
         constraints = memory["constraints"]
     feasible_all, infeasible = check_feasibility(p, constraints)
 
-    # If explicit retrofits passed (what-if scenario), use them; otherwise evaluate all feasible retrofits
-    active_retrofits = retrofits if retrofits is not None else feasible_all
-
     assumptions = [
         "Sequential interaction ordering applied (Fabric -> Controls -> Heating -> Solar)",
         _emission_assumption(),
         "Solar PV offsets grid import, not home energy demand",
         "All savings labelled as estimates, not guarantees",
     ]
+
+    # What-if: simulate only requested retrofits that pass the hard feasibility rules. A retrofit the customer
+    # declined earlier may still be explored when asked for explicitly. Otherwise use every feasible retrofit.
+    if retrofits is not None:
+        blocked = {i.retrofit: i.rule for i in infeasible if i.rule != DECLINED_RULE}
+        unknown = [r for r in retrofits if r not in RETROFIT_CATALOGUE]
+        infeasible = infeasible + [Infeasible(retrofit=r, rule="Unknown retrofit: not in the catalogue.") for r in unknown]
+        active_retrofits = [r for r in dict.fromkeys(retrofits) if r in RETROFIT_CATALOGUE and r not in blocked]
+        skipped = [f"{r} ({blocked[r]})" for r in retrofits if r in blocked]
+        if skipped or unknown:
+            assumptions.append("Requested but not simulated: " + "; ".join(skipped + [f"{r} (unknown retrofit)" for r in unknown]))
+    else:
+        active_retrofits = feasible_all
     p_after = apply_retrofits_to_property(p, active_retrofits)
 
     # 4. Sequential savings simulation (unavailable, never 0, when the baseline can't be established)

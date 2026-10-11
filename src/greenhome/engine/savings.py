@@ -31,7 +31,7 @@ REASONS = {
     "solid_wall_insulation": "External/internal wall insulation stops heat loss through solid masonry.",
     "double_glazing": "A-rated double glazing reduces window heat loss and draughts.",
     "smart_thermostat": "Zone scheduling and smart modulation prevent overheating rooms.",
-    "heat_pump": "Heat pump replaces gas heating; gas falls to zero while electricity use rises.",
+    "heat_pump": "Heat pump replaces the current heating and hot water; that fuel falls while heat-pump electricity is added.",
     "solar_pv": "Solar panels generate electricity on site, reducing grid imports (not underlying demand).",
 }
 
@@ -124,6 +124,18 @@ def _heating_efficiency(heating: str) -> float:
     return systems[heating]["efficiency"]
 
 
+def _heating_fuel(p: Property) -> str | None:
+    """Metered fuel the space heating draws from: "gas", "electricity", or None when it is unmetered
+    (oil, LPG, district heat). Unknown heating with a gas meter is treated as gas heating, as before."""
+    system = _cfg("efficiencies.yaml")["heating_systems"].get(p.heating)
+    if system is None:
+        return "gas" if p.gas_meter else None
+    fuel = system["fuel"]
+    if fuel == "gas" and not p.gas_meter:
+        return None
+    return fuel if fuel in ("gas", "electricity") else None
+
+
 def simulate_package_savings(
     p: Property,
     retrofits: list[str],
@@ -138,11 +150,12 @@ def simulate_package_savings(
     sim = _cfg("simulator.yaml")
     base_elec, base_gas, baseline_flags = baseline_energy(p)
 
-    # Split each fuel into space heating vs base load (hot water, cooking, appliances).
-    gas_heat_demand = base_gas * sim["gas_heating_share"]["value"] if p.gas_meter else 0.0
+    # Split each fuel into space heating vs base load (hot water, cooking, appliances). Only the fuel the
+    # heating system actually uses carries heating demand: a gas meter in an electrically heated home is cooking.
+    heating_fuel = _heating_fuel(p)
+    gas_heat_demand = base_gas * sim["gas_heating_share"]["value"] if heating_fuel == "gas" else 0.0
     gas_base_load = base_gas - gas_heat_demand
-    is_elec_heated = p.heating in ("storage_heaters", "direct_electric", "heat_pump")
-    elec_heat_demand = base_elec * sim["electric_heating_share"]["value"] if is_elec_heated else 0.0
+    elec_heat_demand = base_elec * sim["electric_heating_share"]["value"] if heating_fuel == "electricity" else 0.0
     elec_base_load = base_elec - elec_heat_demand
 
     current_heat_demand = gas_heat_demand + elec_heat_demand  # in delivered-fuel kWh
@@ -169,23 +182,32 @@ def simulate_package_savings(
             saved_heat = current_heat_demand * mid / 100
             band = (saved_heat * lo / mid, saved_heat * hi / mid)
             current_heat_demand -= saved_heat
-            if p.gas_meter and current_gas > 0:
+            if heating_fuel == "gas":
                 delta_gas = saved_heat
-            else:
+            elif heating_fuel == "electricity":
                 delta_elec = saved_heat
 
         elif r == "heat_pump":
             hp = _cfg("efficiencies.yaml")["heating_systems"]["heat_pump"]
-            boiler_eff = _heating_efficiency(p.heating) if p.gas_meter else 1.0
-            # Useful heat = remaining gas heating x boiler efficiency (+ hot-water share of base load).
-            useful_heat = (current_heat_demand + gas_base_load * sim["heat_pump_hot_water_share_of_base_load"]["value"]) * boiler_eff
+            if heating_fuel == "gas":
+                # Replaced: remaining gas space heating + the hot-water share of gas base load (cooking stays).
+                replaced = current_heat_demand + gas_base_load * sim["heat_pump_hot_water_share_of_base_load"]["value"]
+                eff = _heating_efficiency(p.heating) if p.heating in _cfg("efficiencies.yaml")["heating_systems"] else 1.0
+            elif heating_fuel == "electricity":
+                replaced = current_heat_demand  # storage / direct electric space heating
+                eff = _heating_efficiency(p.heating)
+            else:
+                replaced, eff = 0.0, 1.0  # unmetered heating fuel: nothing metered to replace
+            useful_heat = replaced * eff
             elec_added = useful_heat / hp["efficiency"]
-            delta_gas = current_gas
-            delta_elec = -elec_added  # negative saving: electricity use rises
+            if heating_fuel == "gas":
+                delta_gas = replaced
+                delta_elec = -elec_added  # negative saving: electricity use rises
+            else:
+                delta_elec = replaced - elec_added  # electric resistance heat replaced by SCOP-times-better heat
             # Higher SCOP -> less electricity added -> larger net saving; the band follows the SCOP range.
-            band = (delta_gas - useful_heat / hp["efficiency_low"], delta_gas - useful_heat / hp["efficiency_high"])
-            current_gas = 0.0
-            current_heat_demand = 0.0
+            band = (replaced - useful_heat / hp["efficiency_low"], replaced - useful_heat / hp["efficiency_high"])
+            current_heat_demand = elec_added  # heating is now delivered by heat-pump electricity
 
         elif r == "solar_pv":
             sol = sim["solar"]

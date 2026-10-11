@@ -190,7 +190,7 @@ Config owned by C: `config/u_values.yaml` (RdSAP tables), `config/geometry.yaml`
 ### 3.6 Savings simulator (per fuel, sequential)
 1. Start from the baseline `HomeState`. Apply retrofits **in priority order** (fabric → controls → heating → generation). Each one edits the state, and `EnergyModel.predict` runs again, so every step acts on what the previous steps left.
 2. Solar is applied after the energy model: kWp × regional yield (~850–1000 kWh/kWp) × self-consumption ratio → reduces grid import only, not demand.
-3. A heat pump lowers gas and **raises electricity**; this shows as a negative electricity saving.
+3. In a gas-heated home a heat pump lowers gas (space heating + hot water; cooking gas stays) and **raises electricity**, which shows as a negative electricity saving. In an electrically heated home it lowers electricity, since it replaces resistance heating at SCOP × the efficiency. Savings only ever come off the fuel the heating system actually uses (`config/efficiencies.yaml` `fuel`), so a gas cooker in an electrically heated home is untouched.
 4. Report per retrofit the **marginal** saving in package order (these add up to the package total), plus the package's elec/gas/total and a low/high band (from U-value / SCOP ranges and the model's p10/p90).
 
 ### 3.7 Carbon
@@ -401,7 +401,7 @@ def build_report(p: Property, retrofits: list[str] | None = None, memory: dict |
 def build_portfolio(reports: list[PropertyReport]) -> PortfolioSummary   # lender view (3.12)
 ```
 
-`build_report` with an explicit `retrofits` list is the what-if entry point.
+`build_report` with an explicit `retrofits` list is the what-if entry point. Requested retrofits that fail a hard feasibility rule, or aren't in the catalogue, are not simulated: they're listed in `infeasible` with the rule, and noted in `assumptions`. A retrofit the customer declined earlier can still be explored when asked for explicitly.
 
 ---
 
